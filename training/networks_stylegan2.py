@@ -244,6 +244,69 @@ def G_main(
     return images_out
 
 #----------------------------------------------------------------------------
+# Main generator network for dsprites.
+# Composed of two sub-networks (mapping and synthesis) that are defined below.
+# dlatent are not broadcasted in G_mapping, and each layer in G_synthesis 
+# use a different dimension of dlatent.
+# No truncation and noise is used.
+
+def G_main_dsp(
+    latents_in,                                         # First input: Latent vectors (Z) [minibatch, latent_size].
+    labels_in,                                          # Second input: Conditioning labels [minibatch, label_size].
+    dlatent_avg_beta        = 0.995,                    # Decay for tracking the moving average of W during training. None = disable.
+    is_training             = False,                    # Network is under training? Enables and disables specific features.
+    is_validation           = False,                    # Network is under validation? Chooses which value to use for truncation_psi.
+    return_dlatents         = False,                    # Return dlatents in addition to the images?
+    is_template_graph       = False,                    # True = template graph constructed by the Network class, False = actual evaluation.
+    components              = dnnlib.EasyDict(),        # Container for sub-networks. Retained between calls.
+    mapping_func            = 'G_mapping_dsp',              # Build func name for the mapping network.
+    synthesis_func          = 'G_synthesis_stylegan2_dsp',  # Build func name for the synthesis network.
+    **kwargs):                                          # Arguments for sub-networks (mapping and synthesis).
+
+    # Validate arguments.
+    assert not is_training or not is_validation
+    assert isinstance(components, dnnlib.EasyDict)
+    if not is_training or (dlatent_avg_beta is not None and not tflib.is_tf_expression(dlatent_avg_beta) and dlatent_avg_beta == 1):
+        dlatent_avg_beta = None
+
+    # Setup components.
+    if 'synthesis' not in components:
+        components.synthesis = tflib.Network('G_synthesis_dsp', func_name=globals()[synthesis_func], **kwargs)
+    dlatent_size = components.synthesis.input_shape[1]
+    if 'mapping' not in components:
+        components.mapping = tflib.Network('G_mapping_dsp', func_name=globals()[mapping_func], dlatent_broadcast=None, 
+                                           latent_size=dlatent_size - 3, dlatent_size=dlatent_size, **kwargs)
+
+    # Setup variables.
+    lod_in = tf.get_variable('lod', initializer=np.float32(0), trainable=False)
+    dlatent_avg = tf.get_variable('dlatent_avg', shape=[dlatent_size], initializer=tf.initializers.zeros(), trainable=False)
+
+    # Evaluate mapping network.
+    dlatents = components.mapping.get_output_for(latents_in, labels_in, is_training=is_training, **kwargs)
+    dlatents = tf.cast(dlatents, tf.float32)
+
+    # Update moving average of W.
+    if dlatent_avg_beta is not None:
+        with tf.variable_scope('DlatentAvg'):
+            batch_avg = tf.reduce_mean(dlatents[:, 0], axis=0)
+            update_op = tf.assign(dlatent_avg, tflib.lerp(batch_avg, dlatent_avg, dlatent_avg_beta))
+            with tf.control_dependencies([update_op]):
+                dlatents = tf.identity(dlatents)
+
+    # Evaluate synthesis network.
+    deps = []
+    if 'lod' in components.synthesis.vars:
+        deps.append(tf.assign(components.synthesis.vars['lod'], lod_in))
+    with tf.control_dependencies(deps):
+        images_out = components.synthesis.get_output_for(dlatents, is_training=is_training, force_clean_graph=is_template_graph, **kwargs)
+
+    # Return requested outputs.
+    images_out = tf.identity(images_out, name='images_out')
+    if return_dlatents:
+        return images_out, dlatents
+    return images_out
+
+#----------------------------------------------------------------------------
 # Mapping network.
 # Transforms the input latent code (z) to the disentangled latent code (w).
 # Used in configs B-F (Table 1).
@@ -294,6 +357,41 @@ def G_mapping(
     if dlatent_broadcast is not None:
         with tf.variable_scope('Broadcast'):
             x = tf.tile(x[:, np.newaxis], [1, dlatent_broadcast, 1])
+
+    # Output.
+    assert x.dtype == tf.as_dtype(dtype)
+    return tf.identity(x, name='dlatents_out')
+
+#----------------------------------------------------------------------------
+# Mapping network for dsprites.
+# Transforms the input latent code (z) to the disentangled latent code (w).
+
+def G_mapping_dsp(
+    latents_in,                             # First input: Latent vectors (Z) [minibatch, latent_size].
+    labels_in,                              # Second input: Conditioning labels [minibatch, label_size].
+    latent_size             = 9,          # Latent vector (Z) dimensionality.
+    label_size              = 0,            # Label dimensionality, 0 if no labels.
+    dlatent_size            = 9,          # Disentangled latent (W) dimensionality.
+    dlatent_broadcast       = None,         # Output disentangled latent (W) as [minibatch, dlatent_size] or [minibatch, dlatent_broadcast, dlatent_size].
+    mapping_layers          = 8,            # Number of mapping layers.
+    mapping_fmaps           = 512,          # Number of activations in the mapping layers.
+    mapping_lrmul           = 0.01,         # Learning rate multiplier for the mapping layers.
+    mapping_nonlinearity    = 'lrelu',      # Activation function: 'relu', 'lrelu', etc.
+    normalize_latents       = True,         # Normalize latent vectors (Z) before feeding them to the mapping layers?
+    dtype                   = 'float32',    # Data type to use for activations and outputs.
+    **_kwargs):                             # Ignore unrecognized keyword args.
+
+    act = mapping_nonlinearity
+
+    # Inputs.
+    latents_in.set_shape([None, latent_size])
+    labels_in.set_shape([None, label_size])
+    latents_in = tf.cast(latents_in, dtype)
+    labels_in = tf.cast(labels_in, dtype)
+    x = latents_in
+
+    with tf.variable_scope('LabelConcat'):
+        x = tf.concat([labels_in, x], axis=1)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
@@ -505,6 +603,102 @@ def G_synthesis_stylegan2(
     assert images_out.dtype == tf.as_dtype(dtype)
     return tf.identity(images_out, name='images_out')
 
+#----------------------------------------------------------------------------
+# StyleGAN2 synthesis network for dsprites.
+# Implements skip connections and residual nets (Figure 7), but no progressive growing.
+# Each layer use separate dlatents dimensions.
+
+def G_synthesis_stylegan2_dsp(
+    dlatents_in,                        # Input: Disentangled latents (W) [minibatch, num_layers, dlatent_size].
+    dlatent_size        = 20,           # Disentangled latent (W) dimensionality. Not used. Replaced by num_layers.
+    num_channels        = 1,            # Number of output color channels.
+    resolution          = 64,           # Output resolution.
+    fmap_base           = 16 << 10,     # Overall multiplier for the number of feature maps.
+    fmap_decay          = 1.0,          # log2 feature map reduction when doubling the resolution.
+    fmap_min            = 1,            # Minimum number of feature maps in any layer.
+    fmap_max            = 512,          # Maximum number of feature maps in any layer.
+    randomize_noise     = True,         # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
+    architecture        = 'skip',       # Architecture: 'orig', 'skip', 'resnet'.
+    nonlinearity        = 'lrelu',      # Activation function: 'relu', 'lrelu', etc.
+    dtype               = 'float32',    # Data type to use for activations and outputs.
+    resample_kernel     = [1,3,3,1],    # Low-pass filter to apply when resampling activations. None = no filtering.
+    fused_modconv       = True,         # Implement modulated_conv2d_layer() as a single fused op?
+    **_kwargs):                         # Ignore unrecognized keyword args.
+
+    resolution_log2 = int(np.log2(resolution))
+    assert resolution == 2**resolution_log2 and resolution >= 4
+    def nf(stage): return np.clip(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_min, fmap_max)
+    assert architecture in ['orig', 'skip', 'resnet']
+    act = nonlinearity
+    num_layers = resolution_log2 * 2 - 2
+    images_out = None
+
+    # Primary inputs.
+    # dlatents_in.set_shape([None, num_layers, dlatent_size])
+    # dlatents_in.set_shape([None, dlatent_size])
+    dlatents_in.set_shape([None, num_layers - 1 + 3]) # class information takes up the first layer.
+    dlatents_in = tf.cast(dlatents_in, dtype)
+
+    # Noise inputs.
+    noise_inputs = []
+    for layer_idx in range(num_layers - 1):
+        res = (layer_idx + 5) // 2
+        shape = [1, 1, 2**res, 2**res]
+        noise_inputs.append(tf.get_variable('noise%d' % layer_idx, shape=shape, initializer=tf.initializers.random_normal(), trainable=False))
+
+    # Single convolution layer with all the bells and whistles.
+    def layer(x, layer_idx, fmaps, kernel, up=False, cls_layer=False):
+        if cls_layer:
+            x = modulated_conv2d_layer(x, dlatents_in[:, layer_idx:layer_idx+3], fmaps=fmaps, kernel=kernel, up=up, resample_kernel=resample_kernel, fused_modconv=fused_modconv)
+        else:
+            x = modulated_conv2d_layer(x, dlatents_in[:, layer_idx+2:layer_idx+3], fmaps=fmaps, kernel=kernel, up=up, resample_kernel=resample_kernel, fused_modconv=fused_modconv)
+        return apply_bias_act(x, act=act)
+
+    # Building blocks for main layers.
+    def block(x, res): # res = 3..resolution_log2
+        t = x
+        # with tf.variable_scope('Conv0_up'):
+            # x = layer(x, layer_idx=res*2-5, fmaps=nf(res-1), kernel=3, up=True)
+        # with tf.variable_scope('Conv1'):
+            # x = layer(x, layer_idx=res*2-4, fmaps=nf(res-1), kernel=3)
+        with tf.variable_scope('Conv0_up'):
+            x = layer(x, layer_idx=res*2-4, fmaps=nf(res-1), kernel=3, up=True)
+        if architecture == 'resnet':
+            with tf.variable_scope('Skip'):
+                t = conv2d_layer(t, fmaps=nf(res-1), kernel=1, up=True, resample_kernel=resample_kernel)
+                x = (x + t) * (1 / np.sqrt(2))
+        return x
+    def upsample(y):
+        with tf.variable_scope('Upsample'):
+            return upsample_2d(y, k=resample_kernel)
+    def torgb(x, y, res): # res = 2..resolution_log2
+        with tf.variable_scope('ToRGB'):
+            t = apply_bias_act(modulated_conv2d_layer(x, dlatents_in[:, res*2-1:res*2], fmaps=num_channels, kernel=1, demodulate=False, fused_modconv=fused_modconv))
+            return t if y is None else y + t
+
+    # Early layers.
+    y = None
+    with tf.variable_scope('4x4'):
+        with tf.variable_scope('Const'):
+            x = tf.get_variable('const', shape=[1, nf(1), 4, 4], initializer=tf.initializers.random_normal())
+            x = tf.tile(tf.cast(x, dtype), [tf.shape(dlatents_in)[0], 1, 1, 1])
+        with tf.variable_scope('Conv'):
+            x = layer(x, layer_idx=0, fmaps=nf(1), kernel=3, cls_layer=True)
+        if architecture == 'skip':
+            y = torgb(x, y, 2)
+
+    # Main layers.
+    for res in range(3, resolution_log2 + 1):
+        with tf.variable_scope('%dx%d' % (2**res, 2**res)):
+            x = block(x, res)
+            if architecture == 'skip':
+                y = upsample(y)
+            if architecture == 'skip' or res == resolution_log2:
+                y = torgb(x, y, res)
+    images_out = y
+
+    assert images_out.dtype == tf.as_dtype(dtype)
+    return tf.identity(images_out, name='images_out')
 #----------------------------------------------------------------------------
 # Original StyleGAN discriminator.
 # Used in configs B-D (Table 1).

@@ -7,6 +7,7 @@
 """Main training script."""
 
 import numpy as np
+import pdb
 import tensorflow as tf
 import dnnlib
 import dnnlib.tflib as tflib
@@ -131,7 +132,8 @@ def training_loop(
     resume_pkl              = None,     # Network pickle to resume training from, None = train from scratch.
     resume_kimg             = 0.0,      # Assumed training progress at the beginning. Affects reporting and training schedule.
     resume_time             = 0.0,      # Assumed wallclock time at the beginning. Affects reporting.
-    resume_with_new_nets    = False):   # Construct new networks according to G_args and D_args before resuming training?
+    resume_with_new_nets    = False,    # Construct new networks according to G_args and D_args before resuming training?
+    traversal_grid          = False):   # Used for disentangled representation learning. 
 
     # Initialize dnnlib and TensorFlow.
     tflib.init_tf(tf_config)
@@ -157,8 +159,22 @@ def training_loop(
 
     # Print layers and generate initial image snapshot.
     G.print_layers(); D.print_layers()
+    # pdb.set_trace()
     sched = training_schedule(cur_nimg=total_kimg*1000, training_set=training_set, **sched_args)
-    grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
+    if traversal_grid:
+        grid_size = (10, 4)
+        z = np.random.randn(1, *G.input_shape[1:]) # [minibatch, component]
+        print('G.input_shape:', G.input_shape)
+        grid_latents = np.tile(z, (40, 1))
+        for dim in range(4):
+            grid_latents[dim*10:dim*10+10, dim] = np.arange(-2, 2, 0.4)
+        # grid_latents[:10, 0] = np.arange(-2, 2, 0.4)
+        grid_labels = np.tile(grid_labels[:1], (40, 1))
+    else:
+        grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
+    print('grid_latents.shape:', grid_latents.shape)
+    print('grid_labels.shape:', grid_labels.shape)
+    # pdb.set_trace()
     grid_fakes = Gs.run(grid_latents, grid_labels, is_validation=True, minibatch_size=sched.minibatch_gpu)
     misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes_init.png'), drange=drange_net, grid_size=grid_size)
 
@@ -310,7 +326,7 @@ def training_loop(
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
-        if cur_tick < 0 or cur_nimg >= tick_start_nimg + sched.tick_kimg * 1000 or done:
+        if cur_tick < 0 or cur_nimg >= tick_start_nimg + sched.tick_kimg * 100 or done:
             cur_tick += 1
             tick_kimg = (cur_nimg - tick_start_nimg) / 1000.0
             tick_start_nimg = cur_nimg

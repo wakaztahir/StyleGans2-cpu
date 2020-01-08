@@ -527,6 +527,45 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
 
 #----------------------------------------------------------------------------
 
+def create_from_dsprites_npz(tfrecord_dir, dsprites_filename, shuffle, shape_only):
+    print('Loading images from "%s"' % dsprites_filename)
+    data = np.load(dsprites_filename, encoding='latin1', allow_pickle=True)
+    images = data['imgs'] * 255
+    labels = data['latents_classes']
+    if shape_only:
+        labels = convert_to_shape(labels)
+    img = images[0]
+    resolution = img.shape[0]
+    channels = img.shape[2] if img.ndim == 3 else 1
+    if img.shape[1] != resolution:
+        error('Input images must have the same width and height')
+    if resolution != 2 ** int(np.floor(np.log2(resolution))):
+        error('Input image resolution must be a power-of-two')
+    if channels not in [1, 3]:
+        error('Input images must be stored as RGB or grayscale')
+
+    with TFRecordExporter(tfrecord_dir, images.shape[0]) as tfr:
+        order = tfr.choose_shuffled_order() if shuffle else np.arange(images.shape[0])
+        for idx in range(order.size):
+            img = images[idx]
+            if channels == 1:
+                img = img[np.newaxis, :, :] # HW => CHW
+            else:
+                img = img.transpose([2, 0, 1]) # HWC => CHW
+            tfr.add_image(img)
+        tfr.add_labels(labels[order])
+
+#----------------------------------------------------------------------------
+
+def convert_to_shape(labels):
+    labels_shape = labels[:, 1]
+    # labels_shape = labels_shape.astype(np.int)
+    labels_onehot = np.zeros((labels_shape.size, labels_shape.max()+1))
+    labels_onehot[np.arange(labels_shape.size), labels_shape] = 1
+    return labels_onehot
+
+#----------------------------------------------------------------------------
+
 def create_from_hdf5(tfrecord_dir, hdf5_filename, shuffle):
     print('Loading HDF5 archive from "%s"' % hdf5_filename)
     import h5py # conda install h5py
@@ -624,6 +663,18 @@ def execute_cmdline(argv):
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'image_dir',        help='Directory containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+
+    p = add_command(    'create_from_dsprites_npz', 'Create dataset from a dsprites_filename.',
+                                            'create_from_dsprites_npz datasets/mydataset dsprites_py3.npz')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'dsprites_filename',        help='dsprites_filename containing the images')
+    p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+    p.add_argument(     '--shape_only',        help='Use only shape as label', type=int, default=1)
+
+    # p = add_command(    'create_dsprites_shape_labels_from_tfr', 'Create shape labels from a dsprites_tfr_label.',
+                                            # 'create_from_dsprites_npz datasets/mydataset dsprites_py3.npz')
+    # p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    # p.add_argument(     'tfr_filename',        help='dsprites_label_filename containing the label')
 
     p = add_command(    'create_from_hdf5', 'Create dataset from legacy HDF5 archive.',
                                             'create_from_hdf5 datasets/celebahq ~/downloads/celeba-hq-1024x1024.h5')
