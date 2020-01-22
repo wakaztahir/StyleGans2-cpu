@@ -33,17 +33,23 @@ _valid_configs = [
 
 #----------------------------------------------------------------------------
 
-def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, mirror_augment, metrics):
+def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, mirror_augment, metrics, model_type='spatial_biased'):
     train     = EasyDict(run_func_name='training.training_loop.training_loop') # Options for training loop.
-    # G         = EasyDict(func_name='training.networks_stylegan2.G_main_dsp', 
-                         # dlatent_avg_beta=None, mapping_fmaps=128, fmap_max=128)       # Options for generator network.
-    G         = EasyDict(func_name='training.spatial_biased_networks.G_main_spatial_biased_dsp', 
-                         mapping_fmaps=128, fmap_max=128)       # Options for generator network.
+    if model_type == 'spatial_biased':
+        G         = EasyDict(func_name='training.spatial_biased_networks.G_main_spatial_biased_dsp', 
+                             mapping_fmaps=128, fmap_max=128, latent_size=7, n_discrete=3)       # Options for generator network.
+    elif model_type == 'stylegan2':
+        G         = EasyDict(func_name='training.networks_stylegan2.G_main_dsp', 
+                             dlatent_avg_beta=None, mapping_fmaps=128, fmap_max=128, 
+                             latent_size=12, n_discrete=3)       # Options for generator network.
+    else:
+        raise ValueError('Not supported model tyle: '+model_type)
     D         = EasyDict(func_name='training.networks_stylegan2.D_stylegan2', fmap_max=128)  # Options for discriminator network.
+    # D         = EasyDict(func_name='training.spatial_biased_networks.D_with_discrete_dsp', fmap_max=128)  # Options for discriminator network.
     G_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                  # Options for generator optimizer.
     D_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                  # Options for discriminator optimizer.
-    G_loss    = EasyDict(func_name='training.loss.G_logistic_ns_dsp')      # Options for generator loss.
-    D_loss    = EasyDict(func_name='training.loss.D_logistic_r1_dsp')              # Options for discriminator loss.
+    G_loss    = EasyDict(func_name='training.loss.G_logistic_ns_dsp', n_discrete=3) # Options for generator loss.
+    D_loss    = EasyDict(func_name='training.loss.D_logistic_r1_dsp', n_discrete=3)              # Options for discriminator loss.
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
     sc        = dnnlib.SubmitConfig()                                          # Options for dnnlib.submit_run().
@@ -117,6 +123,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma, m
     kwargs = EasyDict(train)
     kwargs.update(G_args=G, D_args=D, G_opt_args=G_opt, D_opt_args=D_opt, G_loss_args=G_loss, D_loss_args=D_loss, traversal_grid=True)
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid, metric_arg_list=metrics, tf_config=tf_config)
+    kwargs.update(model_type=model_type)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -171,6 +178,7 @@ def main():
     parser.add_argument('--gamma', help='R1 regularization weight (default is config dependent)', default=None, type=float)
     parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)', default=False, metavar='BOOL', type=_str_to_bool)
     parser.add_argument('--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)', default='fid50k', type=_parse_comma_sep)
+    parser.add_argument('--model_type', help='Type of model to train', default='spatial_biased', type=str, choices=['spatial_biased', 'stylegan2'])
 
     args = parser.parse_args()
 

@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_networks.py
 # --- Creation Date: 20-01-2020
-# --- Last Modified: Tue 21 Jan 2020 17:57:54 AEDT
+# --- Last Modified: Wed 22 Jan 2020 16:53:39 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -130,6 +130,7 @@ def G_mapping_spatial_biased_dsp(
 def G_synthesis_spatial_biased_dsp(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, dlatent_size].
         dlatent_size=4,  # Disentangled latent (W) dimensionality. Including rotation, scaling, and xy translation.
+        n_discrete=0,  # Discrete latents.
         label_size=0,  # Label dimensionality, 0 if no labels.
         num_channels=1,  # Number of output color channels.
         resolution=64,  # Output resolution.
@@ -159,29 +160,9 @@ def G_synthesis_spatial_biased_dsp(
     images_out = None
 
     # Primary inputs.
-    dlatents_in.set_shape([None, dlatent_size + label_size])
+    n_cat = n_discrete + label_size
+    dlatents_in.set_shape([None, n_cat + dlatent_size])
     dlatents_in = tf.cast(dlatents_in, dtype)
-
-    # Single convolution layer with all the bells and whistles.
-    def layer(x, layer_idx, fmaps, kernel, up=False, cls_layer=False):
-        if cls_layer:
-            x = modulated_conv2d_layer(x,
-                                       dlatents_in[:, layer_idx:layer_idx + 3],
-                                       fmaps=fmaps,
-                                       kernel=kernel,
-                                       up=up,
-                                       resample_kernel=resample_kernel,
-                                       fused_modconv=fused_modconv)
-        else:
-            x = modulated_conv2d_layer(x,
-                                       dlatents_in[:, layer_idx + 2:layer_idx +
-                                                   3],
-                                       fmaps=fmaps,
-                                       kernel=kernel,
-                                       up=up,
-                                       resample_kernel=resample_kernel,
-                                       fused_modconv=fused_modconv)
-        return apply_bias_act(x, act=act)
 
     # Return rotation matrix
     def get_r_matrix(r_latents):
@@ -263,22 +244,30 @@ def G_synthesis_spatial_biased_dsp(
                                             up=True,
                                             resample_kernel=resample_kernel),
                                act=act)
-        with tf.variable_scope('Conv1'):
-            x = layer(x, layer_idx=0, fmaps=nf(2), kernel=3, cls_layer=True)
-        # with tf.variable_scope('Conv2'):
-        # x = apply_bias_act(conv2d_layer(x, fmaps=nf(2), kernel=3), act=act)
+        with tf.variable_scope('ModulatedConv'):
+            x = apply_bias_act(modulated_conv2d_layer(
+                x,
+                dlatents_in[:, :n_cat],
+                fmaps=nf(2),
+                kernel=3,
+                up=False,
+                resample_kernel=resample_kernel,
+                fused_modconv=fused_modconv),
+                               act=act)
+        with tf.variable_scope('Conv'):
+            x = apply_bias_act(conv2d_layer(x, fmaps=nf(2), kernel=3), act=act)
 
     # Rotation layers.
     with tf.variable_scope('16x16'):
-        r_matrix = get_r_matrix(dlatents_in[:, 3:4])
+        r_matrix = get_r_matrix(dlatents_in[:, n_cat:n_cat + 1])
         x = apply_st(x, r_matrix, 2)
 
     with tf.variable_scope('32x32'):
-        s_matrix = get_s_matrix(dlatents_in[:, 4:5])
+        s_matrix = get_s_matrix(dlatents_in[:, n_cat + 1:n_cat + 2])
         x = apply_st(x, s_matrix, 3)
 
     with tf.variable_scope('64x64'):
-        t_matrix = get_t_matrix(dlatents_in[:, 5:])
+        t_matrix = get_t_matrix(dlatents_in[:, n_cat + 2:])
         x = apply_st(x, t_matrix, 4)
     y = torgb(x, y)
 

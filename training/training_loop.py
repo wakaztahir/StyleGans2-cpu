@@ -133,7 +133,8 @@ def training_loop(
     resume_kimg             = 0.0,      # Assumed training progress at the beginning. Affects reporting and training schedule.
     resume_time             = 0.0,      # Assumed wallclock time at the beginning. Affects reporting.
     resume_with_new_nets    = False,    # Construct new networks according to G_args and D_args before resuming training?
-    traversal_grid          = False):   # Used for disentangled representation learning. 
+    traversal_grid          = False,    # Used for disentangled representation learning. 
+    model_type              = 'spatial_biased'):
 
     # Initialize dnnlib and TensorFlow.
     tflib.init_tf(tf_config)
@@ -162,14 +163,29 @@ def training_loop(
     # pdb.set_trace()
     sched = training_schedule(cur_nimg=total_kimg*1000, training_set=training_set, **sched_args)
     if traversal_grid:
-        grid_size = (10, 4)
-        z = np.random.randn(1, *G.input_shape[1:]) # [minibatch, component]
+        if model_type == 'spatial_biased':
+            nlatents_grid = 4
+        else:
+            nlatents_grid = 9
+        grid_size = (10, nlatents_grid*3)
+        z = np.random.randn(1, G.input_shape[1]-3) # [minibatch, component-3]
         print('G.input_shape:', G.input_shape)
-        grid_latents = np.tile(z, (40, 1))
-        for dim in range(4):
+        grid_latents = np.tile(z, (nlatents_grid*10*3, 1))
+        for dim in range(nlatents_grid):
             grid_latents[dim*10:dim*10+10, dim] = np.arange(-2, 2, 0.4)
+        for dim in range(nlatents_grid):
+            grid_latents[(dim+nlatents_grid)*10:(dim+nlatents_grid)*10+10, dim] = np.arange(-2, 2, 0.4)
+        for dim in range(nlatents_grid):
+            grid_latents[(dim+2*nlatents_grid)*10:(dim+2*nlatents_grid)*10+10, dim] = np.arange(-2, 2, 0.4)
         # grid_latents[:10, 0] = np.arange(-2, 2, 0.4)
-        grid_labels = np.tile(grid_labels[:1], (40, 1))
+        # grid_labels = np.tile(grid_labels[:1], (nlatents_grid*10, 1))
+        grid_labels_0 = np.tile(np.array([[1,0,0]], dtype=np.float32), (nlatents_grid*10, 1))
+        grid_labels_1 = np.tile(np.array([[0,1,0]], dtype=np.float32), (nlatents_grid*10, 1))
+        grid_labels_2 = np.tile(np.array([[0,0,1]], dtype=np.float32), (nlatents_grid*10, 1))
+        grid_discrete = np.concatenate((grid_labels_0, grid_labels_1, grid_labels_2), 
+                                       axis=0)
+        grid_latents = np.concatenate((grid_discrete, grid_latents), axis=1)
+        grid_labels = np.tile(grid_labels[:1], (3*nlatents_grid*10, 1))
     else:
         grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
     print('grid_latents.shape:', grid_latents.shape)
