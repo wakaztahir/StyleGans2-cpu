@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_networks.py
 # --- Creation Date: 20-01-2020
-# --- Last Modified: Wed 22 Jan 2020 21:13:34 AEDT
+# --- Last Modified: Wed 22 Jan 2020 22:04:37 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -244,6 +244,7 @@ def G_synthesis_spatial_biased_dsp(
                                             up=True,
                                             resample_kernel=resample_kernel),
                                act=act)
+        with tf.variable_scope('Conv0'):
             x = apply_bias_act(conv2d_layer(x, fmaps=nf(1), kernel=3), act=act)
         with tf.variable_scope('ModulatedConv'):
             x = apply_bias_act(modulated_conv2d_layer(
@@ -256,7 +257,7 @@ def G_synthesis_spatial_biased_dsp(
                 fused_modconv=fused_modconv),
                                act=act)
 
-        with tf.variable_scope('Conv'):
+        with tf.variable_scope('Conv1'):
             x = apply_bias_act(conv2d_layer(x, fmaps=nf(2), kernel=3), act=act)
 
     # Rotation layers.
