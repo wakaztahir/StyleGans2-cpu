@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_networks.py
 # --- Creation Date: 20-01-2020
-# --- Last Modified: Wed 22 Jan 2020 16:53:39 AEDT
+# --- Last Modified: Wed 22 Jan 2020 21:09:48 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -244,6 +244,7 @@ def G_synthesis_spatial_biased_dsp(
                                             up=True,
                                             resample_kernel=resample_kernel),
                                act=act)
+            x = apply_bias_act(conv2d_layer(x, fmaps=nf(1), kernel=3), act=act)
         with tf.variable_scope('ModulatedConv'):
             x = apply_bias_act(modulated_conv2d_layer(
                 x,
