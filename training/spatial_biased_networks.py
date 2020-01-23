@@ -165,9 +165,16 @@ def G_synthesis_spatial_biased_dsp(
     dlatents_in = tf.cast(dlatents_in, dtype)
 
     # Return rotation matrix
-    def get_r_matrix(r_latents):
+    def get_r_matrix(r_latents, cond_latent):
         # r_latents: [-2., 2.] -> [0, 2*pi]
+        with tf.variable_scope('Condition0'):
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                  act=act)
+        with tf.variable_scope('Condition1'):
+            cond = apply_bias_act(dense_layer(cond, fmaps=1),
+                                  act='sigmoid')
         rad = (r_latents + 2) / 4. * 2. * np.pi
+        rad = rad * cond
         tt_00 = tf.math.cos(rad)
         tt_01 = -tf.math.sin(rad)
         tt_02 = tf.zeros_like(rad)
@@ -178,27 +185,41 @@ def G_synthesis_spatial_biased_dsp(
         return theta
 
     # Return scaling matrix
-    def get_s_matrix(s_latents):
+    def get_s_matrix(s_latents, cond_latent):
         # s_latents: [-2., 2.] -> [1, 3]
-        tt_00 = s_latents / 2. + 2.
-        tt_01 = tf.zeros_like(s_latents)
-        tt_02 = tf.zeros_like(s_latents)
-        tt_10 = tf.zeros_like(s_latents)
-        tt_11 = s_latents / 2. + 2.
-        tt_12 = tf.zeros_like(s_latents)
+        with tf.variable_scope('Condition0'):
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                  act=act)
+        with tf.variable_scope('Condition1'):
+            cond = apply_bias_act(dense_layer(cond, fmaps=1),
+                                  act='sigmoid')
+        scale = (s_latents / 2. + 2.) * cond
+        tt_00 = scale
+        tt_01 = tf.zeros_like(scale)
+        tt_02 = tf.zeros_like(scale)
+        tt_10 = tf.zeros_like(scale)
+        tt_11 = scale
+        tt_12 = tf.zeros_like(scale)
         theta = tf.concat([tt_00, tt_01, tt_02, tt_10, tt_11, tt_12], axis=1)
         return theta
 
     # Return translation matrix
-    def get_t_matrix(t_latents):
+    def get_t_matrix(t_latents, cond_latent):
         # t_latents[:, 0]: [-2., 2.] -> [-0.5, 0.5]
         # t_latents[:, 1]: [-2., 2.] -> [-0.5, 0.5]
-        tt_00 = tf.ones_like(t_latents[:, 0:1])
-        tt_01 = tf.zeros_like(t_latents[:, 0:1])
-        tt_02 = t_latents[:, 0:1] / 4.
-        tt_10 = tf.zeros_like(t_latents[:, 1:])
-        tt_11 = tf.ones_like(t_latents[:, 1:])
-        tt_12 = t_latents[:, 1:] / 4.
+        with tf.variable_scope('Condition0'):
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                  act=act)
+        with tf.variable_scope('Condition1'):
+            cond = apply_bias_act(dense_layer(cond, fmaps=1),
+                                  act='sigmoid')
+        xy_shift = t_latents / 4. * cond
+        tt_00 = tf.ones_like(xy_shift[:, 0:1])
+        tt_01 = tf.zeros_like(xy_shift[:, 0:1])
+        tt_02 = xy_shift[:, 0:1]
+        tt_10 = tf.zeros_like(xy_shift[:, 1:])
+        tt_11 = tf.ones_like(xy_shift[:, 1:])
+        tt_12 = xy_shift[:, 1:]
         theta = tf.concat([tt_00, tt_01, tt_02, tt_10, tt_11, tt_12], axis=1)
         return theta
 
@@ -262,15 +283,18 @@ def G_synthesis_spatial_biased_dsp(
 
     # Rotation layers.
     with tf.variable_scope('16x16'):
-        r_matrix = get_r_matrix(dlatents_in[:, n_cat:n_cat + 1])
+        r_matrix = get_r_matrix(dlatents_in[:, n_cat:n_cat + 1],
+                                dlatents_in[:, :n_cat])
         x = apply_st(x, r_matrix, 2)
 
     with tf.variable_scope('32x32'):
-        s_matrix = get_s_matrix(dlatents_in[:, n_cat + 1:n_cat + 2])
+        s_matrix = get_s_matrix(dlatents_in[:, n_cat + 1:n_cat + 2],
+                                dlatents_in[:, :n_cat])
         x = apply_st(x, s_matrix, 3)
 
     with tf.variable_scope('64x64'):
-        t_matrix = get_t_matrix(dlatents_in[:, n_cat + 2:])
+        t_matrix = get_t_matrix(dlatents_in[:, n_cat + 2:],
+                                dlatents_in[:, :n_cat])
         x = apply_st(x, t_matrix, 4)
     y = torgb(x, y)
 
