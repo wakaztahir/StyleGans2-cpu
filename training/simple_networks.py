@@ -8,7 +8,7 @@
 
 # --- File Name: simple_networks.py
 # --- Creation Date: 23-01-2020
-# --- Last Modified: Sun 26 Jan 2020 18:15:17 AEDT
+# --- Last Modified: Sun 26 Jan 2020 18:32:13 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -545,6 +545,15 @@ def G_synthesis_sb_singlelayer_modi_dsp(
 
     # Rotation layers.
     with tf.variable_scope('16x16'):
+        with tf.variable_scope('Upconv'):
+            x = apply_bias_act(conv2d_layer(x,
+                                            fmaps=nf(2),
+                                            kernel=3,
+                                            up=True,
+                                            resample_kernel=resample_kernel),
+                               act=act)
+        with tf.variable_scope('Conv0'):
+            x = apply_bias_act(conv2d_layer(x, fmaps=nf(1), kernel=3), act=act)
         with tf.variable_scope('rotation'):
             r_matrix = get_r_matrix(dlatents_in[:, n_cat:n_cat + 1],
                                     dlatents_in[:, :n_cat])
@@ -553,15 +562,21 @@ def G_synthesis_sb_singlelayer_modi_dsp(
             s_matrix = get_s_matrix(dlatents_in[:, n_cat + 1:n_cat + 2],
                                     dlatents_in[:, :n_cat])
             x = apply_st(x, s_matrix, 3)
-        with tf.variable_scope('shear'):
-            sh_matrix = get_sh_matrix(dlatents_in[:, n_cat + 2:n_cat + 4],
-                                      dlatents_in[:, :n_cat])
-            x = apply_st(x, sh_matrix, 3)
-        with tf.variable_scope('translation'):
-            t_matrix = get_t_matrix(dlatents_in[:, n_cat + 4:],
-                                    dlatents_in[:, :n_cat])
-            x = apply_st(x, t_matrix, 3)
-        with tf.variable_scope('Conv'):
+        if n_continuous == 6:
+            with tf.variable_scope('shear'):
+                sh_matrix = get_sh_matrix(dlatents_in[:, n_cat + 2:n_cat + 4],
+                                          dlatents_in[:, :n_cat])
+                x = apply_st(x, sh_matrix, 3)
+            with tf.variable_scope('translation'):
+                t_matrix = get_t_matrix(dlatents_in[:, n_cat + 4:],
+                                        dlatents_in[:, :n_cat])
+                x = apply_st(x, t_matrix, 3)
+        else:
+            with tf.variable_scope('translation'):
+                t_matrix = get_t_matrix(dlatents_in[:, n_cat + 2:],
+                                        dlatents_in[:, :n_cat])
+                x = apply_st(x, t_matrix, 3)
+        with tf.variable_scope('Conv1'):
             x = apply_bias_act(conv2d_layer(x, fmaps=nf(2), kernel=3), act=act)
 
     with tf.variable_scope('32x32'):

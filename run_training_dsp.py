@@ -69,8 +69,8 @@ def run(dataset,
             n_continuous=n_continuous)  # Options for generator network.
     elif model_type == 'sb_singlelayer_modi':
         G = EasyDict(
-            func_name=
-            'training.spatial_biased_networks.G_main_spatial_biased_dsp',
+            func_name='training.simple_networks.G_main_simple_dsp',
+            synthesis_func='G_synthesis_sb_singlelayer_modi_dsp',
             mapping_fmaps=128,
             fmap_max=128,
             latent_size=n_discrete + n_continuous,
@@ -80,7 +80,7 @@ def run(dataset,
     elif model_type == 'stylegan2':
         G = EasyDict(
             func_name=
-            'training.simple_networks.G_synthesis_sb_singlelayer_modi_dsp',
+            'training.spatial_biased_networks.G_main_spatial_biased_dsp',
             dlatent_avg_beta=None,
             mapping_fmaps=128,
             fmap_max=128,
