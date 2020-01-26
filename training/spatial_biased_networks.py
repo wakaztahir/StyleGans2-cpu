@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_networks.py
 # --- Creation Date: 20-01-2020
-# --- Last Modified: Wed 22 Jan 2020 22:04:37 AEDT
+# --- Last Modified: Sun 26 Jan 2020 16:40:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -94,19 +94,15 @@ def G_main_spatial_biased_dsp(
 def G_mapping_spatial_biased_dsp(
         latents_in,  # First input: Latent vectors (Z) [minibatch, latent_size].
         labels_in,  # Second input: Conditioning labels [minibatch, label_size].
-        latent_size=4,  # Latent vector (Z) dimensionality.
+        latent_size=7,  # Latent vector (Z) dimensionality.
+        n_discrete=3,
+        n_continuous=4,
         label_size=0,  # Label dimensionality, 0 if no labels.
-        dlatent_size=7,  # Disentangled latent (W) dimensionality.
-        dlatent_broadcast=None,  # Output disentangled latent (W) as [minibatch, dlatent_size] or [minibatch, dlatent_broadcast, dlatent_size].
-        mapping_layers=8,  # Number of mapping layers.
-        mapping_fmaps=512,  # Number of activations in the mapping layers.
-        mapping_lrmul=0.01,  # Learning rate multiplier for the mapping layers.
         mapping_nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
-        normalize_latents=True,  # Normalize latent vectors (Z) before feeding them to the mapping layers?
         dtype='float32',  # Data type to use for activations and outputs.
         **_kwargs):  # Ignore unrecognized keyword args.
 
-    act = mapping_nonlinearity
+    assert latent_size == n_discrete + n_continuous
 
     # Inputs.
     latents_in.set_shape([None, latent_size])
@@ -129,8 +125,9 @@ def G_mapping_spatial_biased_dsp(
 
 def G_synthesis_spatial_biased_dsp(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, dlatent_size].
-        dlatent_size=4,  # Disentangled latent (W) dimensionality. Including rotation, scaling, and xy translation.
-        n_discrete=0,  # Discrete latents.
+        dlatent_size=7,  # Disentangled latent (W) dimensionality. Including discrete info, rotation, scaling, and xy translation.
+        n_discrete=3,  # Discrete latents.
+        n_continuous=4,  # Continuous latents. 
         label_size=0,  # Label dimensionality, 0 if no labels.
         num_channels=1,  # Number of output color channels.
         resolution=64,  # Output resolution.
@@ -156,23 +153,21 @@ def G_synthesis_spatial_biased_dsp(
 
     assert architecture in ['orig', 'skip', 'resnet']
     act = nonlinearity
-    num_layers = resolution_log2 * 2 - 2
     images_out = None
 
     # Primary inputs.
-    n_cat = n_discrete + label_size
-    dlatents_in.set_shape([None, n_cat + dlatent_size])
+    assert dlatent_size == n_discrete + n_continuous
+    n_cat = label_size + n_discrete
+    dlatents_in.set_shape([None, label_size + dlatent_size])
     dlatents_in = tf.cast(dlatents_in, dtype)
 
     # Return rotation matrix
     def get_r_matrix(r_latents, cond_latent):
         # r_latents: [-2., 2.] -> [0, 2*pi]
         with tf.variable_scope('Condition0'):
-            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128),
-                                  act=act)
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
         with tf.variable_scope('Condition1'):
-            cond = apply_bias_act(dense_layer(cond, fmaps=1),
-                                  act='sigmoid')
+            cond = apply_bias_act(dense_layer(cond, fmaps=1), act='sigmoid')
         rad = (r_latents + 2) / 4. * 2. * np.pi
         rad = rad * cond
         tt_00 = tf.math.cos(rad)
@@ -188,11 +183,9 @@ def G_synthesis_spatial_biased_dsp(
     def get_s_matrix(s_latents, cond_latent):
         # s_latents: [-2., 2.] -> [1, 3]
         with tf.variable_scope('Condition0'):
-            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128),
-                                  act=act)
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
         with tf.variable_scope('Condition1'):
-            cond = apply_bias_act(dense_layer(cond, fmaps=1),
-                                  act='sigmoid')
+            cond = apply_bias_act(dense_layer(cond, fmaps=1), act='sigmoid')
         scale = (s_latents / 2. + 2.) * cond
         tt_00 = scale
         tt_01 = tf.zeros_like(scale)
@@ -203,16 +196,50 @@ def G_synthesis_spatial_biased_dsp(
         theta = tf.concat([tt_00, tt_01, tt_02, tt_10, tt_11, tt_12], axis=1)
         return theta
 
+    # Return shear matrix
+    def get_sh_matrix(sh_latents, cond_latent):
+        # sh_latents[:, 0]: [-2., 2.] -> [-1., 1.]
+        # sh_latents[:, 1]: [-2., 2.] -> [-1., 1.]
+        with tf.variable_scope('Condition0x'):
+            cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1x'):
+            cond_x = apply_bias_act(dense_layer(cond_x, fmaps=1),
+                                    act='sigmoid')
+        with tf.variable_scope('Condition0y'):
+            cond_y = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1y'):
+            cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1),
+                                    act='sigmoid')
+        cond = tf.concat([cond_x, cond_y], axis=1)
+        xy_shear = sh_latents / 2. * cond
+        tt_00 = tf.ones_like(xy_shear[:, 0:1])
+        tt_01 = xy_shear[:, 0:1]
+        tt_02 = tf.zeros_like(xy_shear[:, 0:1])
+        tt_10 = xy_shear[:, 1:]
+        tt_11 = tf.ones_like(xy_shear[:, 1:])
+        tt_12 = tf.zeros_like(xy_shear[:, 1:])
+        theta = tf.concat([tt_00, tt_01, tt_02, tt_10, tt_11, tt_12], axis=1)
+        return theta
+
     # Return translation matrix
     def get_t_matrix(t_latents, cond_latent):
         # t_latents[:, 0]: [-2., 2.] -> [-0.5, 0.5]
         # t_latents[:, 1]: [-2., 2.] -> [-0.5, 0.5]
-        with tf.variable_scope('Condition0'):
-            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128),
-                                  act=act)
-        with tf.variable_scope('Condition1'):
-            cond = apply_bias_act(dense_layer(cond, fmaps=1),
-                                  act='sigmoid')
+        with tf.variable_scope('Condition0x'):
+            cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1x'):
+            cond_x = apply_bias_act(dense_layer(cond_x, fmaps=1),
+                                    act='sigmoid')
+        with tf.variable_scope('Condition0y'):
+            cond_y = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1y'):
+            cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1),
+                                    act='sigmoid')
+        cond = tf.concat([cond_x, cond_y], axis=1)
         xy_shift = t_latents / 4. * cond
         tt_00 = tf.ones_like(xy_shift[:, 0:1])
         tt_01 = tf.zeros_like(xy_shift[:, 0:1])
@@ -224,7 +251,7 @@ def G_synthesis_spatial_biased_dsp(
         return theta
 
     # Apply spatial transform
-    def apply_st(x, st_matrix, idx):  # idx: 2, 3, 4
+    def apply_st(x, st_matrix, idx, up=True):  # idx: 2, 3, 4
         with tf.variable_scope('Transform'):
             x = tf.transpose(x, [0, 2, 3, 1])  # NCHW -> NHWC
             x = transformer(x, st_matrix, out_dims=x.shape.as_list()[1:3])
@@ -233,7 +260,7 @@ def G_synthesis_spatial_biased_dsp(
             x = apply_bias_act(conv2d_layer(x,
                                             fmaps=nf(idx),
                                             kernel=3,
-                                            up=True,
+                                            up=up,
                                             resample_kernel=resample_kernel),
                                act=act)
         with tf.variable_scope('Conv'):
@@ -287,13 +314,21 @@ def G_synthesis_spatial_biased_dsp(
                                 dlatents_in[:, :n_cat])
         x = apply_st(x, r_matrix, 2)
 
+    # Scaling layers.
     with tf.variable_scope('32x32'):
         s_matrix = get_s_matrix(dlatents_in[:, n_cat + 1:n_cat + 2],
                                 dlatents_in[:, :n_cat])
         x = apply_st(x, s_matrix, 3)
 
+    # Shearing layers.
+    with tf.variable_scope('32x32_Shear'):
+        sh_matrix = get_sh_matrix(dlatents_in[:, n_cat + 2:n_cat + 4],
+                                  dlatents_in[:, :n_cat])
+        x = apply_st(x, sh_matrix, 3, up=False)
+
+    # Translation layers.
     with tf.variable_scope('64x64'):
-        t_matrix = get_t_matrix(dlatents_in[:, n_cat + 2:],
+        t_matrix = get_t_matrix(dlatents_in[:, n_cat + 4:],
                                 dlatents_in[:, :n_cat])
         x = apply_st(x, t_matrix, 4)
     y = torgb(x, y)
