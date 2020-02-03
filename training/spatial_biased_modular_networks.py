@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_modular_networks.py
 # --- Creation Date: 01-02-2020
-# --- Last Modified: Mon 03 Feb 2020 21:13:26 AEDT
+# --- Last Modified: Mon 03 Feb 2020 21:29:27 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -502,6 +502,13 @@ def get_s_matrix(s_latents, cond_latent, act='lrelu'):
             cond = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
         with tf.variable_scope('Condition1'):
             cond = apply_bias_act(dense_layer(cond, fmaps=1), act='sigmoid')
+        scale = (s_latents + 2.) * cond + 1.
+        tt_00 = scale
+        tt_01 = tf.zeros_like(scale)
+        tt_02 = tf.zeros_like(scale)
+        tt_10 = tf.zeros_like(scale)
+        tt_11 = scale[:, 1:]
+        tt_12 = tf.zeros_like(scale)
     else:
         with tf.variable_scope('Condition0x'):
             cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128),
@@ -516,13 +523,13 @@ def get_s_matrix(s_latents, cond_latent, act='lrelu'):
             cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1),
                                     act='sigmoid')
         cond = tf.concat([cond_x, cond_y], axis=1)
-    scale = (s_latents + 2.) * cond + 1.
-    tt_00 = scale[:, 0:1]
-    tt_01 = tf.zeros_like(scale[:, 0:1])
-    tt_02 = tf.zeros_like(scale[:, 0:1])
-    tt_10 = tf.zeros_like(scale[:, 1:])
-    tt_11 = scale[:, 1:]
-    tt_12 = tf.zeros_like(scale[:, 1:])
+        scale = (s_latents + 2.) * cond + 1.
+        tt_00 = scale[:, 0:1]
+        tt_01 = tf.zeros_like(scale[:, 0:1])
+        tt_02 = tf.zeros_like(scale[:, 0:1])
+        tt_10 = tf.zeros_like(scale[:, 1:])
+        tt_11 = scale[:, 1:]
+        tt_12 = tf.zeros_like(scale[:, 1:])
     theta = tf.concat([tt_00, tt_01, tt_02, tt_10, tt_11, tt_12], axis=1)
     return theta
 
@@ -560,6 +567,13 @@ def get_t_matrix(t_latents, cond_latent, act='lrelu'):
             cond = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
         with tf.variable_scope('Condition1x'):
             cond = apply_bias_act(dense_layer(cond, fmaps=1), act='sigmoid')
+        xy_shift = t_latents / 4. * cond
+        tt_00 = tf.ones_like(xy_shift)
+        tt_01 = tf.zeros_like(xy_shift)
+        tt_02 = xy_shift
+        tt_10 = tf.zeros_like(xy_shift)
+        tt_11 = tf.ones_like(xy_shift)
+        tt_12 = xy_shift
     else:
         with tf.variable_scope('Condition0x'):
             cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128),
@@ -574,13 +588,13 @@ def get_t_matrix(t_latents, cond_latent, act='lrelu'):
             cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1),
                                     act='sigmoid')
         cond = tf.concat([cond_x, cond_y], axis=1)
-    xy_shift = t_latents / 4. * cond
-    tt_00 = tf.ones_like(xy_shift[:, 0:1])
-    tt_01 = tf.zeros_like(xy_shift[:, 0:1])
-    tt_02 = xy_shift[:, 0:1]
-    tt_10 = tf.zeros_like(xy_shift[:, 1:])
-    tt_11 = tf.ones_like(xy_shift[:, 1:])
-    tt_12 = xy_shift[:, 1:]
+        xy_shift = t_latents / 4. * cond
+        tt_00 = tf.ones_like(xy_shift[:, 0:1])
+        tt_01 = tf.zeros_like(xy_shift[:, 0:1])
+        tt_02 = xy_shift[:, 0:1]
+        tt_10 = tf.zeros_like(xy_shift[:, 1:])
+        tt_11 = tf.ones_like(xy_shift[:, 1:])
+        tt_12 = xy_shift[:, 1:]
     theta = tf.concat([tt_00, tt_01, tt_02, tt_10, tt_11, tt_12], axis=1)
     return theta
 
