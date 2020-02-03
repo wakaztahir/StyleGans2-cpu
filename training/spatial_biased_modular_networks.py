@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_modular_networks.py
 # --- Creation Date: 01-02-2020
-# --- Last Modified: Mon 03 Feb 2020 15:02:31 AEDT
+# --- Last Modified: Mon 03 Feb 2020 21:13:26 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -497,15 +497,25 @@ def get_r_matrix(r_latents, cond_latent, act='lrelu'):
 def get_s_matrix(s_latents, cond_latent, act='lrelu'):
     # s_latents[:, 0]: [-2., 2.] -> [1., 3.]
     # s_latents[:, 1]: [-2., 2.] -> [1., 3.]
-    with tf.variable_scope('Condition0x'):
-        cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
-    with tf.variable_scope('Condition1x'):
-        cond_x = apply_bias_act(dense_layer(cond_x, fmaps=1), act='sigmoid')
-    with tf.variable_scope('Condition0y'):
-        cond_y = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
-    with tf.variable_scope('Condition1y'):
-        cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1), act='sigmoid')
-    cond = tf.concat([cond_x, cond_y], axis=1)
+    if s_latents.shape.as_list()[1] == 1:
+        with tf.variable_scope('Condition0'):
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
+        with tf.variable_scope('Condition1'):
+            cond = apply_bias_act(dense_layer(cond, fmaps=1), act='sigmoid')
+    else:
+        with tf.variable_scope('Condition0x'):
+            cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1x'):
+            cond_x = apply_bias_act(dense_layer(cond_x, fmaps=1),
+                                    act='sigmoid')
+        with tf.variable_scope('Condition0y'):
+            cond_y = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1y'):
+            cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1),
+                                    act='sigmoid')
+        cond = tf.concat([cond_x, cond_y], axis=1)
     scale = (s_latents + 2.) * cond + 1.
     tt_00 = scale[:, 0:1]
     tt_01 = tf.zeros_like(scale[:, 0:1])
@@ -545,15 +555,25 @@ def get_sh_matrix(sh_latents, cond_latent, act='lrelu'):
 def get_t_matrix(t_latents, cond_latent, act='lrelu'):
     # t_latents[:, 0]: [-2., 2.] -> [-0.5, 0.5]
     # t_latents[:, 1]: [-2., 2.] -> [-0.5, 0.5]
-    with tf.variable_scope('Condition0x'):
-        cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
-    with tf.variable_scope('Condition1x'):
-        cond_x = apply_bias_act(dense_layer(cond_x, fmaps=1), act='sigmoid')
-    with tf.variable_scope('Condition0y'):
-        cond_y = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
-    with tf.variable_scope('Condition1y'):
-        cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1), act='sigmoid')
-    cond = tf.concat([cond_x, cond_y], axis=1)
+    if t_latents.shape.as_list()[1] == 1:
+        with tf.variable_scope('Condition0x'):
+            cond = apply_bias_act(dense_layer(cond_latent, fmaps=128), act=act)
+        with tf.variable_scope('Condition1x'):
+            cond = apply_bias_act(dense_layer(cond, fmaps=1), act='sigmoid')
+    else:
+        with tf.variable_scope('Condition0x'):
+            cond_x = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1x'):
+            cond_x = apply_bias_act(dense_layer(cond_x, fmaps=1),
+                                    act='sigmoid')
+        with tf.variable_scope('Condition0y'):
+            cond_y = apply_bias_act(dense_layer(cond_latent, fmaps=128),
+                                    act=act)
+        with tf.variable_scope('Condition1y'):
+            cond_y = apply_bias_act(dense_layer(cond_y, fmaps=1),
+                                    act='sigmoid')
+        cond = tf.concat([cond_x, cond_y], axis=1)
     xy_shift = t_latents / 4. * cond
     tt_00 = tf.ones_like(xy_shift[:, 0:1])
     tt_01 = tf.zeros_like(xy_shift[:, 0:1])
