@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_modular_networks.py
 # --- Creation Date: 01-02-2020
-# --- Last Modified: Mon 03 Feb 2020 21:29:27 AEDT
+# --- Last Modified: Mon 03 Feb 2020 21:32:09 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -507,7 +507,7 @@ def get_s_matrix(s_latents, cond_latent, act='lrelu'):
         tt_01 = tf.zeros_like(scale)
         tt_02 = tf.zeros_like(scale)
         tt_10 = tf.zeros_like(scale)
-        tt_11 = scale[:, 1:]
+        tt_11 = scale
         tt_12 = tf.zeros_like(scale)
     else:
         with tf.variable_scope('Condition0x'):
