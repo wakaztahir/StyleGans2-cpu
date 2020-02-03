@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_networks.py
 # --- Creation Date: 20-01-2020
-# --- Last Modified: Sun 26 Jan 2020 16:40:05 AEDT
+# --- Last Modified: Sat 01 Feb 2020 19:00:45 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,6 +28,8 @@ from training.networks_stylegan2 import get_weight, dense_layer, conv2d_layer
 from training.networks_stylegan2 import apply_bias_act, naive_upsample_2d
 from training.networks_stylegan2 import naive_downsample_2d, modulated_conv2d_layer
 from training.networks_stylegan2 import minibatch_stddev_layer
+from training.spatial_biased_extended_networks import G_synthesis_sb_general_dsp
+from training.spatial_biased_modular_networks import G_synthesis_sb_modular
 from stn.stn import spatial_transformer_network as transformer
 
 # NOTE: Do not import any application-specific modules here!
@@ -95,14 +97,10 @@ def G_mapping_spatial_biased_dsp(
         latents_in,  # First input: Latent vectors (Z) [minibatch, latent_size].
         labels_in,  # Second input: Conditioning labels [minibatch, label_size].
         latent_size=7,  # Latent vector (Z) dimensionality.
-        n_discrete=3,
-        n_continuous=4,
         label_size=0,  # Label dimensionality, 0 if no labels.
         mapping_nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
         dtype='float32',  # Data type to use for activations and outputs.
         **_kwargs):  # Ignore unrecognized keyword args.
-
-    assert latent_size == n_discrete + n_continuous
 
     # Inputs.
     latents_in.set_shape([None, latent_size])
@@ -126,8 +124,8 @@ def G_mapping_spatial_biased_dsp(
 def G_synthesis_spatial_biased_dsp(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, dlatent_size].
         dlatent_size=7,  # Disentangled latent (W) dimensionality. Including discrete info, rotation, scaling, and xy translation.
-        n_discrete=3,  # Discrete latents.
-        n_continuous=4,  # Continuous latents. 
+        D_global_size=3,  # Discrete latents.
+        sb_C_global_size=4,  # Continuous latents. 
         label_size=0,  # Label dimensionality, 0 if no labels.
         num_channels=1,  # Number of output color channels.
         resolution=64,  # Output resolution.
@@ -156,8 +154,8 @@ def G_synthesis_spatial_biased_dsp(
     images_out = None
 
     # Primary inputs.
-    assert dlatent_size == n_discrete + n_continuous
-    n_cat = label_size + n_discrete
+    assert dlatent_size == D_global_size + sb_C_global_size
+    n_cat = label_size + D_global_size
     dlatents_in.set_shape([None, label_size + dlatent_size])
     dlatents_in = tf.cast(dlatents_in, dtype)
 

@@ -611,7 +611,7 @@ def G_synthesis_stylegan2(
 def G_synthesis_stylegan2_dsp(
     dlatents_in,                        # Input: Disentangled latents (W) [minibatch, num_layers, dlatent_size].
     dlatent_size        = 20,           # Disentangled latent (W) dimensionality. Not used. Replaced by num_layers.
-    n_discrete          = 0,            # Discrete latents.
+    D_global_size       = 0,            # Discrete latents.
     label_size          = 0,            # Label dimensionality, 0 if no labels.
     num_channels        = 1,            # Number of output color channels.
     resolution          = 64,           # Output resolution.
@@ -638,7 +638,7 @@ def G_synthesis_stylegan2_dsp(
     # Primary inputs.
     # dlatents_in.set_shape([None, num_layers, dlatent_size])
     # dlatents_in.set_shape([None, dlatent_size])
-    dlatents_in.set_shape([None, num_layers - 1 + n_discrete + label_size]) # class information takes up the first layer.
+    dlatents_in.set_shape([None, num_layers - 1 + D_global_size + label_size]) # class information takes up the first layer.
     dlatents_in = tf.cast(dlatents_in, dtype)
 
     # Noise inputs.
@@ -651,9 +651,9 @@ def G_synthesis_stylegan2_dsp(
     # Single convolution layer with all the bells and whistles.
     def layer(x, layer_idx, fmaps, kernel, up=False, cls_layer=False):
         if cls_layer:
-            x = modulated_conv2d_layer(x, dlatents_in[:, layer_idx:layer_idx+n_discrete], fmaps=fmaps, kernel=kernel, up=up, resample_kernel=resample_kernel, fused_modconv=fused_modconv)
+            x = modulated_conv2d_layer(x, dlatents_in[:, layer_idx:layer_idx+D_global_size], fmaps=fmaps, kernel=kernel, up=up, resample_kernel=resample_kernel, fused_modconv=fused_modconv)
         else:
-            x = modulated_conv2d_layer(x, dlatents_in[:, layer_idx+n_discrete-1:layer_idx+n_discrete], fmaps=fmaps, kernel=kernel, up=up, resample_kernel=resample_kernel, fused_modconv=fused_modconv)
+            x = modulated_conv2d_layer(x, dlatents_in[:, layer_idx+D_global_size-1:layer_idx+D_global_size], fmaps=fmaps, kernel=kernel, up=up, resample_kernel=resample_kernel, fused_modconv=fused_modconv)
         return apply_bias_act(x, act=act)
 
     # Building blocks for main layers.

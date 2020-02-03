@@ -8,7 +8,7 @@
 
 # --- File Name: simple_networks.py
 # --- Creation Date: 23-01-2020
-# --- Last Modified: Sun 26 Jan 2020 18:32:13 AEDT
+# --- Last Modified: Thu 30 Jan 2020 15:11:24 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -92,8 +92,8 @@ def G_main_simple_dsp(
 def G_synthesis_simple_dsp(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, dlatent_size].
         dlatent_size=7,  # Disentangled latent (W) dimensionality. Including discrete info, rotation, scaling, and xy translation.
-        n_discrete=3,  # Discrete latents.
-        n_continuous=4,  # Continuous latents.
+        D_global_size=3,  # Discrete latents.
+        sb_C_global_size=4,  # Continuous latents.
         label_size=0,  # Label dimensionality, 0 if no labels.
         num_channels=1,  # Number of output color channels.
         nonlinearity='relu',  # Activation function: 'relu', 'lrelu', etc.
@@ -108,8 +108,8 @@ def G_synthesis_simple_dsp(
     images_out = None
 
     # Primary inputs.
-    assert dlatent_size == n_discrete + n_continuous
-    n_cat = label_size + n_discrete
+    assert dlatent_size == D_global_size + sb_C_global_size
+    n_cat = label_size + D_global_size
     dlatents_in.set_shape([None, label_size + dlatent_size])
     dlatents_in = tf.cast(dlatents_in, dtype)
 
@@ -352,8 +352,8 @@ def D_simple_dsp(
 def G_synthesis_sb_singlelayer_modi_dsp(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, dlatent_size].
         dlatent_size=7,  # Disentangled latent (W) dimensionality. Including discrete info, rotation, scaling, and xy translation.
-        n_discrete=3,  # Discrete latents.
-        n_continuous=4,  # Continuous latents.
+        D_global_size=3,  # Discrete latents.
+        sb_C_global_size=4,  # Continuous latents.
         label_size=0,  # Label dimensionality, 0 if no labels.
         num_channels=1,  # Number of output color channels.
         resolution=64,  # Output resolution.
@@ -382,8 +382,8 @@ def G_synthesis_sb_singlelayer_modi_dsp(
     images_out = None
 
     # Primary inputs.
-    assert dlatent_size == n_discrete + n_continuous
-    n_cat = label_size + n_discrete
+    assert dlatent_size == D_global_size + sb_C_global_size
+    n_cat = label_size + D_global_size
     dlatents_in.set_shape([None, label_size + dlatent_size])
     dlatents_in = tf.cast(dlatents_in, dtype)
 
@@ -562,7 +562,7 @@ def G_synthesis_sb_singlelayer_modi_dsp(
             s_matrix = get_s_matrix(dlatents_in[:, n_cat + 1:n_cat + 2],
                                     dlatents_in[:, :n_cat])
             x = apply_st(x, s_matrix, 3)
-        if n_continuous == 6:
+        if sb_C_global_size == 6:
             with tf.variable_scope('shear'):
                 sh_matrix = get_sh_matrix(dlatents_in[:, n_cat + 2:n_cat + 4],
                                           dlatents_in[:, :n_cat])

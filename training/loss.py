@@ -33,16 +33,16 @@ def G_logistic_ns(G, D, opt, training_set, minibatch_size):
     loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     return loss, None
 
-def G_logistic_ns_dsp(G, D, opt, training_set, minibatch_size, latent_type='uniform', n_discrete=0):
+def G_logistic_ns_dsp(G, D, opt, training_set, minibatch_size, latent_type='uniform', D_global_size=0):
     _ = opt
-    if n_discrete > 0:
-        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_discrete, dtype=tf.int32)
-        discrete_latents = tf.one_hot(discrete_latents, n_discrete)
+    if D_global_size > 0:
+        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents = tf.one_hot(discrete_latents, D_global_size)
 
     if latent_type == 'uniform':
-        latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-n_discrete], minval=-2, maxval=2)
+        latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
-        latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-n_discrete])
+        latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     latents = tf.concat([discrete_latents, latents], axis=1)
@@ -86,16 +86,16 @@ def D_logistic_r1(G, D, opt, training_set, minibatch_size, reals, labels, gamma=
         reg = gradient_penalty * (gamma * 0.5)
     return loss, reg
 
-def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', n_discrete=0):
+def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0):
     _ = opt, training_set
-    if n_discrete > 0:
-        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_discrete, dtype=tf.int32)
-        discrete_latents = tf.one_hot(discrete_latents, n_discrete)
+    if D_global_size > 0:
+        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents = tf.one_hot(discrete_latents, D_global_size)
 
     if latent_type == 'uniform':
-        latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-n_discrete], minval=-2, maxval=2)
+        latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
-        latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-n_discrete])
+        latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     latents = tf.concat([discrete_latents, latents], axis=1)
