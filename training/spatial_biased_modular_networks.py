@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_modular_networks.py
 # --- Creation Date: 01-02-2020
-# --- Last Modified: Mon 03 Feb 2020 21:32:09 AEDT
+# --- Last Modified: Thu 06 Feb 2020 17:02:23 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -284,16 +284,19 @@ def build_C_global_layers(x,
     '''
     Build continuous latent layers, e.g. C_global layers.
     '''
-    with tf.variable_scope('Condition0'):
-        cond = apply_bias_act(dense_layer(dlatents_withl_in[:, :n_content],
-                                          fmaps=128),
-                              act=act)
-    with tf.variable_scope('Condition1'):
-        cond = apply_bias_act(dense_layer(cond, fmaps=n_latents),
-                              act='sigmoid')
-    C_global_latents = dlatents_withl_in[:, start_idx:start_idx +
-                                         n_latents] * cond
     with tf.variable_scope(name + '-' + str(scope_idx)):
+        if n_content > 0:
+            with tf.variable_scope('Condition0'):
+                cond = apply_bias_act(dense_layer(
+                    dlatents_withl_in[:, :n_content], fmaps=128),
+                                      act=act)
+            with tf.variable_scope('Condition1'):
+                cond = apply_bias_act(dense_layer(cond, fmaps=n_latents),
+                                      act='sigmoid')
+        else:
+            cond = 1.
+        C_global_latents = dlatents_withl_in[:, start_idx:start_idx +
+                                             n_latents] * cond
         x = apply_bias_act(modulated_conv2d_layer(x,
                                                   C_global_latents,
                                                   fmaps=fmaps,
@@ -436,11 +439,14 @@ def build_noise_layer(x,
                         [tf.shape(x)[0], 1, x.shape[2], x.shape[3]],
                         dtype=x.dtype)
                 else:
-                    noise = tf.get_variable(
-                        'noise_variable-' + str(scope_idx) + '-' + str(i),
-                        shape=[1, 1, x.shape[2], x.shape[3]],
-                        initializer=tf.initializers.random_normal(),
-                        trainable=False)
+                    # noise = tf.get_variable(
+                    # 'noise_variable-' + str(scope_idx) + '-' + str(i),
+                    # shape=[1, 1, x.shape[2], x.shape[3]],
+                    # initializer=tf.initializers.random_normal(),
+                    # trainable=False)
+                    noise_np = np.random.normal(size=(1, 1, x.shape[2],
+                                                      x.shape[3]))
+                    noise = tf.constant(noise_np)
                     noise = tf.cast(noise, x.dtype)
                 noise_strength = tf.get_variable(
                     'noise_strength-' + str(scope_idx) + '-' + str(i),

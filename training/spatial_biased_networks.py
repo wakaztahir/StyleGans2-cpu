@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_networks.py
 # --- Creation Date: 20-01-2020
-# --- Last Modified: Sat 01 Feb 2020 19:00:45 AEDT
+# --- Last Modified: Tue 04 Feb 2020 21:33:34 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -30,6 +30,7 @@ from training.networks_stylegan2 import naive_downsample_2d, modulated_conv2d_la
 from training.networks_stylegan2 import minibatch_stddev_layer
 from training.spatial_biased_extended_networks import G_synthesis_sb_general_dsp
 from training.spatial_biased_modular_networks import G_synthesis_sb_modular
+from training.variation_consistency_networks import G_synthesis_vc_modular
 from stn.stn import spatial_transformer_network as transformer
 
 # NOTE: Do not import any application-specific modules here!
@@ -125,7 +126,7 @@ def G_synthesis_spatial_biased_dsp(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, dlatent_size].
         dlatent_size=7,  # Disentangled latent (W) dimensionality. Including discrete info, rotation, scaling, and xy translation.
         D_global_size=3,  # Discrete latents.
-        sb_C_global_size=4,  # Continuous latents. 
+        sb_C_global_size=4,  # Continuous latents.
         label_size=0,  # Label dimensionality, 0 if no labels.
         num_channels=1,  # Number of output color channels.
         resolution=64,  # Output resolution.

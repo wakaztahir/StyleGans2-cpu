@@ -6,18 +6,20 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: training_loop_dsp.py
-# --- Creation Date: 23-01-2020
-# --- Last Modified: Tue 04 Feb 2020 22:34:45 AEDT
+# --- File Name: training_loop_vc.py
+# --- Creation Date: 04-02-2020
+# --- Last Modified: Thu 06 Feb 2020 16:40:19 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Training code modified from stylegan2 of NVIDIA.
+Training loop file for variation consistency related networks.
+Code borrowed from training_loop.py of NVIDIA.
 """
 """Main training script."""
 
 import numpy as np
 import pdb
+import collections
 import tensorflow as tf
 import dnnlib
 import dnnlib.tflib as tflib
@@ -27,44 +29,16 @@ from training import dataset
 from training import misc
 from metrics import metric_base
 from training.training_loop import process_reals, training_schedule
-
-#----------------------------------------------------------------------------
-# Get latents for grid traversal of continuous factors.
-
-
-def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels):
-    if n_discrete == 0:
-        n_discrete = 1  # 0 discrete means 1 discrete
-    grid_size = (n_samples_per, n_continuous * n_discrete)
-    z = np.random.randn(1, n_continuous)  # [minibatch, component-3]
-    grid_latents = np.tile(z, (n_continuous * n_samples_per * n_discrete, 1))
-    for i in range(n_discrete):
-        for j in range(n_continuous):
-            grid_latents[(i * n_continuous + j) *
-                         n_samples_per:(i * n_continuous + j + 1) *
-                         n_samples_per, j] = np.arange(
-                             -2., 2., 4. / float(n_samples_per))
-    grid_discrete_ls = []
-    for i in range(n_discrete):
-        init_onehot = [0] * n_discrete
-        init_onehot[i] = 1
-        grid_discrete_ls.append(
-            np.tile(np.array([init_onehot], dtype=np.float32),
-                    (n_continuous * n_samples_per, 1)))
-    grid_discrete = np.concatenate(grid_discrete_ls, axis=0)
-    grid_latents = np.concatenate((grid_discrete, grid_latents), axis=1)
-    grid_labels = np.tile(grid_labels[:1],
-                          (n_discrete * n_continuous * n_samples_per, 1))
-    return grid_size, grid_latents, grid_labels
-
+from training.training_loop_dsp import get_grid_latents
 
 #----------------------------------------------------------------------------
 # Main training script.
 
 
-def training_loop_dsp(
+def training_loop_vc(
         G_args={},  # Options for generator network.
         D_args={},  # Options for discriminator network.
+        I_args={},  # Options for infogan-head network.
         G_opt_args={},  # Options for generator optimizer.
         D_opt_args={},  # Options for discriminator optimizer.
         G_loss_args={},  # Options for generator loss.
@@ -74,6 +48,7 @@ def training_loop_dsp(
         grid_args={},  # Options for train.setup_snapshot_image_grid().
         metric_arg_list=[],  # Options for MetricGroup.
         tf_config={},  # Options for tflib.init_tf().
+        use_info_gan=False,  # Whether to use info-gan.
         data_dir=None,  # Directory to load datasets from.
         G_smoothing_kimg=10.0,  # Half-life of the running average of generator weights.
         minibatch_repeats=4,  # Number of minibatches to run before adjusting training parameters.
@@ -128,22 +103,37 @@ def training_loop_dsp(
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
                               **D_args)
+            if use_info_gan:
+                I = tflib.Network('I',
+                                  num_channels=training_set.shape[0],
+                                  resolution=training_set.shape[1],
+                                  label_size=training_set.label_size,
+                                  **I_args)
             Gs = G.clone('Gs')
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)
-            rG, rD, rGs = misc.load_pkl(resume_pkl)
+            if use_info_gan:
+                rG, rD, rI, rGs = misc.load_pkl(resume_pkl)
+            else:
+                rG, rD, rGs = misc.load_pkl(resume_pkl)
             if resume_with_new_nets:
                 G.copy_vars_from(rG)
                 D.copy_vars_from(rD)
+                if use_info_gan:
+                    I.copy_vars_from(rI)
                 Gs.copy_vars_from(rGs)
             else:
                 G = rG
                 D = rD
+                if use_info_gan:
+                    I = rI
                 Gs = rGs
 
     # Print layers and generate initial image snapshot.
     G.print_layers()
     D.print_layers()
+    if use_info_gan:
+        I.print_layers()
     # pdb.set_trace()
     sched = training_schedule(cur_nimg=total_kimg * 1000,
                               training_set=training_set,
@@ -159,7 +149,8 @@ def training_loop_dsp(
     grid_fakes = Gs.run(grid_latents,
                         grid_labels,
                         is_validation=True,
-                        minibatch_size=sched.minibatch_gpu)
+                        minibatch_size=sched.minibatch_gpu,
+                        randomize_noise=False)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
@@ -207,6 +198,8 @@ def training_loop_dsp(
             # Create GPU-specific shadow copies of G and D.
             G_gpu = G if gpu == 0 else G.clone(G.name + '_shadow')
             D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
+            if use_info_gan:
+                I_gpu = I if gpu == 0 else I.clone(I.name + '_shadow')
 
             # Fetch training data via temporary variables.
             with tf.name_scope('DataFetch'):
@@ -245,13 +238,23 @@ def training_loop_dsp(
                 lod_assign_ops += [tf.assign(D_gpu.vars['lod'], lod_in)]
             with tf.control_dependencies(lod_assign_ops):
                 with tf.name_scope('G_loss'):
-                    G_loss, G_reg = dnnlib.util.call_func_by_name(
-                        G=G_gpu,
-                        D=D_gpu,
-                        opt=G_opt,
-                        training_set=training_set,
-                        minibatch_size=minibatch_gpu_in,
-                        **G_loss_args)
+                    if use_info_gan:
+                        G_loss, G_reg, I_loss = dnnlib.util.call_func_by_name(
+                            G=G_gpu,
+                            D=D_gpu,
+                            I=I_gpu,
+                            opt=G_opt,
+                            training_set=training_set,
+                            minibatch_size=minibatch_gpu_in,
+                            **G_loss_args)
+                    else:
+                        G_loss, G_reg = dnnlib.util.call_func_by_name(
+                            G=G_gpu,
+                            D=D_gpu,
+                            opt=G_opt,
+                            training_set=training_set,
+                            minibatch_size=minibatch_gpu_in,
+                            **G_loss_args)
                 with tf.name_scope('D_loss'):
                     D_loss, D_reg = dnnlib.util.call_func_by_name(
                         G=G_gpu,
@@ -276,8 +279,35 @@ def training_loop_dsp(
                     D_reg_opt.register_gradients(
                         tf.reduce_mean(D_reg * D_reg_interval),
                         D_gpu.trainables)
-            G_opt.register_gradients(tf.reduce_mean(G_loss), G_gpu.trainables)
-            D_opt.register_gradients(tf.reduce_mean(D_loss), D_gpu.trainables)
+            # print('G_gpu.trainables:', G_gpu.trainables)
+            # print('D_gpu.trainables:', D_gpu.trainables)
+            # print('I_gpu.trainables:', I_gpu.trainables)
+            if use_info_gan:
+                GI_gpu_trainables = collections.OrderedDict(
+                    list(G_gpu.trainables.items()) +
+                    list(I_gpu.trainables.items()))
+                G_opt.register_gradients(tf.reduce_mean(G_loss + I_loss),
+                                         GI_gpu_trainables)
+                D_opt.register_gradients(tf.reduce_mean(D_loss),
+                                         D_gpu.trainables)
+                # G_opt.register_gradients(tf.reduce_mean(I_loss),
+                # GI_gpu_trainables)
+                # D_opt.register_gradients(tf.reduce_mean(I_loss),
+                # D_gpu.trainables)
+            else:
+                G_opt.register_gradients(tf.reduce_mean(G_loss),
+                                         G_gpu.trainables)
+                D_opt.register_gradients(tf.reduce_mean(D_loss),
+                                         D_gpu.trainables)
+
+            # if use_info_gan:
+            # # INFO-GAN-HEAD loss
+            # G_opt.register_gradients(tf.reduce_mean(I_loss),
+            # G_gpu.trainables)
+            # G_opt.register_gradients(tf.reduce_mean(I_loss),
+            # I_gpu.trainables)
+            # D_opt.register_gradients(tf.reduce_mean(I_loss),
+            # D_gpu.trainables)
 
     # Setup training ops.
     data_fetch_op = tf.group(*data_fetch_ops)
@@ -302,6 +332,8 @@ def training_loop_dsp(
     if save_weight_histograms:
         G.setup_weight_histograms()
         D.setup_weight_histograms()
+        if use_info_gan:
+            I.setup_weight_histograms()
     metrics = metric_base.MetricGroup(metric_arg_list)
 
     print('Training for %d kimg...\n' % total_kimg)
@@ -404,7 +436,8 @@ def training_loop_dsp(
                 grid_fakes = Gs.run(grid_latents,
                                     grid_labels,
                                     is_validation=True,
-                                    minibatch_size=sched.minibatch_gpu)
+                                    minibatch_size=sched.minibatch_gpu,
+                                    randomize_noise=False)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
                                          'fakes%06d.png' % (cur_nimg // 1000)),
@@ -414,7 +447,10 @@ def training_loop_dsp(
                     cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' %
                                                (cur_nimg // 1000))
-                misc.save_pkl((G, D, Gs), pkl)
+                if use_info_gan:
+                    misc.save_pkl((G, D, I, Gs), pkl)
+                else:
+                    misc.save_pkl((G, D, Gs), pkl)
                 metrics.run(pkl,
                             run_dir=dnnlib.make_run_dir_path(),
                             data_dir=dnnlib.convert_path(data_dir),
@@ -431,7 +467,12 @@ def training_loop_dsp(
             ).get_last_update_interval() - tick_time
 
     # Save final snapshot.
-    misc.save_pkl((G, D, Gs), dnnlib.make_run_dir_path('network-final.pkl'))
+    if use_info_gan:
+        misc.save_pkl((G, D, I, Gs),
+                      dnnlib.make_run_dir_path('network-final.pkl'))
+    else:
+        misc.save_pkl((G, D, Gs),
+                      dnnlib.make_run_dir_path('network-final.pkl'))
 
     # All done.
     summary_log.close()
