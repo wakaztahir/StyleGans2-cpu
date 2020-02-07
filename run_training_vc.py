@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 06 Feb 2020 01:55:23 AEDT
+# --- Last Modified: Sat 08 Feb 2020 01:29:03 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -106,6 +106,38 @@ def run(dataset,
             func_name='training.info_gan_networks.D_info_gan_stylegan2'
         )  # Options for discriminator network.
         desc = 'info_gan_net'
+    elif model_type == 'vc_gan_with_vc_head':
+        module_list = _str_to_list(module_list)
+        key_ls, size_ls, count_dlatent_size, _ = split_module_names(
+            module_list)
+        for i, key in enumerate(key_ls):
+            if key.startswith('D_global'):
+                D_global_size = size_ls[i]
+                break
+        print('D_global_size:', D_global_size)
+        G = EasyDict(
+            func_name=
+            'training.spatial_biased_networks.G_main_spatial_biased_dsp',
+            synthesis_func='G_synthesis_vc_modular',
+            fmap_min=16,
+            fmap_max=512,
+            fmap_decay=0.15,
+            latent_size=count_dlatent_size,
+            dlatent_size=count_dlatent_size,
+            D_global_size=D_global_size,
+            module_list=module_list,
+            single_const=single_const,
+            use_noise=True)  # Options for generator network.
+        I = EasyDict(
+            func_name='training.variation_consistency_networks.vc_head',
+            dlatent_size=count_dlatent_size,
+            D_global_size=D_global_size,
+            fmap_decay=0.15,
+            fmap_min=16,
+            fmap_max=512)
+        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
+                     fmap_max=512)  # Options for discriminator network.
+        desc = 'vc_gan_with_vc_head_net'
     elif model_type == 'vc_gan':
         module_list = _str_to_list(module_list)
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
@@ -147,6 +179,13 @@ def run(dataset,
                           C_lambda=C_lambda)  # Options for generator loss.
         D_loss = EasyDict(
             func_name='training.loss.D_logistic_r1_info_gan',
+            D_global_size=D_global_size)  # Options for discriminator loss.
+    elif model_type == 'vc_gan_with_vc_head':
+        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
+                          D_global_size=D_global_size,
+                          C_lambda=C_lambda)  # Options for generator loss.
+        D_loss = EasyDict(
+            func_name='training.loss.D_logistic_r1_dsp',
             D_global_size=D_global_size)  # Options for discriminator loss.
     else:
         G_loss = EasyDict(
@@ -211,6 +250,7 @@ def run(dataset,
                   G_loss_args=G_loss,
                   D_loss_args=D_loss,
                   use_info_gan=(model_type == 'info_gan'),
+                  use_vc_head=(model_type == 'vc_gan_with_vc_head'),
                   traversal_grid=True)
     n_continuous = 0
     for i, key in enumerate(key_ls):
@@ -328,7 +368,7 @@ def main():
                         default='vc_gan',
                         type=str,
                         metavar='MODEL_TYPE',
-                        choices=['info_gan', 'vc_gan'])
+                        choices=['info_gan', 'vc_gan', 'vc_gan_with_vc_head'])
     parser.add_argument('--resume_pkl',
                         help='Continue training using pretrained pkl.',
                         default=None,
