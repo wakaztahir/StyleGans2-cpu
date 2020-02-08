@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sat 08 Feb 2020 00:41:30 AEDT
+# --- Last Modified: Sat 08 Feb 2020 22:22:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -283,7 +283,7 @@ def training_loop_vc(
             # print('G_gpu.trainables:', G_gpu.trainables)
             # print('D_gpu.trainables:', D_gpu.trainables)
             # print('I_gpu.trainables:', I_gpu.trainables)
-            if use_info_gan:
+            if use_info_gan or use_vc_head:
                 GI_gpu_trainables = collections.OrderedDict(
                     list(G_gpu.trainables.items()) +
                     list(I_gpu.trainables.items()))
