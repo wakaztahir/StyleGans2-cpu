@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_dsp.py
 # --- Creation Date: 23-01-2020
-# --- Last Modified: Tue 04 Feb 2020 22:34:45 AEDT
+# --- Last Modified: Sat 08 Feb 2020 16:30:03 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -35,6 +35,9 @@ from training.training_loop import process_reals, training_schedule
 def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels):
     if n_discrete == 0:
         n_discrete = 1  # 0 discrete means 1 discrete
+        real_has_discrete = False
+    else:
+        real_has_discrete = True
     grid_size = (n_samples_per, n_continuous * n_discrete)
     z = np.random.randn(1, n_continuous)  # [minibatch, component-3]
     grid_latents = np.tile(z, (n_continuous * n_samples_per * n_discrete, 1))
@@ -44,15 +47,16 @@ def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels):
                          n_samples_per:(i * n_continuous + j + 1) *
                          n_samples_per, j] = np.arange(
                              -2., 2., 4. / float(n_samples_per))
-    grid_discrete_ls = []
-    for i in range(n_discrete):
-        init_onehot = [0] * n_discrete
-        init_onehot[i] = 1
-        grid_discrete_ls.append(
-            np.tile(np.array([init_onehot], dtype=np.float32),
-                    (n_continuous * n_samples_per, 1)))
-    grid_discrete = np.concatenate(grid_discrete_ls, axis=0)
-    grid_latents = np.concatenate((grid_discrete, grid_latents), axis=1)
+    if real_has_discrete:
+        grid_discrete_ls = []
+        for i in range(n_discrete):
+            init_onehot = [0] * n_discrete
+            init_onehot[i] = 1
+            grid_discrete_ls.append(
+                np.tile(np.array([init_onehot], dtype=np.float32),
+                        (n_continuous * n_samples_per, 1)))
+        grid_discrete = np.concatenate(grid_discrete_ls, axis=0)
+        grid_latents = np.concatenate((grid_discrete, grid_latents), axis=1)
     grid_labels = np.tile(grid_labels[:1],
                           (n_discrete * n_continuous * n_samples_per, 1))
     return grid_size, grid_latents, grid_labels

@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sat 08 Feb 2020 01:29:03 AEDT
+# --- Last Modified: Sat 08 Feb 2020 21:44:43 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -68,7 +68,8 @@ def run(dataset,
         n_samples_per=10,
         module_list=None,
         single_const=True,
-        model_type='spatial_biased'):
+        model_type='spatial_biased',
+        epsilon_loss=0.4):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
                      )  # Options for training loop.
@@ -183,7 +184,8 @@ def run(dataset,
     elif model_type == 'vc_gan_with_vc_head':
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
                           D_global_size=D_global_size,
-                          C_lambda=C_lambda)  # Options for generator loss.
+                          C_lambda=C_lambda,
+                          epsilon=epsilon_loss)  # Options for generator loss.
         D_loss = EasyDict(
             func_name='training.loss.D_logistic_r1_dsp',
             D_global_size=D_global_size)  # Options for discriminator loss.
@@ -394,14 +396,19 @@ def main():
         metavar='BOOL',
         type=_str_to_bool)
     parser.add_argument('--D_lambda',
-                        help='Discrete lambda for INFO-GAN.',
+                        help='Discrete lambda for INFO-GAN and VC-GAN.',
                         metavar='D_LAMBDA',
                         default=1,
                         type=float)
     parser.add_argument('--C_lambda',
-                        help='Continuous lambda for INFO-GAN.',
+                        help='Continuous lambda for INFO-GAN and VC-GAN.',
                         metavar='C_LAMBDA',
                         default=1,
+                        type=float)
+    parser.add_argument('--epsilon_loss',
+                        help='Continuous lambda for INFO-GAN and VC-GAN.',
+                        metavar='EPSILON_LOSS',
+                        default=0.4,
                         type=float)
 
     args = parser.parse_args()
