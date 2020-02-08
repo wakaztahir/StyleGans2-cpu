@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sat 08 Feb 2020 22:44:40 AEDT
+# --- Last Modified: Sun 09 Feb 2020 01:18:40 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -69,7 +69,8 @@ def run(dataset,
         module_list=None,
         single_const=True,
         model_type='spatial_biased',
-        epsilon_loss=0.4):
+        epsilon_loss=0.4,
+        random_eps=False):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
                      )  # Options for training loop.
@@ -185,7 +186,8 @@ def run(dataset,
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
                           D_global_size=D_global_size,
                           C_lambda=C_lambda,
-                          epsilon=epsilon_loss)  # Options for generator loss.
+                          epsilon=epsilon_loss,
+                          random_eps=random_eps)  # Options for generator loss.
         D_loss = EasyDict(
             func_name='training.loss.D_logistic_r1_dsp',
             D_global_size=D_global_size)  # Options for discriminator loss.
@@ -410,6 +412,12 @@ def main():
                         metavar='EPSILON_LOSS',
                         default=0.4,
                         type=float)
+    parser.add_argument(
+        '--random_eps',
+        help='If use random epsilon in vc_gan_with_vc_head loss.',
+        default=False,
+        metavar='RANDOM_EPS',
+        type=_str_to_bool)
 
     args = parser.parse_args()
 

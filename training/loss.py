@@ -104,7 +104,7 @@ def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_l
     return I_loss
 
 def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='uniform', 
-                     D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4):
+                     D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4, random_eps=False):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -125,8 +125,13 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='un
     # Sample delta latents
     C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
     C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
-    delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), 
-                               C_delta_latents * epsilon], axis=1)
+    if not random_eps:
+        delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), 
+                                   C_delta_latents * epsilon], axis=1)
+    else:
+        epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
+        delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), 
+                                   C_delta_latents * epsilon], axis=1)
     delta_latents = delta_latents + latents
 
     labels = training_set.get_random_labels_tf(minibatch_size)
