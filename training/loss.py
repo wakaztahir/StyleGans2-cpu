@@ -47,7 +47,7 @@ def G_logistic_ns_dsp(G, D, opt, training_set, minibatch_size, latent_type='unif
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
-    if discrete_latents:
+    if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
     labels = training_set.get_random_labels_tf(minibatch_size)
     fake_images_out = G.get_output_for(latents, labels, is_training=True)
@@ -84,7 +84,7 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size, latent_ty
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
-    if discrete_latents:
+    if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
     labels = training_set.get_random_labels_tf(minibatch_size)
     fake_images_out = G.get_output_for(latents, labels, is_training=True)
@@ -191,7 +191,7 @@ def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, ga
         latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
-    if discrete_latents:
+    if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
     fake_images_out = G.get_output_for(latents, labels, is_training=True)
@@ -222,7 +222,7 @@ def D_logistic_r1_info_gan(G, D, opt, training_set, minibatch_size, reals, label
         latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
-    if discrete_latents:
+    if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
     fake_images_out = G.get_output_for(latents, labels, is_training=True)
