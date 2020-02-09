@@ -14,6 +14,7 @@ import uuid
 import hashlib
 import tempfile
 import shutil
+import subprocess
 import tensorflow as tf
 from tensorflow.python.client import device_lib # pylint: disable=no-name-in-module
 
@@ -33,6 +34,13 @@ compiler_bindir_search_path = [
 
 #----------------------------------------------------------------------------
 # Internal helper funcs.
+
+def _find_gcc_version():
+    bashCommand = 'gcc --version'
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    gcc_v = int(output.strip().split()[2].decode('utf-8').split('.')[0])
+    return gcc_v
 
 def _find_compiler_bindir():
     for compiler_path in compiler_bindir_search_path:
@@ -62,7 +70,11 @@ def _run_cmd(cmd):
         raise RuntimeError('NVCC returned an error. See below for full command line and output log:\n\n%s\n\n%s' % (cmd, output))
 
 def _prepare_nvcc_cli(opts):
-    cmd = 'nvcc ' + opts.strip()
+    gcc_v = _find_gcc_version()
+    if gcc_v >= 6:
+        cmd = 'nvcc ' + opts.strip()
+    else:
+        cmd = 'nvcc --std=c++11 -DNDEBUG ' + opts.strip()
     cmd += ' --disable-warnings'
     cmd += ' --include-path "%s"' % tf.sysconfig.get_include()
     cmd += ' --include-path "%s"' % os.path.join(tf.sysconfig.get_include(), 'external', 'protobuf_archive', 'src')
