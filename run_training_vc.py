@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sun 09 Feb 2020 01:18:40 AEDT
+# --- Last Modified: Sun 09 Feb 2020 21:58:36 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -134,8 +134,6 @@ def run(dataset,
             func_name='training.variation_consistency_networks.vc_head',
             dlatent_size=count_dlatent_size,
             D_global_size=D_global_size,
-            fmap_decay=0.15,
-            fmap_min=16,
             fmap_max=512)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
                      fmap_max=512)  # Options for discriminator network.
