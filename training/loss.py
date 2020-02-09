@@ -119,7 +119,7 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='un
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
-    if discrete_latents:
+    if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
     # Sample delta latents
