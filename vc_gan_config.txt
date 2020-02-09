@@ -1,1 +1,2 @@
-[Conv-up-1, C_global-14, Conv-id-1, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Conv-id-1, Noise-2, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Noise-2, Conv-id-1, Conv-id-1, Conv-up-1, Conv-id-1]
+CelebA: [Conv-up-1, C_global-14, Conv-id-1, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Conv-id-1, Noise-2, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Noise-2, Conv-id-1, Conv-id-1, Conv-up-1, Conv-id-1]
+Mnist: [D_global-10, Conv-up-1, C_global-6, Conv-id-1, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Conv-id-1, Noise-2, Conv-up-1, Conv-id-1, Conv-id-1]
