@@ -93,6 +93,7 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size, latent_ty
     
     regress_out = I.get_output_for(hidden, is_training=True)
     I_loss = calc_info_gan_loss(latents, regress_out, D_global_size, G.input_shapes[0][1]-D_global_size, D_lambda, C_lambda)
+    I_loss = autosummary('Loss/I_loss', I_loss)
     return G_loss, None, I_loss
 
 def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
@@ -142,6 +143,7 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='un
     
     regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
     I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+    I_loss = autosummary('Loss/I_loss', I_loss)
     return G_loss, None, I_loss
 
 def D_logistic(G, D, opt, training_set, minibatch_size, reals, labels):
