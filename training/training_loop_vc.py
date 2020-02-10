@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sat 08 Feb 2020 22:22:15 AEDT
+# --- Last Modified: Mon 10 Feb 2020 12:46:07 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -406,7 +406,7 @@ def training_loop_vc(
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
-        if cur_tick < 0 or cur_nimg >= tick_start_nimg + sched.tick_kimg * 100 or done:
+        if cur_tick < 0 or cur_nimg >= tick_start_nimg + sched.tick_kimg * 1000 or done:
             cur_tick += 1
             tick_kimg = (cur_nimg - tick_start_nimg) / 1000.0
             tick_start_nimg = cur_nimg
