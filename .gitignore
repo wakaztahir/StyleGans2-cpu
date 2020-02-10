@@ -2,3 +2,4 @@
 *.swo
 *.pkl
 *.pyc
+run_*.sh

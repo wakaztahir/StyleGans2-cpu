@@ -105,7 +105,7 @@ def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_l
     return I_loss
 
 def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='uniform', 
-                     D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4, random_eps=False):
+                     D_global_size=0, D_lambda=0, C_lambda=1, F_beta=0, epsilon=0.4, random_eps=False):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -136,14 +136,19 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='un
     delta_latents = delta_latents + latents
 
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake1_out = G.get_output_for(latents, labels, is_training=True)
-    fake2_out = G.get_output_for(delta_latents, labels, is_training=True)
+    fake1_out, feat_map1 = G.get_output_for(latents, labels, is_training=True)
+    fake2_out, feat_map2 = G.get_output_for(delta_latents, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake1_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     
     regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
     I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
+
+    F_loss = tf.reduce_sum(feat_map1 * feat_map1, axis=[1, 2, 3])
+    F_loss = autosummary('Loss/F_loss', F_loss)
+
+    I_loss += (F_loss * F_beta)
     return G_loss, None, I_loss
 
 def D_logistic(G, D, opt, training_set, minibatch_size, reals, labels):
@@ -196,7 +201,7 @@ def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, ga
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
-    fake_images_out = G.get_output_for(latents, labels, is_training=True)
+    fake_images_out, _ = G.get_output_for(latents, labels, is_training=True)
     real_scores_out = D.get_output_for(reals, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)

@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Mon 10 Feb 2020 12:46:07 AEDT
+# --- Last Modified: Mon 10 Feb 2020 21:11:03 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -147,7 +147,7 @@ def training_loop_vc(
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
     # pdb.set_trace()
-    grid_fakes = Gs.run(grid_latents,
+    grid_fakes, _ = Gs.run(grid_latents,
                         grid_labels,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu,
@@ -434,7 +434,7 @@ def training_loop_vc(
             # Save snapshots.
             if image_snapshot_ticks is not None and (
                     cur_tick % image_snapshot_ticks == 0 or done):
-                grid_fakes = Gs.run(grid_latents,
+                grid_fakes, _ = Gs.run(grid_latents,
                                     grid_labels,
                                     is_validation=True,
                                     minibatch_size=sched.minibatch_gpu,

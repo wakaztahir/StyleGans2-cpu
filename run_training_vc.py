@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sun 09 Feb 2020 21:58:36 AEDT
+# --- Last Modified: Mon 10 Feb 2020 20:56:53 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -65,6 +65,7 @@ def run(dataset,
         resume_pkl,
         D_lambda=1,
         C_lambda=1,
+        F_beta=0,
         n_samples_per=10,
         module_list=None,
         single_const=True,
@@ -118,8 +119,7 @@ def run(dataset,
                 break
         print('D_global_size:', D_global_size)
         G = EasyDict(
-            func_name=
-            'training.spatial_biased_networks.G_main_spatial_biased_dsp',
+            func_name='training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
             fmap_min=16,
             fmap_max=512,
@@ -184,6 +184,7 @@ def run(dataset,
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
                           D_global_size=D_global_size,
                           C_lambda=C_lambda,
+                          F_beta=F_beta,
                           epsilon=epsilon_loss,
                           random_eps=random_eps)  # Options for generator loss.
         D_loss = EasyDict(
@@ -403,6 +404,11 @@ def main():
     parser.add_argument('--C_lambda',
                         help='Continuous lambda for INFO-GAN and VC-GAN.',
                         metavar='C_LAMBDA',
+                        default=1,
+                        type=float)
+    parser.add_argument('--F_beta',
+                        help='F_beta INFO-GAN and VC-GAN.',
+                        metavar='F_BETA',
                         default=1,
                         type=float)
     parser.add_argument('--epsilon_loss',

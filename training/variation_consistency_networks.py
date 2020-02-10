@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Sat 08 Feb 2020 01:14:28 AEDT
+# --- Last Modified: Mon 10 Feb 2020 21:09:13 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -36,6 +36,85 @@ from training.spatial_biased_modular_networks import build_C_global_layers
 from training.spatial_biased_modular_networks import build_local_heat_layers, build_local_hfeat_layers
 from training.spatial_biased_modular_networks import build_noise_layer, build_conv_layer
 from stn.stn import spatial_transformer_network as transformer
+
+
+#----------------------------------------------------------------------------
+# Variation Consistenecy main Generator
+def G_main_vc(
+        latents_in,  # First input: Latent vectors (Z) [minibatch, latent_size].
+        labels_in,  # Second input: Conditioning labels [minibatch, label_size].
+        is_training=False,  # Network is under training? Enables and disables specific features.
+        is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
+        return_dlatents=False,  # Return dlatents in addition to the images?
+        is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
+        components=dnnlib.EasyDict(
+        ),  # Container for sub-networks. Retained between calls.
+        mapping_func='G_mapping_spatial_biased_dsp',  # Build func name for the mapping network.
+        synthesis_func='G_synthesis_vc_modular',  # Build func name for the synthesis network.
+        **kwargs):  # Arguments for sub-networks (mapping and synthesis).
+    # Validate arguments.
+    assert not is_training or not is_validation
+
+    # Setup components.
+    if 'synthesis' not in components:
+        components.synthesis = tflib.Network(
+            'G_vc_synthesis', func_name=globals()[synthesis_func], **kwargs)
+    if 'mapping' not in components:
+        components.mapping = tflib.Network('G_vc_mapping',
+                                           func_name=globals()[mapping_func],
+                                           dlatent_broadcast=None,
+                                           **kwargs)
+
+    # Setup variables.
+    lod_in = tf.get_variable('lod', initializer=np.float32(0), trainable=False)
+
+    # Evaluate mapping network.
+    dlatents = components.mapping.get_output_for(latents_in,
+                                                 labels_in,
+                                                 is_training=is_training,
+                                                 **kwargs)
+    dlatents = tf.cast(dlatents, tf.float32)
+
+    # Evaluate synthesis network.
+    deps = []
+    if 'lod' in components.synthesis.vars:
+        deps.append(tf.assign(components.synthesis.vars['lod'], lod_in))
+    with tf.control_dependencies(deps):
+        images_out, feat_map = components.synthesis.get_output_for(
+            dlatents,
+            is_training=is_training,
+            force_clean_graph=is_template_graph,
+            **kwargs)
+
+    # Return requested outputs.
+    images_out = tf.identity(images_out, name='images_out')
+    if return_dlatents:
+        return images_out, feat_map, dlatents
+    return images_out, feat_map
+
+
+def G_mapping_spatial_biased_dsp(
+        latents_in,  # First input: Latent vectors (Z) [minibatch, latent_size].
+        labels_in,  # Second input: Conditioning labels [minibatch, label_size].
+        latent_size=7,  # Latent vector (Z) dimensionality.
+        label_size=0,  # Label dimensionality, 0 if no labels.
+        mapping_nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        dtype='float32',  # Data type to use for activations and outputs.
+        **_kwargs):  # Ignore unrecognized keyword args.
+
+    # Inputs.
+    latents_in.set_shape([None, latent_size])
+    labels_in.set_shape([None, label_size])
+    latents_in = tf.cast(latents_in, dtype)
+    labels_in = tf.cast(labels_in, dtype)
+    x = latents_in
+
+    with tf.variable_scope('LabelConcat'):
+        x = tf.concat([labels_in, x], axis=1)
+
+    # Output.
+    assert x.dtype == tf.as_dtype(dtype)
+    return tf.identity(x, name='dlatents_out')
 
 
 def G_synthesis_vc_modular(
@@ -124,6 +203,8 @@ def G_synthesis_vc_modular(
     # print('module_dict:', module_dict)
     # for scope_idx, k in enumerate(module_dict):
     for scope_idx, k in enumerate(key_ls):
+        if scope_idx == 15:
+            feat_map = x
         if (k.startswith('Label')) or (k.startswith('D_global')):
             # e.g. {'Label': 3}, {'D_global': 3}
             x = build_D_layers(x,
@@ -187,7 +268,9 @@ def G_synthesis_vc_modular(
     y = torgb(x, y, num_channels=num_channels)
     images_out = y
     assert images_out.dtype == tf.as_dtype(dtype)
-    return tf.identity(images_out, name='images_out')
+    return tf.identity(images_out,
+                       name='images_out'), tf.identity(feat_map,
+                                                       name='feat_map')
 
 
 #----------------------------------------------------------------------------
