@@ -145,7 +145,7 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, latent_type='un
     I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
-    F_loss = tf.reduce_sum(feat_map1 * feat_map1, axis=[1, 2, 3])
+    F_loss = tf.reduce_mean(feat_map1 * feat_map1, axis=[1, 2, 3])
     F_loss = autosummary('Loss/F_loss', F_loss)
 
     I_loss += (F_loss * F_beta)
@@ -185,7 +185,7 @@ def D_logistic_r1(G, D, opt, training_set, minibatch_size, reals, labels, gamma=
         reg = gradient_penalty * (gamma * 0.5)
     return loss, reg
 
-def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0):
+def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0, F_beta=0):
     _ = opt, training_set
     discrete_latents = None
     if D_global_size > 0:
@@ -201,7 +201,10 @@ def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, ga
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
-    fake_images_out, _ = G.get_output_for(latents, labels, is_training=True)
+    if F_beta > 0:
+        fake_images_out, _ = G.get_output_for(latents, labels, is_training=True)
+    else:
+        fake_images_out = G.get_output_for(latents, labels, is_training=True)
     real_scores_out = D.get_output_for(reals, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)

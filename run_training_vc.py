@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Mon 10 Feb 2020 20:56:53 AEDT
+# --- Last Modified: Mon 10 Feb 2020 22:22:23 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -71,6 +71,7 @@ def run(dataset,
         single_const=True,
         model_type='spatial_biased',
         epsilon_loss=0.4,
+        where_feat_map=15,
         random_eps=False):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
@@ -129,6 +130,7 @@ def run(dataset,
             D_global_size=D_global_size,
             module_list=module_list,
             single_const=single_const,
+            where_feat_map=where_feat_map,
             use_noise=True)  # Options for generator network.
         I = EasyDict(
             func_name='training.variation_consistency_networks.vc_head',
@@ -187,9 +189,9 @@ def run(dataset,
                           F_beta=F_beta,
                           epsilon=epsilon_loss,
                           random_eps=random_eps)  # Options for generator loss.
-        D_loss = EasyDict(
-            func_name='training.loss.D_logistic_r1_dsp',
-            D_global_size=D_global_size)  # Options for discriminator loss.
+        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
+                          D_global_size=D_global_size,
+                          F_beta=F_beta)  # Options for discriminator loss.
     else:
         G_loss = EasyDict(
             func_name='training.loss.G_logistic_ns_dsp',
@@ -416,6 +418,11 @@ def main():
                         metavar='EPSILON_LOSS',
                         default=0.4,
                         type=float)
+    parser.add_argument('--where_feat_map',
+                        help='Which layer of feat map to use for F_loss.',
+                        metavar='WHERE_FEAT_MAP',
+                        default=15,
+                        type=int)
     parser.add_argument(
         '--random_eps',
         help='If use random epsilon in vc_gan_with_vc_head loss.',

@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Mon 10 Feb 2020 21:09:13 AEDT
+# --- Last Modified: Mon 10 Feb 2020 22:20:39 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -137,7 +137,8 @@ def G_synthesis_vc_modular(
         fused_modconv=True,  # Implement modulated_conv2d_layer() as a single fused op?
         use_noise=False,  # If noise is used in this dataset.
         randomize_noise=True,  # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
-        single_const=True,
+        single_const=True,  # If only use a single constant feature at the begining.
+        where_feat_map=15,  # For F_loss, which layer of feat map to use.
         **_kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized variation-consistent network.
@@ -203,7 +204,7 @@ def G_synthesis_vc_modular(
     # print('module_dict:', module_dict)
     # for scope_idx, k in enumerate(module_dict):
     for scope_idx, k in enumerate(key_ls):
-        if scope_idx == 15:
+        if scope_idx == where_feat_map:
             feat_map = x
         if (k.startswith('Label')) or (k.startswith('D_global')):
             # e.g. {'Label': 3}, {'D_global': 3}
