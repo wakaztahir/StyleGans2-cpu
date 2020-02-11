@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Mon 10 Feb 2020 22:22:23 AEDT
+# --- Last Modified: Tue 11 Feb 2020 15:37:18 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -72,7 +72,8 @@ def run(dataset,
         model_type='spatial_biased',
         epsilon_loss=0.4,
         where_feat_map=15,
-        random_eps=False):
+        random_eps=False,
+        latent_type='uniform'):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
                      )  # Options for training loop.
@@ -175,30 +176,39 @@ def run(dataset,
     D_opt = EasyDict(beta1=0.0, beta2=0.99,
                      epsilon=1e-8)  # Options for discriminator optimizer.
     if model_type == 'info_gan':
-        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_info_gan',
-                          D_global_size=D_global_size,
-                          D_lambda=D_lambda,
-                          C_lambda=C_lambda)  # Options for generator loss.
+        G_loss = EasyDict(
+            func_name='training.loss.G_logistic_ns_info_gan',
+            D_global_size=D_global_size,
+            D_lambda=D_lambda,
+            C_lambda=C_lambda,
+            latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(
             func_name='training.loss.D_logistic_r1_info_gan',
-            D_global_size=D_global_size)  # Options for discriminator loss.
+            D_global_size=D_global_size,
+            latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc_gan_with_vc_head':
-        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
-                          D_global_size=D_global_size,
-                          C_lambda=C_lambda,
-                          F_beta=F_beta,
-                          epsilon=epsilon_loss,
-                          random_eps=random_eps)  # Options for generator loss.
-        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
-                          D_global_size=D_global_size,
-                          F_beta=F_beta)  # Options for discriminator loss.
+        G_loss = EasyDict(
+            func_name='training.loss.G_logistic_ns_vc',
+            D_global_size=D_global_size,
+            C_lambda=C_lambda,
+            F_beta=F_beta,
+            epsilon=epsilon_loss,
+            random_eps=random_eps,
+            latent_type=latent_type)  # Options for generator loss.
+        D_loss = EasyDict(
+            func_name='training.loss.D_logistic_r1_dsp',
+            D_global_size=D_global_size,
+            F_beta=F_beta,
+            latent_type=latent_type)  # Options for discriminator loss.
     else:
         G_loss = EasyDict(
             func_name='training.loss.G_logistic_ns_dsp',
-            D_global_size=D_global_size)  # Options for generator loss.
+            D_global_size=D_global_size,
+            latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(
             func_name='training.loss.D_logistic_r1_dsp',
-            D_global_size=D_global_size)  # Options for discriminator loss.
+            D_global_size=D_global_size,
+            latent_type=latent_type)  # Options for discriminator loss.
     sched = EasyDict()  # Options for TrainingSchedule.
     grid = EasyDict(
         size='1080p',
@@ -423,6 +433,12 @@ def main():
                         metavar='WHERE_FEAT_MAP',
                         default=15,
                         type=int)
+    parser.add_argument('--latent_type',
+                        help='What type of latent priori to use.',
+                        metavar='LATENT_TYPE',
+                        default='uniform',
+                        choices=['uniform', 'normal'],
+                        type=str)
     parser.add_argument(
         '--random_eps',
         help='If use random epsilon in vc_gan_with_vc_head loss.',
