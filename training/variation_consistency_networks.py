@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Mon 10 Feb 2020 22:20:39 AEDT
+# --- Last Modified: Tue 11 Feb 2020 20:43:46 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,7 @@ from training.networks_stylegan2 import minibatch_stddev_layer
 from training.spatial_biased_extended_networks import torgb, get_conditional_modifier
 from training.spatial_biased_extended_networks import get_att_heat
 from training.spatial_biased_modular_networks import split_module_names, build_D_layers
-from training.spatial_biased_modular_networks import build_C_global_layers
+# from training.spatial_biased_modular_networks import build_C_global_layers
 from training.spatial_biased_modular_networks import build_local_heat_layers, build_local_hfeat_layers
 from training.spatial_biased_modular_networks import build_noise_layer, build_conv_layer
 from stn.stn import spatial_transformer_network as transformer
@@ -219,7 +219,7 @@ def G_synthesis_vc_modular(
             start_idx += size_ls[scope_idx]
         elif k.startswith('C_global'):
             # e.g. {'C_global': 2}
-            x = build_C_global_layers(x,
+            x = build_C_global_nocond_layers(x,
                                       name=k,
                                       n_latents=size_ls[scope_idx],
                                       start_idx=start_idx,
@@ -383,4 +383,30 @@ def vc_head(
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
+    return x
+
+
+def build_C_global_nocond_layers(x,
+                                 name,
+                                 n_latents,
+                                 start_idx,
+                                 scope_idx,
+                                 dlatents_withl_in,
+                                 act,
+                                 fused_modconv,
+                                 fmaps=128,
+                                 **kwargs):
+    '''
+    Build continuous latent layers, e.g. C_global layers.
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        C_global_latents = dlatents_withl_in[:, start_idx:start_idx +
+                                             n_latents]
+        x = apply_bias_act(modulated_conv2d_layer(x,
+                                                  C_global_latents,
+                                                  fmaps=fmaps,
+                                                  kernel=3,
+                                                  up=False,
+                                                  fused_modconv=fused_modconv),
+                           act=act)
     return x
