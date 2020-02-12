@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 23:17:25 AEDT
+# --- Last Modified: Wed 12 Feb 2020 23:24:48 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -80,7 +80,7 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
     proj.set_network(Gs, D_size=D_size)
 
     print('Loading images from "%s"...' % dataset_name)
-    dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=dataset_name, max_label_size=0, repeat=False, shuffle_mb=0)
+    dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
     assert dataset_obj.shape == Gs.output_shape[1:]
 
     for image_idx in range(num_images):
@@ -100,7 +100,7 @@ def classify_images(network_pkl, train_dataset_name, data_dir, test_dataset_name
     proj.set_network(Gs)
 
     print('Loading images from "%s"...' % train_dataset_name)
-    dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=train_dataset_name, max_label_size=0, repeat=False, shuffle_mb=0)
+    dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=train_dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
     assert dataset_obj.shape == Gs.output_shape[1:]
 
 #----------------------------------------------------------------------------
