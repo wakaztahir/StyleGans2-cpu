@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 01:14:28 AEDT
+# --- Last Modified: Thu 13 Feb 2020 02:01:04 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,8 +40,9 @@ def project_image(proj, targets, png_prefix, num_snapshots):
         proj.step()
         if proj.get_cur_step() in snapshot_steps:
             misc.save_image_grid(proj.get_images(), png_prefix + 'step%04d.png' % proj.get_cur_step(), drange=[-1,1])
-    print(proj.get_predictions())
-    print('\r%-30s\r' % '', end='', flush=True)
+    # print(proj.get_predictions())
+    # print('\r%-30s\r' % '', end='', flush=True)
+    return proj.get_predictions()
 
 #----------------------------------------------------------------------------
 
@@ -91,20 +92,29 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
         images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
         print('images.shape:', images.shape)
         print('_labels.shape:', _labels.shape)
+        print('_labels:', _labels)
+        print('argmax of _labels:', np.argmax(_labels, axis=1))
         pdb.set_trace()
         images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
         project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=num_snapshots)
 #----------------------------------------------------------------------------
 
-def classify_images(network_pkl, train_dataset_name, data_dir, test_dataset_name=None, D_size=0, minibatch_size=1):
+def classify_images(network_pkl, train_dataset_name, data_dir, n_batches_of_train_imgs, 
+                    test_dataset_name=None, D_size=0, minibatch_size=1, use_VGG=True):
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size)
+    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size, use_VGG=use_VGG)
 
     print('Loading images from "%s"...' % train_dataset_name)
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=train_dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
     assert dataset_obj.shape == Gs.output_shape[1:]
+
+    # Training
+    for image_idx in range(n_batches_of_train_imgs):
+        images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
+        images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
+        preds = project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=0)
 
 #----------------------------------------------------------------------------
 
