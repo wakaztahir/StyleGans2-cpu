@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 01:18:40 AEDT
+# --- Last Modified: Thu 13 Feb 2020 01:22:03 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -102,6 +102,8 @@ class ProjectorVC(Projector):
         # Loss graph.
         self._info('Building loss graph...')
         self._target_images_var = tf.Variable(tf.zeros(proc_images_expr.shape), name='target_images_var')
+        print('self.proc_images_expr.shape:', proc_images_expr.shape.as_list())
+        print('self._target_images_var.shape:', self._target_images_var.shape.as_list())
         if self.use_VGG:
             if self._lpips is None:
                 self._lpips = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
