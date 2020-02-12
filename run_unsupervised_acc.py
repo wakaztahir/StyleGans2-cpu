@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 02:54:18 AEDT
+# --- Last Modified: Thu 13 Feb 2020 02:56:11 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -231,6 +231,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     classify_real_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
     classify_real_images_parser.add_argument('--use_VGG', help='If use VGG for distance eval', default=True, metavar='BOOL', type=_str_to_bool)
     classify_real_images_parser.add_argument('--n_batches_of_train_imgs', type=int, help='Number of batches for training', default=4000)
+    classify_real_images_parser.add_argument('--log_freq', type=int, help='Frequency for show acc during training', default=200)
 
 
     args = parser.parse_args()
