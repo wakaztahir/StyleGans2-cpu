@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 23:24:48 AEDT
+# --- Last Modified: Wed 12 Feb 2020 23:28:27 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,7 +44,7 @@ def project_image(proj, targets, png_prefix, num_snapshots):
 
 #----------------------------------------------------------------------------
 
-def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, D_size=0):
+def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, D_size=0, minibatch_size=1):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
@@ -52,7 +52,7 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, 
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
 
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs, D_size=D_size)
+    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size)
     noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
 
     Gs_kwargs = dnnlib.EasyDict()
@@ -77,7 +77,7 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
 
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs, D_size=D_size)
+    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size)
 
     print('Loading images from "%s"...' % dataset_name)
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
@@ -97,7 +97,7 @@ def classify_images(network_pkl, train_dataset_name, data_dir, test_dataset_name
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs)
+    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size)
 
     print('Loading images from "%s"...' % train_dataset_name)
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=train_dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
