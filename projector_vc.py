@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 22:17:24 AEDT
+# --- Last Modified: Wed 12 Feb 2020 22:24:57 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -174,6 +174,6 @@ class ProjectorVC(Projector):
         # Print status.
         self._cur_step += 1
         if self._cur_step == self.num_steps or self._cur_step % 10 == 0:
-            self._info('%-8d%-12g%-12g' % (self._cur_step, dist_value, loss_value))
+            self._info('%-8d%-12g%-12g' % (self._cur_step, np.argmin(dist_value, axis=0), loss_value))
         if self._cur_step == self.num_steps:
             self._info('Done.')
