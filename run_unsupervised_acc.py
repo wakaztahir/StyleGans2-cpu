@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 02:37:45 AEDT
+# --- Last Modified: Thu 13 Feb 2020 02:54:18 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -101,8 +101,12 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
 
 def classify_images(network_pkl, train_dataset_name, data_dir, n_batches_of_train_imgs, 
                     test_dataset_name=None, D_size=0, minibatch_size=1, use_VGG=True, log_freq=10):
+    tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
-    _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+    # _G, _D, Gs = misc.load_pkl(network_pkl)
+    # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+
     proj = projector_vc.ProjectorVC()
     proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size, use_VGG=use_VGG)
 
