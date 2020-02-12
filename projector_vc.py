@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 21:09:50 AEDT
+# --- Last Modified: Wed 12 Feb 2020 21:14:07 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -78,6 +78,9 @@ class ProjectorVC(Projector):
         if sh[2] > 256:
             factor = sh[2] // 256
             proc_images_expr = tf.reduce_mean(tf.reshape(proc_images_expr, [-1, sh[1], sh[2] // factor, factor, sh[2] // factor, factor]), axis=[3,5])
+
+        # Extend channels to 3
+        proc_images_expr = tf.tile(proc_images_expr, [1, 3, 1, 1])
 
         # Loss graph.
         self._info('Building loss graph...')
