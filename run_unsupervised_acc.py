@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 21:06:35 AEDT
+# --- Last Modified: Wed 12 Feb 2020 21:08:40 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,6 +44,7 @@ def project_image(proj, targets, png_prefix, num_snapshots):
 #----------------------------------------------------------------------------
 
 def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
+    tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
     # _G, _D, Gs = misc.load_pkl(network_pkl)
@@ -68,6 +69,7 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
 #----------------------------------------------------------------------------
 
 def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots):
+    tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
     # _G, _D, Gs = misc.load_pkl(network_pkl)
