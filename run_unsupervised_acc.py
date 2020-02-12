@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 02:01:04 AEDT
+# --- Last Modified: Thu 13 Feb 2020 02:37:45 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -94,13 +94,13 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
         print('_labels.shape:', _labels.shape)
         print('_labels:', _labels)
         print('argmax of _labels:', np.argmax(_labels, axis=1))
-        pdb.set_trace()
+        # pdb.set_trace()
         images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
         project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=num_snapshots)
 #----------------------------------------------------------------------------
 
 def classify_images(network_pkl, train_dataset_name, data_dir, n_batches_of_train_imgs, 
-                    test_dataset_name=None, D_size=0, minibatch_size=1, use_VGG=True):
+                    test_dataset_name=None, D_size=0, minibatch_size=1, use_VGG=True, log_freq=10):
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
     proj = projector_vc.ProjectorVC()
@@ -110,11 +110,43 @@ def classify_images(network_pkl, train_dataset_name, data_dir, n_batches_of_trai
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=train_dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
     assert dataset_obj.shape == Gs.output_shape[1:]
 
+    vote_matrix = np.zeros((D_size, D_size), dtype=np.int32)
     # Training
+    all_correct_train = 0
+    all_preds_train = 0
     for image_idx in range(n_batches_of_train_imgs):
         images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
         images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
         preds = project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=0)
+        labels = np.argmax(_labels, axis=1)
+        for i in range(len(preds)):
+            vote_matrix[preds[i], labels[i]] += 1
+        pred_to_label = np.argmax(vote_matrix, axis=1)
+
+        # Calc training acc
+        preds_l = pred_to_label[preds]
+        all_preds_train += len(preds_l)
+        all_correct_train = np.sum(preds_l == labels)
+        if image_idx % log_freq == 0:
+            print('Training Acc: ', float(all_correct_train) / float(all_preds_train))
+
+    print('Loading images from "%s"...' % test_dataset_name)
+    dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=test_dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
+    print('Whole testing set size: ', dataset_obj.label_size)
+    pdb.set_trace()
+    assert dataset_obj.shape == Gs.output_shape[1:]
+    all_correct = 0
+    all_preds = 0
+    for image_idx in range(dataset_obj.label_size // minibatch_size):
+        images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
+        images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
+        preds = project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=0)
+        preds_l = pred_to_label[preds]
+        labels = np.argmax(_labels, axis=1)
+        all_preds += len(preds_l)
+        all_correct = np.sum(preds_l == labels)
+        if image_idx % log_freq == 0:
+            print('Testing Acc: ', float(all_correct) / float(all_preds))
 
 #----------------------------------------------------------------------------
 
@@ -194,6 +226,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     classify_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
     classify_real_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
     classify_real_images_parser.add_argument('--use_VGG', help='If use VGG for distance eval', default=True, metavar='BOOL', type=_str_to_bool)
+    classify_real_images_parser.add_argument('--n_batches_of_train_imgs', type=int, help='Number of batches for training', default=4000)
 
 
     args = parser.parse_args()
