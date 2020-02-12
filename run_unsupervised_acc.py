@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 21:08:40 AEDT
+# --- Last Modified: Wed 12 Feb 2020 22:22:44 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,7 +43,7 @@ def project_image(proj, targets, png_prefix, num_snapshots):
 
 #----------------------------------------------------------------------------
 
-def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
+def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, D_size=0):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
@@ -51,7 +51,7 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
 
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs)
+    proj.set_network(Gs, D_size=D_size)
     noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
 
     Gs_kwargs = dnnlib.EasyDict()
@@ -68,7 +68,7 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
 
 #----------------------------------------------------------------------------
 
-def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots):
+def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots, D_size=0):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
@@ -76,7 +76,7 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
 
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs)
+    proj.set_network(Gs, D_size=D_size)
 
     print('Loading images from "%s"...' % dataset_name)
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=dataset_name, max_label_size=0, repeat=False, shuffle_mb=0)
@@ -142,6 +142,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     project_generated_images_parser.add_argument('--num-snapshots', type=int, help='Number of snapshots (default: %(default)s)', default=5)
     project_generated_images_parser.add_argument('--truncation-psi', type=float, help='Truncation psi (default: %(default)s)', default=1.0)
     project_generated_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    project_generated_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
 
     project_real_images_parser = subparsers.add_parser('project-real-images', help='Project real images')
     project_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
@@ -150,6 +151,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     project_real_images_parser.add_argument('--num-snapshots', type=int, help='Number of snapshots (default: %(default)s)', default=5)
     project_real_images_parser.add_argument('--num-images', type=int, help='Number of images to project (default: %(default)s)', default=3)
     project_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    project_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
 
     classify_real_images_parser = subparsers.add_parser('classify-real-images', help='Project real images')
     classify_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
@@ -157,6 +159,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     classify_real_images_parser.add_argument('--train_dataset', help='Training dataset', dest='train_dataset_name', required=True)
     classify_real_images_parser.add_argument('--test_dataset', help='Testing dataset', dest='test_dataset_name', required=True)
     classify_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    classify_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
 
 
     args = parser.parse_args()
