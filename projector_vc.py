@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 01:26:30 AEDT
+# --- Last Modified: Thu 13 Feb 2020 03:00:06 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,8 +32,9 @@ class ProjectorVC(Projector):
         self.D_size = 0
         self.use_VGG = True
 
-    def set_network(self, Gs, minibatch_size=1, D_size=0, use_VGG=True):
+    def set_network(self, Gs, minibatch_size=1, D_size=0, use_VGG=True, num_steps=200):
         # assert minibatch_size == 1
+        self.num_steps = num_steps
         self.D_size = D_size
         self.use_VGG = use_VGG
         self._Gs = Gs
