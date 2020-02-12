@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 22:24:57 AEDT
+# --- Last Modified: Wed 12 Feb 2020 22:28:50 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,6 +28,7 @@ class ProjectorVC(Projector):
     def __init__(self):
         super().__init__()
         self.verbose = True
+        self.num_steps = 200
 
     def set_network(self, Gs, minibatch_size=1, D_size=0):
         assert minibatch_size == 1
