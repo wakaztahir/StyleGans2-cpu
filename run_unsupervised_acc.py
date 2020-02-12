@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 21:00:37 AEDT
+# --- Last Modified: Wed 12 Feb 2020 21:06:35 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,7 +45,10 @@ def project_image(proj, targets, png_prefix, num_snapshots):
 
 def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
     print('Loading networks from "%s"...' % network_pkl)
-    _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+    # _G, _D, Gs = misc.load_pkl(network_pkl)
+    # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+
     proj = projector_vc.ProjectorVC()
     proj.set_network(Gs)
     noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
@@ -66,7 +69,10 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi):
 
 def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots):
     print('Loading networks from "%s"...' % network_pkl)
-    _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+    # _G, _D, Gs = misc.load_pkl(network_pkl)
+    # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+
     proj = projector_vc.ProjectorVC()
     proj.set_network(Gs)
 
