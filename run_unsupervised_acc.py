@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 23:28:27 AEDT
+# --- Last Modified: Thu 13 Feb 2020 01:14:28 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,11 +40,13 @@ def project_image(proj, targets, png_prefix, num_snapshots):
         proj.step()
         if proj.get_cur_step() in snapshot_steps:
             misc.save_image_grid(proj.get_images(), png_prefix + 'step%04d.png' % proj.get_cur_step(), drange=[-1,1])
+    print(proj.get_predictions())
     print('\r%-30s\r' % '', end='', flush=True)
 
 #----------------------------------------------------------------------------
 
-def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, D_size=0, minibatch_size=1):
+def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, 
+                             D_size=0, minibatch_size=1, use_VGG=True):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
@@ -52,7 +54,7 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, 
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
 
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size)
+    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size, use_VGG=use_VGG)
     noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
 
     Gs_kwargs = dnnlib.EasyDict()
@@ -69,7 +71,8 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, 
 
 #----------------------------------------------------------------------------
 
-def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots, D_size=0, minibatch_size=1):
+def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots, 
+                        D_size=0, minibatch_size=1, use_VGG=True):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
@@ -77,7 +80,7 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
 
     proj = projector_vc.ProjectorVC()
-    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size)
+    proj.set_network(Gs, minibatch_size=minibatch_size, D_size=D_size, use_VGG=use_VGG)
 
     print('Loading images from "%s"...' % dataset_name)
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
@@ -93,7 +96,7 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
         project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=num_snapshots)
 #----------------------------------------------------------------------------
 
-def classify_images(network_pkl, train_dataset_name, data_dir, test_dataset_name=None):
+def classify_images(network_pkl, train_dataset_name, data_dir, test_dataset_name=None, D_size=0, minibatch_size=1):
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
     proj = projector_vc.ProjectorVC()
@@ -114,6 +117,18 @@ def _parse_num_range(s):
         return range(int(m.group(1)), int(m.group(2))+1)
     vals = s.split(',')
     return [int(x) for x in vals]
+
+#----------------------------------------------------------------------------
+
+def _str_to_bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 #----------------------------------------------------------------------------
 
@@ -158,6 +173,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     project_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
     project_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
     project_real_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
+    project_real_images_parser.add_argument('--use_VGG', help='If use VGG for distance eval', default=True, metavar='BOOL', type=_str_to_bool)
 
     classify_real_images_parser = subparsers.add_parser('classify-real-images', help='Project real images')
     classify_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
@@ -167,6 +183,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     classify_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
     classify_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
     classify_real_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
+    classify_real_images_parser.add_argument('--use_VGG', help='If use VGG for distance eval', default=True, metavar='BOOL', type=_str_to_bool)
 
 
     args = parser.parse_args()

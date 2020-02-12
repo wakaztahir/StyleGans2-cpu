@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 22:57:07 AEDT
+# --- Last Modified: Thu 13 Feb 2020 01:10:08 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -29,10 +29,13 @@ class ProjectorVC(Projector):
         super().__init__()
         self.verbose = True
         self.num_steps = 200
+        self.D_size = 0
+        self.use_VGG = True
 
-    def set_network(self, Gs, minibatch_size=1, D_size=0):
+    def set_network(self, Gs, minibatch_size=1, D_size=0, use_VGG=True):
         # assert minibatch_size == 1
         self.D_size = D_size
+        self.use_VGG = use_VGG
         self._Gs = Gs
         self._minibatch_size = minibatch_size
         if self._Gs is None:
@@ -99,9 +102,12 @@ class ProjectorVC(Projector):
         # Loss graph.
         self._info('Building loss graph...')
         self._target_images_var = tf.Variable(tf.zeros(proc_images_expr.shape), name='target_images_var')
-        if self._lpips is None:
-            self._lpips = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
-        self._dist = self._lpips.get_output_for(proc_images_expr, self._target_images_var)
+        if self.use_VGG:
+            if self._lpips is None:
+                self._lpips = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
+            self._dist = self._lpips.get_output_for(proc_images_expr, self._target_images_var)
+        else:
+            self._disct = tf.reduce_mean((proc_images_expr - self._target_images_var) ** 2, [1, 2, 3])
         print('self._dist.shape:', self._dist.shape.as_list())
         self._loss = tf.reduce_sum(self._dist)
 
