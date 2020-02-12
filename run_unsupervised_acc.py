@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 03:05:14 AEDT
+# --- Last Modified: Thu 13 Feb 2020 03:13:35 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -141,7 +141,7 @@ def classify_images(network_pkl, train_dataset_name, data_dir, n_batches_of_trai
     assert dataset_obj.shape == Gs.output_shape[1:]
     all_correct = 0
     all_preds = 0
-    for image_idx in range(dataset_obj.label_size // minibatch_size):
+    for image_idx in range(10000 // minibatch_size):
         images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
         images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
         preds = project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=0)
