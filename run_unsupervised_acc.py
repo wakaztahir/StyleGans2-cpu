@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Thu 13 Feb 2020 03:13:35 AEDT
+# --- Last Modified: Thu 13 Feb 2020 04:04:47 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -137,7 +137,7 @@ def classify_images(network_pkl, train_dataset_name, data_dir, n_batches_of_trai
     print('Loading images from "%s"...' % test_dataset_name)
     dataset_obj = dataset.load_dataset(data_dir=data_dir, tfrecord_dir=test_dataset_name, max_label_size='full', repeat=False, shuffle_mb=0)
     print('Whole testing set size: ', dataset_obj.label_size)
-    pdb.set_trace()
+    # pdb.set_trace()
     assert dataset_obj.shape == Gs.output_shape[1:]
     all_correct = 0
     all_preds = 0
