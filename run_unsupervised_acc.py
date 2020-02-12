@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 22:22:44 AEDT
+# --- Last Modified: Wed 12 Feb 2020 23:17:25 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -21,6 +21,7 @@ import numpy as np
 import dnnlib
 import dnnlib.tflib as tflib
 import re
+import pdb
 import sys
 
 import projector_vc
@@ -68,7 +69,7 @@ def project_generated_images(network_pkl, seeds, num_snapshots, truncation_psi, 
 
 #----------------------------------------------------------------------------
 
-def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots, D_size=0):
+def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_snapshots, D_size=0, minibatch_size=1):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     _G, _D, I, Gs = misc.load_pkl(network_pkl)
@@ -84,7 +85,10 @@ def project_real_images(network_pkl, dataset_name, data_dir, num_images, num_sna
 
     for image_idx in range(num_images):
         print('Projecting image %d/%d ...' % (image_idx, num_images))
-        images, _labels = dataset_obj.get_minibatch_np(1)
+        images, _labels = dataset_obj.get_minibatch_np(minibatch_size)
+        print('images.shape:', images.shape)
+        print('_labels.shape:', _labels.shape)
+        pdb.set_trace()
         images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
         project_image(proj, targets=images, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=num_snapshots)
 #----------------------------------------------------------------------------
@@ -143,6 +147,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     project_generated_images_parser.add_argument('--truncation-psi', type=float, help='Truncation psi (default: %(default)s)', default=1.0)
     project_generated_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
     project_generated_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
+    project_generated_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
 
     project_real_images_parser = subparsers.add_parser('project-real-images', help='Project real images')
     project_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
@@ -152,6 +157,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     project_real_images_parser.add_argument('--num-images', type=int, help='Number of images to project (default: %(default)s)', default=3)
     project_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
     project_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
+    project_real_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
 
     classify_real_images_parser = subparsers.add_parser('classify-real-images', help='Project real images')
     classify_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
@@ -160,6 +166,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     classify_real_images_parser.add_argument('--test_dataset', help='Testing dataset', dest='test_dataset_name', required=True)
     classify_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
     classify_real_images_parser.add_argument('--D_size', type=int, help='Number of discrete latents', default=10)
+    classify_real_images_parser.add_argument('--minibatch_size', type=int, help='Minibatch size', default=1)
 
 
     args = parser.parse_args()

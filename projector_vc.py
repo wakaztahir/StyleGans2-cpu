@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 22:28:50 AEDT
+# --- Last Modified: Wed 12 Feb 2020 22:57:07 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -31,7 +31,7 @@ class ProjectorVC(Projector):
         self.num_steps = 200
 
     def set_network(self, Gs, minibatch_size=1, D_size=0):
-        assert minibatch_size == 1
+        # assert minibatch_size == 1
         self.D_size = D_size
         self._Gs = Gs
         self._minibatch_size = minibatch_size
@@ -79,7 +79,8 @@ class ProjectorVC(Projector):
         # Add discrete latents
         if self.D_size > 0:
             discrete_latents = tf.range(self.D_size, dtype=tf.int32)
-            discrete_latents = tf.one_hot(discrete_latents, self.D_size)
+            discrete_latents = tf.one_hot(discrete_latents, self.D_size) # [D_size, D_size]
+            discrete_latents = tf.tile(discrete_latents, [self._minibatch_size, 1])
             self._dlatents_expr = tf.concat([discrete_latents, self._dlatents_expr], axis=1)
 
         self._images_expr, _ = self._Gs.components.synthesis.get_output_for(self._dlatents_expr, randomize_noise=False)
@@ -143,7 +144,11 @@ class ProjectorVC(Projector):
             target_images = np.reshape(target_images, [-1, sh[1], sh[2] // factor, factor, sh[3] // factor, factor]).mean((3, 5))
 
         if self.D_size > 0:
-            target_images = np.tile(target_images, [self.D_size, 1, 1, 1])
+            sh = target_images.shape
+            target_images = np.reshape(target_images, [-1, 1, sh[1], sh[2], sh[3]])
+            target_images = np.tile(target_images, [1, self.D_size, 1, 1, 1])
+            target_images = np.reshape(target_images, [-1, sh[1], sh[2], sh[3]])
+        assert target_images.shape[0] == self._minibatch_size * self.D_size
 
         # Initialize optimization state.
         self._info('Initializing optimization state...')
@@ -172,9 +177,20 @@ class ProjectorVC(Projector):
         _, dist_value, loss_value = tflib.run([self._opt_step, self._dist, self._loss], feed_dict)
         tflib.run(self._noise_normalize_op)
 
+        dist_value = np.reshape(dist_value, (-1, 10))
+        self.preds = np.argmin(dist_value, axis=1)
+
         # Print status.
         self._cur_step += 1
         if self._cur_step == self.num_steps or self._cur_step % 10 == 0:
-            self._info('%-8d%-12g%-12g' % (self._cur_step, np.argmin(dist_value, axis=0), loss_value))
+            self._info('%-8d%-12g%-12g' % (self._cur_step, self.preds[0], loss_value))
         if self._cur_step == self.num_steps:
             self._info('Done.')
+
+    def get_dlatents(self):
+        dlatents =  tflib.run(self._dlatents_expr[self.preds], {self._noise_in: 0})
+        return dlatents
+    
+    def get_predictions(self):
+        # self.preds.shape: [minibatch]
+        return self.preds
