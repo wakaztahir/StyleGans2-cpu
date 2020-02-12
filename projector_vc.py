@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 21:18:46 AEDT
+# --- Last Modified: Wed 12 Feb 2020 22:17:24 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -27,9 +27,11 @@ from training import misc
 class ProjectorVC(Projector):
     def __init__(self):
         super().__init__()
+        self.verbose = True
 
-    def set_network(self, Gs, minibatch_size=1):
+    def set_network(self, Gs, minibatch_size=1, D_size=0):
         assert minibatch_size == 1
+        self.D_size = D_size
         self._Gs = Gs
         self._minibatch_size = minibatch_size
         if self._Gs is None:
@@ -39,8 +41,10 @@ class ProjectorVC(Projector):
 
         # Find dlatent stats.
         self._info('Finding W midpoint and stddev using %d samples...' % self.dlatent_avg_samples)
-        latent_samples = np.random.RandomState(123).randn(self.dlatent_avg_samples, *self._Gs.input_shapes[0][1:])
-        dlatent_samples = self._Gs.components.mapping.run(latent_samples, None) # [N, 512]
+        # latent_samples = np.random.RandomState(123).randn(self.dlatent_avg_samples, *self._Gs.input_shapes[0][1:])
+        latent_samples = np.random.RandomState(123).randn(self.dlatent_avg_samples, self._Gs.input_shapes[0][1]-self.D_size) # Only learn continuous latents
+        # dlatent_samples = self._Gs.components.mapping.run(latent_samples, None) # [N, 512]
+        dlatent_samples = latent_samples
         self._dlatent_avg = np.mean(dlatent_samples, axis=0, keepdims=True) # [1, 512]
         self._dlatent_std = (np.sum((dlatent_samples - self._dlatent_avg) ** 2) / self.dlatent_avg_samples) ** 0.5
         self._info('std = %g' % self._dlatent_std)
@@ -66,10 +70,17 @@ class ProjectorVC(Projector):
 
         # Image output graph.
         self._info('Building image output graph...')
-        self._dlatents_var = tf.Variable(tf.zeros([self._minibatch_size] + list(self._dlatent_avg.shape[1:])), name='dlatents_var')
+        self._dlatents_var = tf.Variable(tf.zeros([self._minibatch_size * self.D_size] + list(self._dlatent_avg.shape[1:])), name='dlatents_var')
         self._noise_in = tf.placeholder(tf.float32, [], name='noise_in')
         dlatents_noise = tf.random.normal(shape=self._dlatents_var.shape) * self._noise_in
         self._dlatents_expr = self._dlatents_var + dlatents_noise
+
+        # Add discrete latents
+        if self.D_size > 0:
+            discrete_latents = tf.range(self.D_size, dtype=tf.int32)
+            discrete_latents = tf.one_hot(discrete_latents, self.D_size)
+            self._dlatents_expr = tf.concat([discrete_latents, self._dlatents_expr], axis=1)
+
         self._images_expr, _ = self._Gs.components.synthesis.get_output_for(self._dlatents_expr, randomize_noise=False)
 
         # Extend channels to 3
@@ -89,6 +100,7 @@ class ProjectorVC(Projector):
         if self._lpips is None:
             self._lpips = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
         self._dist = self._lpips.get_output_for(proc_images_expr, self._target_images_var)
+        print('self._dist.shape:', self._dist.shape.as_list())
         self._loss = tf.reduce_sum(self._dist)
 
         # Noise regularization graph.
@@ -129,9 +141,39 @@ class ProjectorVC(Projector):
             factor = sh[2] // self._target_images_var.shape[2]
             target_images = np.reshape(target_images, [-1, sh[1], sh[2] // factor, factor, sh[3] // factor, factor]).mean((3, 5))
 
+        if self.D_size > 0:
+            target_images = np.tile(target_images, [self.D_size, 1, 1, 1])
+
         # Initialize optimization state.
         self._info('Initializing optimization state...')
-        tflib.set_vars({self._target_images_var: target_images, self._dlatents_var: np.tile(self._dlatent_avg, [self._minibatch_size, 1])})
+        tflib.set_vars({self._target_images_var: target_images, self._dlatents_var: np.tile(self._dlatent_avg, [self._minibatch_size * self.D_size if self.D_size > 0 else self._minibatch_size, 1])})
         tflib.run(self._noise_init_op)
         self._opt.reset_optimizer_state()
         self._cur_step = 0
+
+    def step(self):
+        assert self._cur_step is not None
+        if self._cur_step >= self.num_steps:
+            return
+        if self._cur_step == 0:
+            self._info('Running...')
+
+        # Hyperparameters.
+        t = self._cur_step / self.num_steps
+        noise_strength = self._dlatent_std * self.initial_noise_factor * max(0.0, 1.0 - t / self.noise_ramp_length) ** 2
+        lr_ramp = min(1.0, (1.0 - t) / self.lr_rampdown_length)
+        lr_ramp = 0.5 - 0.5 * np.cos(lr_ramp * np.pi)
+        lr_ramp = lr_ramp * min(1.0, t / self.lr_rampup_length)
+        learning_rate = self.initial_learning_rate * lr_ramp
+
+        # Train.
+        feed_dict = {self._noise_in: noise_strength, self._lrate_in: learning_rate}
+        _, dist_value, loss_value = tflib.run([self._opt_step, self._dist, self._loss], feed_dict)
+        tflib.run(self._noise_normalize_op)
+
+        # Print status.
+        self._cur_step += 1
+        if self._cur_step == self.num_steps or self._cur_step % 10 == 0:
+            self._info('%-8d%-12g%-12g' % (self._cur_step, dist_value, loss_value))
+        if self._cur_step == self.num_steps:
+            self._info('Done.')
