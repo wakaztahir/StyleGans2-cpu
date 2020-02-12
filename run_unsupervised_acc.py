@@ -8,7 +8,7 @@
 
 # --- File Name: run_unsupervised_acc.py
 # --- Creation Date: 12-02-2020
-# --- Last Modified: Wed 12 Feb 2020 20:50:54 AEDT
+# --- Last Modified: Wed 12 Feb 2020 21:00:37 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -144,11 +144,11 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     project_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
 
     classify_real_images_parser = subparsers.add_parser('classify-real-images', help='Project real images')
-    project_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
-    project_real_images_parser.add_argument('--data-dir', help='Dataset root directory', required=True)
-    project_real_images_parser.add_argument('--train_dataset', help='Training dataset', dest='train_dataset_name', required=True)
-    project_real_images_parser.add_argument('--test_dataset', help='Testing dataset', dest='test_dataset_name', required=True)
-    project_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    classify_real_images_parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
+    classify_real_images_parser.add_argument('--data-dir', help='Dataset root directory', required=True)
+    classify_real_images_parser.add_argument('--train_dataset', help='Training dataset', dest='train_dataset_name', required=True)
+    classify_real_images_parser.add_argument('--test_dataset', help='Testing dataset', dest='test_dataset_name', required=True)
+    classify_real_images_parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
 
 
     args = parser.parse_args()
