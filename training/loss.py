@@ -207,7 +207,7 @@ def D_logistic_r1(G, D, opt, training_set, minibatch_size, reals, labels, gamma=
         reg = gradient_penalty * (gamma * 0.5)
     return loss, reg
 
-def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0, F_beta=0):
+def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0):
     _ = opt, training_set
     discrete_latents = None
     if D_global_size > 0:
