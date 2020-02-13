@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 13 Feb 2020 16:27:23 AEDT
+# --- Last Modified: Thu 13 Feb 2020 16:52:19 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -325,7 +325,7 @@ def main():
         '--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)',
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='vc_gan',
-                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc_gan', 'vc_gan_with_vc_head'])
+                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc_gan', 'vc_gan_with_vc_head', 'vc_gan_with_vc_head_with_cls'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
