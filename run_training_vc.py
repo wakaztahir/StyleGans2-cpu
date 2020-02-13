@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 13 Feb 2020 16:52:19 AEDT
+# --- Last Modified: Thu 13 Feb 2020 16:59:39 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -85,6 +85,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(
             func_name='training.info_gan_networks.D_info_gan_stylegan2',
             fmap_max=512)  # Options for discriminator network.
+        I_info = EasyDict()
         desc = 'info_gan_net'
     elif model_type == 'vc_gan_with_vc_head':
         module_list = _str_to_list(module_list)
@@ -108,6 +109,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             D_global_size=D_global_size, fmap_max=512)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=512)  # Options for discriminator network.
+        I_info = EasyDict()
         desc = 'vc_gan_with_vc_head_net'
     elif model_type == 'vc_gan_with_vc_head_with_cls':
         module_list = _str_to_list(module_list)
@@ -151,6 +153,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size, module_list=module_list,
             single_const=single_const, use_noise=True)  # Options for generator network.
         I = EasyDict()
+        I_info = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
                      fmap_max=512)  # Options for discriminator network.
         # D         = EasyDict(func_name='training.spatial_biased_networks.D_with_discrete_dsp', fmap_max=128)  # Options for discriminator network.
@@ -231,7 +234,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     sc.submit_target = dnnlib.SubmitTarget.LOCAL
     sc.local.do_not_copy_source_files = True
     kwargs = EasyDict(train)
-    kwargs.update(G_args=G, D_args=D, I_args=I, G_opt_args=G_opt, D_opt_args=D_opt,
+    kwargs.update(G_args=G, D_args=D, I_args=I, I_info_args=I_info, G_opt_args=G_opt, D_opt_args=D_opt,
                   G_loss_args=G_loss, D_loss_args=D_loss,
                   use_info_gan=(model_type == 'info_gan'),
                   use_vc_head=(model_type == 'vc_gan_with_vc_head'),

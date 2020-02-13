@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 13 Feb 2020 16:38:18 AEDT
+# --- Last Modified: Thu 13 Feb 2020 16:58:17 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,6 +39,7 @@ def training_loop_vc(
         G_args={},  # Options for generator network.
         D_args={},  # Options for discriminator network.
         I_args={},  # Options for infogan-head/vcgan-head network.
+        I_info_args={},  # Options for infogan-head/vcgan-head network.
         G_opt_args={},  # Options for generator optimizer.
         D_opt_args={},  # Options for discriminator optimizer.
         G_loss_args={},  # Options for generator loss.
@@ -116,7 +117,7 @@ def training_loop_vc(
                                       num_channels=training_set.shape[0],
                                       resolution=training_set.shape[1],
                                       label_size=training_set.label_size,
-                                      **I_args)
+                                      **I_info_args)
             
             Gs = G.clone('Gs')
         if resume_pkl is not None:
