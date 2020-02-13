@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Tue 11 Feb 2020 15:37:18 AEDT
+# --- Last Modified: Thu 13 Feb 2020 16:27:23 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -53,27 +53,10 @@ _valid_configs = [
 #----------------------------------------------------------------------------
 
 
-def run(dataset,
-        data_dir,
-        result_dir,
-        config_id,
-        num_gpus,
-        total_kimg,
-        gamma,
-        mirror_augment,
-        metrics,
-        resume_pkl,
-        D_lambda=1,
-        C_lambda=1,
-        F_beta=0,
-        n_samples_per=10,
-        module_list=None,
-        single_const=True,
-        model_type='spatial_biased',
-        epsilon_loss=0.4,
-        where_feat_map=15,
-        random_eps=False,
-        latent_type='uniform'):
+def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
+        mirror_augment, metrics, resume_pkl, D_lambda=1, C_lambda=1, F_beta=0, cls_alpha=0, 
+        n_samples_per=10, module_list=None, single_const=True, model_type='spatial_biased', 
+        epsilon_loss=0.4, where_feat_map=15, random_eps=False, latent_type='uniform'):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
                      )  # Options for training loop.
@@ -84,7 +67,7 @@ def run(dataset,
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global'):
+            if key.startswith('D_global') or key.startswith('D_global_nocond'):
                 D_global_size = size_ls[i]
                 break
         print('D_global_size:', D_global_size)
@@ -92,61 +75,71 @@ def run(dataset,
             func_name=
             'training.spatial_biased_networks.G_main_spatial_biased_dsp',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16,
-            fmap_max=512,
-            fmap_decay=0.15,
-            latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size,
-            D_global_size=D_global_size,
-            module_list=module_list,
-            single_const=single_const,
-            use_noise=True)  # Options for generator network.
+            fmap_min=16, fmap_max=512, fmap_decay=0.15,
+            latent_size=count_dlatent_size, dlatent_size=count_dlatent_size,
+            D_global_size=D_global_size, module_list=module_list,
+            single_const=single_const, use_noise=True)  # Options for generator network.
         I = EasyDict(func_name='training.info_gan_networks.info_gan_head',
-                     dlatent_size=count_dlatent_size,
-                     D_global_size=D_global_size,
-                     fmap_decay=0.15,
-                     fmap_min=16,
-                     fmap_max=512)
+                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+                     fmap_decay=0.15, fmap_min=16, fmap_max=512)
         D = EasyDict(
-            func_name='training.info_gan_networks.D_info_gan_stylegan2'
-        )  # Options for discriminator network.
+            func_name='training.info_gan_networks.D_info_gan_stylegan2',
+            fmap_max=512)  # Options for discriminator network.
         desc = 'info_gan_net'
     elif model_type == 'vc_gan_with_vc_head':
         module_list = _str_to_list(module_list)
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global'):
+            if key.startswith('D_global') or key.startswith('D_global_nocond'):
                 D_global_size = size_ls[i]
                 break
         print('D_global_size:', D_global_size)
         G = EasyDict(
             func_name='training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16,
-            fmap_max=512,
-            fmap_decay=0.15,
-            latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size,
-            D_global_size=D_global_size,
-            module_list=module_list,
-            single_const=single_const,
-            where_feat_map=where_feat_map,
-            use_noise=True)  # Options for generator network.
+            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size,
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+            module_list=module_list, single_const=single_const,
+            where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
         I = EasyDict(
             func_name='training.variation_consistency_networks.vc_head',
             dlatent_size=count_dlatent_size,
-            D_global_size=D_global_size,
-            fmap_max=512)
+            D_global_size=D_global_size, fmap_max=512)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-                     fmap_max=512)  # Options for discriminator network.
+            fmap_max=512)  # Options for discriminator network.
         desc = 'vc_gan_with_vc_head_net'
+    elif model_type == 'vc_gan_with_vc_head_with_cls':
+        module_list = _str_to_list(module_list)
+        key_ls, size_ls, count_dlatent_size, _ = split_module_names(
+            module_list)
+        for i, key in enumerate(key_ls):
+            if key.startswith('D_global') or key.startswith('D_global_nocond'):
+                D_global_size = size_ls[i]
+                break
+        print('D_global_size:', D_global_size)
+        G = EasyDict(
+            func_name='training.variation_consistency_networks.G_main_vc',
+            synthesis_func='G_synthesis_vc_modular',
+            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size,
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+            module_list=module_list, single_const=single_const,
+            where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
+        I = EasyDict(func_name='training.variation_consistency_networks.vc_head',
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512)
+        I_info = EasyDict(func_name='training.info_gan_networks.info_gan_head_cls',
+                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+                     fmap_decay=0.15, fmap_min=16, fmap_max=512)
+        D = EasyDict(
+            func_name='training.info_gan_networks.D_info_gan_stylegan2',
+            fmap_max=512)  # Options for discriminator network.
+        desc = 'vc_gan_with_vc_head_net_with_cls'
     elif model_type == 'vc_gan':
         module_list = _str_to_list(module_list)
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global'):
+            if key.startswith('D_global') or key.startswith('D_global_nocond'):
                 D_global_size = size_ls[i]
                 break
         print('D_global_size:', D_global_size)
@@ -154,15 +147,9 @@ def run(dataset,
             func_name=
             'training.spatial_biased_networks.G_main_spatial_biased_dsp',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16,
-            fmap_max=512,
-            fmap_decay=0.15,
-            latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size,
-            D_global_size=D_global_size,
-            module_list=module_list,
-            single_const=single_const,
-            use_noise=True)  # Options for generator network.
+            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size,
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size, module_list=module_list,
+            single_const=single_const, use_noise=True)  # Options for generator network.
         I = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
                      fmap_max=512)  # Options for discriminator network.
@@ -176,43 +163,30 @@ def run(dataset,
     D_opt = EasyDict(beta1=0.0, beta2=0.99,
                      epsilon=1e-8)  # Options for discriminator optimizer.
     if model_type == 'info_gan':
-        G_loss = EasyDict(
-            func_name='training.loss.G_logistic_ns_info_gan',
-            D_global_size=D_global_size,
-            D_lambda=D_lambda,
-            C_lambda=C_lambda,
+        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_info_gan',
+            D_global_size=D_global_size, D_lambda=D_lambda, C_lambda=C_lambda,
             latent_type=latent_type)  # Options for generator loss.
-        D_loss = EasyDict(
-            func_name='training.loss.D_logistic_r1_info_gan',
-            D_global_size=D_global_size,
-            latent_type=latent_type)  # Options for discriminator loss.
+        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_info_gan',
+            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc_gan_with_vc_head':
-        G_loss = EasyDict(
-            func_name='training.loss.G_logistic_ns_vc',
-            D_global_size=D_global_size,
-            C_lambda=C_lambda,
-            F_beta=F_beta,
-            epsilon=epsilon_loss,
-            random_eps=random_eps,
-            latent_type=latent_type)  # Options for generator loss.
-        D_loss = EasyDict(
-            func_name='training.loss.D_logistic_r1_dsp',
-            D_global_size=D_global_size,
-            F_beta=F_beta,
-            latent_type=latent_type)  # Options for discriminator loss.
+        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
+            D_global_size=D_global_size, C_lambda=C_lambda, F_beta=F_beta,
+            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
+            D_global_size=D_global_size, F_beta=F_beta, latent_type=latent_type)  # Options for discriminator loss.
+    elif model_type == 'vc_gan_with_vc_head_with_cls':
+        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
+            D_global_size=D_global_size, C_lambda=C_lambda, F_beta=F_beta, cls_alpha=cls_alpha, 
+            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
+            D_global_size=D_global_size, F_beta=F_beta, latent_type=latent_type)  # Options for discriminator loss.
     else:
-        G_loss = EasyDict(
-            func_name='training.loss.G_logistic_ns_dsp',
-            D_global_size=D_global_size,
-            latent_type=latent_type)  # Options for generator loss.
-        D_loss = EasyDict(
-            func_name='training.loss.D_logistic_r1_dsp',
-            D_global_size=D_global_size,
-            latent_type=latent_type)  # Options for discriminator loss.
+        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_dsp',
+            D_global_size=D_global_size, latent_type=latent_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
+            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     sched = EasyDict()  # Options for TrainingSchedule.
-    grid = EasyDict(
-        size='1080p',
-        layout='random')  # Options for setup_snapshot_image_grid().
+    grid = EasyDict(size='1080p', layout='random')  # Options for setup_snapshot_image_grid().
     sc = dnnlib.SubmitConfig()  # Options for dnnlib.submit_run().
     tf_config = {'rnd.np_random_seed': 1000}  # Options for tflib.init_tf().
 
@@ -257,15 +231,11 @@ def run(dataset,
     sc.submit_target = dnnlib.SubmitTarget.LOCAL
     sc.local.do_not_copy_source_files = True
     kwargs = EasyDict(train)
-    kwargs.update(G_args=G,
-                  D_args=D,
-                  I_args=I,
-                  G_opt_args=G_opt,
-                  D_opt_args=D_opt,
-                  G_loss_args=G_loss,
-                  D_loss_args=D_loss,
+    kwargs.update(G_args=G, D_args=D, I_args=I, G_opt_args=G_opt, D_opt_args=D_opt,
+                  G_loss_args=G_loss, D_loss_args=D_loss,
                   use_info_gan=(model_type == 'info_gan'),
                   use_vc_head=(model_type == 'vc_gan_with_vc_head'),
+                  use_vc_head_with_cls=(model_type == 'vc_gan_with_vc_head_with_cls'),
                   traversal_grid=True)
     n_continuous = 0
     for i, key in enumerate(key_ls):
@@ -273,15 +243,9 @@ def run(dataset,
         if (m_name in LATENT_MODULES) and (not m_name == 'D_global'):
             n_continuous += size_ls[i]
 
-    kwargs.update(dataset_args=dataset_args,
-                  sched_args=sched,
-                  grid_args=grid,
-                  metric_arg_list=metrics,
-                  tf_config=tf_config,
-                  resume_pkl=resume_pkl,
-                  n_discrete=D_global_size,
-                  n_continuous=n_continuous,
-                  n_samples_per=n_samples_per)
+    kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid, metric_arg_list=metrics,
+                  tf_config=tf_config, resume_pkl=resume_pkl, n_discrete=D_global_size,
+                  n_continuous=n_continuous, n_samples_per=n_samples_per)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -343,108 +307,52 @@ def main():
         help='Root directory for run results (default: %(default)s)',
         default='results',
         metavar='DIR')
-    parser.add_argument('--data-dir',
-                        help='Dataset root directory',
-                        required=True)
+    parser.add_argument('--data-dir', help='Dataset root directory', required=True)
     parser.add_argument('--dataset', help='Training dataset', required=True)
-    parser.add_argument('--config',
-                        help='Training config (default: %(default)s)',
-                        default='config-e',
-                        dest='config_id',
-                        metavar='CONFIG')
-    parser.add_argument('--num-gpus',
-                        help='Number of GPUs (default: %(default)s)',
-                        default=1,
-                        type=int,
-                        metavar='N')
-    parser.add_argument(
-        '--total-kimg',
+    parser.add_argument('--config', help='Training config (default: %(default)s)',
+                        default='config-e', dest='config_id', metavar='CONFIG')
+    parser.add_argument('--num-gpus', help='Number of GPUs (default: %(default)s)',
+                        default=1, type=int, metavar='N')
+    parser.add_argument('--total-kimg',
         help='Training length in thousands of images (default: %(default)s)',
-        metavar='KIMG',
-        default=25000,
-        type=int)
-    parser.add_argument(
-        '--gamma',
+        metavar='KIMG', default=25000, type=int)
+    parser.add_argument('--gamma',
         help='R1 regularization weight (default is config dependent)',
-        default=None,
-        type=float)
-    parser.add_argument('--mirror-augment',
-                        help='Mirror augment (default: %(default)s)',
-                        default=False,
-                        metavar='BOOL',
-                        type=_str_to_bool)
+        default=None, type=float)
+    parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)',
+                        default=False, metavar='BOOL', type=_str_to_bool)
     parser.add_argument(
-        '--metrics',
-        help='Comma-separated list of metrics or "none" (default: %(default)s)',
-        default='None',
-        type=_parse_comma_sep)
-    parser.add_argument('--model_type',
-                        help='Type of model to train',
-                        default='vc_gan',
-                        type=str,
-                        metavar='MODEL_TYPE',
-                        choices=['info_gan', 'vc_gan', 'vc_gan_with_vc_head'])
-    parser.add_argument('--resume_pkl',
-                        help='Continue training using pretrained pkl.',
-                        default=None,
-                        metavar='RESUME_PKL',
-                        type=str)
-    parser.add_argument(
-        '--n_samples_per',
-        help=
-        'Number of samples for each line in traversal (default: %(default)s)',
-        metavar='N_SHOWN_SAMPLES_PER_LINE',
-        default=10,
-        type=int)
-    parser.add_argument('--module_list',
-                        help='Module list for modular network.',
-                        default=None,
-                        metavar='MODULE_LIST',
-                        type=str)
+        '--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)',
+        default='None', type=_parse_comma_sep)
+    parser.add_argument('--model_type', help='Type of model to train', default='vc_gan',
+                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc_gan', 'vc_gan_with_vc_head'])
+    parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
+                        default=None, metavar='RESUME_PKL', type=str)
+    parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
+        metavar='N_SHOWN_SAMPLES_PER_LINE', default=10, type=int)
+    parser.add_argument('--module_list', help='Module list for modular network.',
+                        default=None, metavar='MODULE_LIST', type=str)
     parser.add_argument(
         '--single_const',
-        help=
-        'Use a single constant feature at the top or not (if not, n_classes of const feature maps will be used and gathered).',
-        default=True,
-        metavar='BOOL',
-        type=_str_to_bool)
-    parser.add_argument('--D_lambda',
-                        help='Discrete lambda for INFO-GAN and VC-GAN.',
-                        metavar='D_LAMBDA',
-                        default=1,
-                        type=float)
-    parser.add_argument('--C_lambda',
-                        help='Continuous lambda for INFO-GAN and VC-GAN.',
-                        metavar='C_LAMBDA',
-                        default=1,
-                        type=float)
-    parser.add_argument('--F_beta',
-                        help='F_beta INFO-GAN and VC-GAN.',
-                        metavar='F_BETA',
-                        default=1,
-                        type=float)
-    parser.add_argument('--epsilon_loss',
-                        help='Continuous lambda for INFO-GAN and VC-GAN.',
-                        metavar='EPSILON_LOSS',
-                        default=0.4,
-                        type=float)
-    parser.add_argument('--where_feat_map',
-                        help='Which layer of feat map to use for F_loss.',
-                        metavar='WHERE_FEAT_MAP',
-                        default=15,
-                        type=int)
-    parser.add_argument('--latent_type',
-                        help='What type of latent priori to use.',
-                        metavar='LATENT_TYPE',
-                        default='uniform',
-                        choices=['uniform', 'normal'],
-                        type=str)
-    parser.add_argument(
-        '--random_eps',
+        help='Use a single constant feature at the top or not (if not, n_classes of const feature maps will be used and gathered).',
+        default=True, metavar='BOOL', type=_str_to_bool)
+    parser.add_argument('--D_lambda', help='Discrete lambda for INFO-GAN and VC-GAN.',
+                        metavar='D_LAMBDA', default=1, type=float)
+    parser.add_argument('--C_lambda', help='Continuous lambda for INFO-GAN and VC-GAN.',
+                        metavar='C_LAMBDA', default=1, type=float)
+    parser.add_argument('--F_beta', help='F_beta INFO-GAN and VC-GAN.',
+                        metavar='F_BETA', default=1, type=float)
+    parser.add_argument('--cls_alpha', help='Classification hyper in VC-GAN.',
+                        metavar='CLS_ALPHA', default=0, type=float)
+    parser.add_argument('--epsilon_loss', help='Continuous lambda for INFO-GAN and VC-GAN.',
+                        metavar='EPSILON_LOSS', default=0.4, type=float)
+    parser.add_argument('--where_feat_map', help='Which layer of feat map to use for F_loss.',
+                        metavar='WHERE_FEAT_MAP', default=15, type=int)
+    parser.add_argument('--latent_type', help='What type of latent priori to use.',
+                        metavar='LATENT_TYPE', default='uniform', choices=['uniform', 'normal'], type=str)
+    parser.add_argument( '--random_eps',
         help='If use random epsilon in vc_gan_with_vc_head loss.',
-        default=False,
-        metavar='RANDOM_EPS',
-        type=_str_to_bool)
+        default=False, metavar='RANDOM_EPS', type=_str_to_bool)
 
     args = parser.parse_args()
 

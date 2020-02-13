@@ -8,7 +8,7 @@
 
 # --- File Name: spatial_biased_modular_networks.py
 # --- Creation Date: 01-02-2020
-# --- Last Modified: Thu 06 Feb 2020 17:02:23 AEDT
+# --- Last Modified: Thu 13 Feb 2020 15:15:31 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,7 +45,7 @@ from stn.stn import spatial_transformer_network as transformer
 # 6) noise (at top and middle and bottom).
 
 LATENT_MODULES = [
-    'D_global', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat'
+    'D_global', 'C_global_nocond', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat'
 ]
 
 

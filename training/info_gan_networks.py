@@ -8,7 +8,7 @@
 
 # --- File Name: info_gan_networks.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Tue 04 Feb 2020 22:23:39 AEDT
+# --- Last Modified: Thu 13 Feb 2020 16:18:59 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -170,4 +170,36 @@ def info_gan_head(
                 dense_layer(x,
                             fmaps=(D_global_size + 2 *
                                    (dlatent_size - D_global_size))))
+    return x
+
+#----------------------------------------------------------------------------
+# Info-Gan Head network for classification only.
+
+
+def info_gan_head_cls(
+        hidden,  # First input: hidden features [minibatch, n_feat].
+        dlatent_size=10,
+        D_global_size=0,
+        fmap_base=16 <<
+        10,  # Overall multiplier for the number of feature maps.
+        fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
+        fmap_min=1,  # Minimum number of feature maps in any layer.
+        fmap_max=512,  # Maximum number of feature maps in any layer.
+        nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        dtype='float32',  # Data type to use for activations and outputs.
+        **_kwargs):  # Ignore unrecognized keyword args.
+    def nf(stage):
+        return np.clip(int(fmap_base / (2.0**(stage * fmap_decay))), fmap_min,
+                       fmap_max)
+
+    act = nonlinearity
+    hidden.set_shape([None, nf(0)])
+    hidden = tf.cast(hidden, dtype)
+    with tf.variable_scope('InfoGanHead'):
+        with tf.variable_scope('Dense_Hidden'):
+            x = apply_bias_act(dense_layer(hidden, fmaps=512), act=act)
+        with tf.variable_scope('Dense_InfoGan'):
+            x = apply_bias_act(
+                dense_layer(x,
+                            fmaps=D_global_size))
     return x
