@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 13 Feb 2020 16:59:39 AEDT
+# --- Last Modified: Thu 13 Feb 2020 17:03:25 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -181,7 +181,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
             D_global_size=D_global_size, C_lambda=C_lambda, F_beta=F_beta, cls_alpha=cls_alpha, 
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type)  # Options for generator loss.
-        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
+        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_info_gan',
             D_global_size=D_global_size, F_beta=F_beta, latent_type=latent_type)  # Options for discriminator loss.
     else:
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_dsp',
