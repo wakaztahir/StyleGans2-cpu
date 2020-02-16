@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 13 Feb 2020 17:08:26 AEDT
+# --- Last Modified: Sun 16 Feb 2020 03:34:16 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -67,21 +67,27 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global') or key.startswith('D_global_nocond'):
-                D_global_size = size_ls[i]
+            if key.startswith('D_global') or key.startswith('D_nocond_global'):
+                D_global_size += size_ls[i]
                 break
         print('D_global_size:', D_global_size)
+        print('key_ls:', key_ls)
+        print('size_ls:', size_ls)
+        print('count_dlatent_size:', count_dlatent_size)
         G = EasyDict(
             func_name=
-            'training.spatial_biased_networks.G_main_spatial_biased_dsp',
+            'training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16, fmap_max=512, fmap_decay=0.15,
-            latent_size=count_dlatent_size, dlatent_size=count_dlatent_size,
-            D_global_size=D_global_size, module_list=module_list,
-            single_const=single_const, use_noise=True)  # Options for generator network.
-        I = EasyDict(func_name='training.info_gan_networks.info_gan_head',
-                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-                     fmap_decay=0.15, fmap_min=16, fmap_max=512)
+            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size, 
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size, 
+            module_list=module_list, single_const=single_const, 
+            where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
+        # I = EasyDict(func_name='training.info_gan_networks.info_gan_head',
+                     # dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+                     # fmap_decay=0.15, fmap_min=16, fmap_max=512)
+        I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
+                     dlatent_size=count_dlatent_size, 
+                     D_global_size=D_global_size, fmap_max=512)
         D = EasyDict(
             func_name='training.info_gan_networks.D_info_gan_stylegan2',
             fmap_max=512)  # Options for discriminator network.
@@ -92,10 +98,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global') or key.startswith('D_global_nocond'):
-                D_global_size = size_ls[i]
+            if key.startswith('D_global') or key.startswith('D_nocond_global'):
+                D_global_size += size_ls[i]
                 break
         print('D_global_size:', D_global_size)
+        print('key_ls:', key_ls)
+        print('size_ls:', size_ls)
+        print('count_dlatent_size:', count_dlatent_size)
         G = EasyDict(
             func_name='training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
@@ -103,8 +112,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, single_const=single_const,
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
-        I = EasyDict(
-            func_name='training.variation_consistency_networks.vc_head',
+        I = EasyDict(func_name='training.variation_consistency_networks.vc_head',
             dlatent_size=count_dlatent_size,
             D_global_size=D_global_size, fmap_max=512)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
@@ -116,10 +124,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global') or key.startswith('D_global_nocond'):
-                D_global_size = size_ls[i]
+            if key.startswith('D_global') or key.startswith('D_nocond_global'):
+                D_global_size += size_ls[i]
                 break
         print('D_global_size:', D_global_size)
+        print('key_ls:', key_ls)
+        print('size_ls:', size_ls)
+        print('count_dlatent_size:', count_dlatent_size)
         G = EasyDict(
             func_name='training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
@@ -141,10 +152,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         key_ls, size_ls, count_dlatent_size, _ = split_module_names(
             module_list)
         for i, key in enumerate(key_ls):
-            if key.startswith('D_global') or key.startswith('D_global_nocond'):
-                D_global_size = size_ls[i]
+            if key.startswith('D_global') or key.startswith('D_nocond_global'):
+                D_global_size += size_ls[i]
                 break
         print('D_global_size:', D_global_size)
+        print('key_ls:', key_ls)
+        print('size_ls:', size_ls)
+        print('count_dlatent_size:', count_dlatent_size)
         G = EasyDict(
             func_name=
             'training.spatial_biased_networks.G_main_spatial_biased_dsp',
@@ -352,7 +366,7 @@ def main():
     parser.add_argument('--where_feat_map', help='Which layer of feat map to use for F_loss.',
                         metavar='WHERE_FEAT_MAP', default=15, type=int)
     parser.add_argument('--latent_type', help='What type of latent priori to use.',
-                        metavar='LATENT_TYPE', default='uniform', choices=['uniform', 'normal'], type=str)
+                        metavar='LATENT_TYPE', default='uniform', choices=['uniform', 'normal', 'trunc_normal'], type=str)
     parser.add_argument( '--random_eps',
         help='If use random epsilon in vc_gan_with_vc_head loss.',
         default=False, metavar='RANDOM_EPS', type=_str_to_bool)

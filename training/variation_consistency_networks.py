@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Thu 13 Feb 2020 15:28:20 AEDT
+# --- Last Modified: Sun 16 Feb 2020 16:44:14 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -159,6 +159,9 @@ def G_synthesis_vc_modular(
     # e.g. Conv layers (size in this case means number of conv layers).
     key_ls, size_ls, count_dlatent_size, n_content = split_module_names(
         module_list)
+    print('In key_ls:', key_ls)
+    print('In size_ls:', size_ls)
+    print('In count_dlatent_size:', count_dlatent_size)
     if label_size > 0:
         key_ls.insert(0, 'Label')
         size_ls.insert(0, label_size)
@@ -177,7 +180,7 @@ def G_synthesis_vc_modular(
             with tf.variable_scope('Const'):
                 x = tf.get_variable(
                     'const',
-                    shape=[1, 128, 4, 4],
+                    shape=[1, 32, 4, 4],
                     initializer=tf.initializers.random_normal())
                 x = tf.tile(tf.cast(x, dtype),
                             [tf.shape(dlatents_withl_in)[0], 1, 1, 1])
@@ -186,7 +189,7 @@ def G_synthesis_vc_modular(
             with tf.variable_scope('Const'):
                 x = tf.get_variable(
                     'const',
-                    shape=[n_content, 128, 4, 4],
+                    shape=[n_content, 32, 4, 4],
                     initializer=tf.initializers.random_normal())
 
     subkwargs = EasyDict()
@@ -226,8 +229,8 @@ def G_synthesis_vc_modular(
                                       scope_idx=scope_idx,
                                       **subkwargs)
             start_idx += size_ls[scope_idx]
-        elif k.startswith('C_global_nocond'):
-            # e.g. {'C_global': 2}
+        elif k.startswith('C_nocond_global'):
+            # e.g. {'C_nocond_global': 2}
             x = build_C_global_nocond_layers(x,
                                       name=k,
                                       n_latents=size_ls[scope_idx],
@@ -382,13 +385,19 @@ def vc_head(
         with tf.variable_scope('Dense0'):
             x = apply_bias_act(dense_layer(x, fmaps=nf(0)), act=act)
 
+    # # Output layer with label conditioning from "Which Training Methods for GANs do actually Converge?"
+    # with tf.variable_scope('Output'):
+        # with tf.variable_scope('Dense_VC'):
+            # x = apply_bias_act(
+                # dense_layer(x,
+                            # fmaps=(D_global_size +
+                                   # (dlatent_size - D_global_size))))
     # Output layer with label conditioning from "Which Training Methods for GANs do actually Converge?"
     with tf.variable_scope('Output'):
         with tf.variable_scope('Dense_VC'):
             x = apply_bias_act(
                 dense_layer(x,
-                            fmaps=(D_global_size +
-                                   (dlatent_size - D_global_size))))
+                            fmaps=dlatent_size - D_global_size))
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
@@ -409,13 +418,18 @@ def build_C_global_nocond_layers(x,
     Build continuous latent layers, e.g. C_global layers.
     '''
     with tf.variable_scope(name + '-' + str(scope_idx)):
-        C_global_latents = dlatents_withl_in[:, start_idx:start_idx +
-                                             n_latents]
-        x = apply_bias_act(modulated_conv2d_layer(x,
-                                                  C_global_latents,
-                                                  fmaps=fmaps,
-                                                  kernel=3,
-                                                  up=False,
-                                                  fused_modconv=fused_modconv),
-                           act=act)
+        with tf.variable_scope('Conv0'):
+            C_global_latents = apply_bias_act(dense_layer(
+                dlatents_withl_in[:, start_idx:start_idx + n_latents], fmaps=128),
+                                  act=act)
+        # C_global_latents = dlatents_withl_in[:, start_idx:start_idx +
+                                             # n_latents]
+        with tf.variable_scope('Modulate'):
+            x = apply_bias_act(modulated_conv2d_layer(x,
+                                                      C_global_latents,
+                                                      fmaps=fmaps,
+                                                      kernel=3,
+                                                      up=False,
+                                                      fused_modconv=False),
+                               act=act)
     return x

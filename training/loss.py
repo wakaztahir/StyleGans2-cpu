@@ -44,6 +44,8 @@ def G_logistic_ns_dsp(G, D, opt, training_set, minibatch_size, latent_type='unif
         latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
         latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
@@ -81,35 +83,39 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size, latent_ty
         latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
         latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake_images_out = G.get_output_for(latents, labels, is_training=True)
+    fake_images_out, _ = G.get_output_for(latents, labels, is_training=True)
     fake_scores_out, hidden = D.get_output_for(fake_images_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     
-    regress_out = I.get_output_for(hidden, is_training=True)
+    # regress_out = I.get_output_for(hidden, is_training=True)
+    regress_out = I.get_output_for(fake_images_out, is_training=True)
     I_loss = calc_info_gan_loss(latents, regress_out, D_global_size, G.input_shapes[0][1]-D_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
-    return G_loss, None, I_loss
+    return G_loss, None, I_loss, None
 
-# def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
+def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
+    # assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
+    assert regress_out.shape.as_list()[1] == C_global_size
+    # Continuous latents loss
+    prob_C = tf.nn.softmax(regress_out, axis=1)
+    I_loss_C = tf.reduce_sum(C_delta_latents * tf.log(prob_C + 1e-12), axis=1)
+    I_loss = - C_lambda * I_loss_C
+    return I_loss
+
+# def calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
     # assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
     # # Continuous latents loss
-    # prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
-    # I_loss_C = tf.reduce_sum(C_delta_latents * tf.log(prob_C + 1e-12), axis=1)
-    # I_loss = - C_lambda * I_loss_C
+    # I_loss_C = tf.reduce_mean((regress_out[:, D_global_size:] - delta_target) ** 2, axis=1)
+    # I_loss = C_lambda * I_loss_C
     # return I_loss
-
-def calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
-    assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
-    # Continuous latents loss
-    I_loss_C = tf.reduce_mean((regress_out[:, D_global_size:] - delta_target) ** 2, axis=1)
-    I_loss = C_lambda * I_loss_C
-    return I_loss
 
 def calc_cls_loss(discrete_latents, cls_out, D_global_size, C_global_size, cls_alpha):
     assert cls_out.shape.as_list()[1] == D_global_size
@@ -126,38 +132,47 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, la
     if D_global_size > 0:
         discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
         discrete_latents = tf.one_hot(discrete_latents, D_global_size)
+        discrete_latents_2 = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents_2 = tf.one_hot(discrete_latents_2, D_global_size)
 
     if latent_type == 'uniform':
         latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
-        latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+        # latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+        latents = tf.random.normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
-
-    if D_global_size > 0:
-        latents = tf.concat([discrete_latents, latents], axis=1)
 
     # Sample delta latents
     C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
     C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
     if not random_eps:
         delta_target = C_delta_latents * epsilon
-        delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+        # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
     else:
         epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
         delta_target = C_delta_latents * epsilon
-        delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
-    delta_latents = delta_latents + latents
+        # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+    delta_latents = delta_target + latents
+
+    if D_global_size > 0:
+        latents = tf.concat([discrete_latents, latents], axis=1)
+        delta_latents = tf.concat([discrete_latents_2, delta_latents], axis=1)
 
     labels = training_set.get_random_labels_tf(minibatch_size)
     fake1_out, feat_map1 = G.get_output_for(latents, labels, is_training=True)
     fake2_out, feat_map2 = G.get_output_for(delta_latents, labels, is_training=True)
-    fake_scores_out, hidden = D.get_output_for(fake1_out, labels, is_training=True)
+    if I_info is not None:
+        fake_scores_out, hidden = D.get_output_for(fake1_out, labels, is_training=True)
+    else:
+        fake_scores_out = D.get_output_for(fake1_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     
     regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
-    # I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
-    I_loss = calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+    I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+    # I_loss = calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
     F_loss = tf.reduce_mean(feat_map1 * feat_map1, axis=[1, 2, 3])
@@ -218,6 +233,8 @@ def D_logistic_r1_dsp(G, D, opt, training_set, minibatch_size, reals, labels, ga
         latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
         latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     if D_global_size > 0:
@@ -249,6 +266,8 @@ def D_logistic_r1_info_gan(G, D, opt, training_set, minibatch_size, reals, label
         latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
     elif latent_type == 'normal':
         latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     if D_global_size > 0:
