@@ -62,6 +62,8 @@ class Optimizer:
         self.loss_scaling_init      = loss_scaling_init
         self.loss_scaling_inc       = loss_scaling_inc
         self.loss_scaling_dec       = loss_scaling_dec
+        # by Xinqi
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
 
         # Private fields.
         self._updates_applied       = False
@@ -235,7 +237,7 @@ class Optimizer:
 
                 # No overflow => apply gradients.
                 all_ok = tf.reduce_all(tf.stack([acc_ok] + [tf.reduce_all(tf.is_finite(g)) for g in device.grad_acc.values()]))
-                apply_op = lambda: device.optimizer.apply_gradients([(tf.cast(grad, var.dtype), var) for var, grad in device.grad_acc.items()])
+                apply_op = lambda: device.optimizer.apply_gradients([(tf.cast(grad, var.dtype), var) for var, grad in device.grad_acc.items()], global_step=self.global_step)
                 all_ops.append(tf.cond(all_ok, apply_op, tf.no_op))
 
                 # Adjust loss scaling.

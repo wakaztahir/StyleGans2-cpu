@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Sun 16 Feb 2020 16:44:14 AEDT
+# --- Last Modified: Mon 17 Feb 2020 02:20:01 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -385,19 +385,13 @@ def vc_head(
         with tf.variable_scope('Dense0'):
             x = apply_bias_act(dense_layer(x, fmaps=nf(0)), act=act)
 
-    # # Output layer with label conditioning from "Which Training Methods for GANs do actually Converge?"
-    # with tf.variable_scope('Output'):
-        # with tf.variable_scope('Dense_VC'):
-            # x = apply_bias_act(
-                # dense_layer(x,
-                            # fmaps=(D_global_size +
-                                   # (dlatent_size - D_global_size))))
     # Output layer with label conditioning from "Which Training Methods for GANs do actually Converge?"
     with tf.variable_scope('Output'):
         with tf.variable_scope('Dense_VC'):
             x = apply_bias_act(
                 dense_layer(x,
-                            fmaps=dlatent_size - D_global_size))
+                            fmaps=(D_global_size +
+                                   (dlatent_size - D_global_size))))
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
@@ -430,6 +424,6 @@ def build_C_global_nocond_layers(x,
                                                       fmaps=fmaps,
                                                       kernel=3,
                                                       up=False,
-                                                      fused_modconv=False),
+                                                      fused_modconv=fused_modconv),
                                act=act)
     return x

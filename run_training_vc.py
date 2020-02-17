@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sun 16 Feb 2020 03:34:16 AEDT
+# --- Last Modified: Mon 17 Feb 2020 14:09:06 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -113,8 +113,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             module_list=module_list, single_const=single_const,
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
         I = EasyDict(func_name='training.variation_consistency_networks.vc_head',
-            dlatent_size=count_dlatent_size,
-            D_global_size=D_global_size, fmap_max=512)
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=512)  # Options for discriminator network.
         I_info = EasyDict()

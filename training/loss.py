@@ -102,12 +102,26 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size, latent_ty
     return G_loss, None, I_loss, None
 
 def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
-    # assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
-    assert regress_out.shape.as_list()[1] == C_global_size
+    assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
     # Continuous latents loss
-    prob_C = tf.nn.softmax(regress_out, axis=1)
-    I_loss_C = tf.reduce_sum(C_delta_latents * tf.log(prob_C + 1e-12), axis=1)
-    I_loss = - C_lambda * I_loss_C
+    prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
+    I_loss_C = C_delta_latents * tf.log(prob_C + 1e-12)
+
+    # # apply cascading
+    # cascade_max = 1e5
+    # cascade_step = cascade_max // int(C_global_size)
+    # global_step = tf.compat.v1.train.get_global_step()
+    # n_emph_free = global_step // int(cascade_step)
+    # n_emph = tf.math.minimum(n_emph_free, C_global_size)
+    # lambda_front = tf.tile([[C_lambda]], [1, n_emph])
+    # lambda_end = tf.tile([[1e-9]], [1, C_global_size - n_emph])
+    # lambda_final = tf.concat([lambda_front, lambda_end], axis=1)
+    # I_loss_C = lambda_final * I_loss_C
+
+    I_loss = C_lambda * I_loss_C
+
+    I_loss_C = tf.reduce_sum(I_loss_C, axis=1)
+    I_loss = - I_loss_C
     return I_loss
 
 # def calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
@@ -146,15 +160,27 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, la
         raise ValueError('Latent type not supported: ' + latent_type)
 
     # Sample delta latents
-    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
-    C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
+    # C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+    # C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
+
+    # apply cascading
+    cascade_max = 1e5
+    cascade_step = cascade_max // int(C_global_size)
+    global_step = tf.compat.v1.train.get_global_step()
+    n_emph_free = global_step // int(cascade_step) + 1
+    n_emph = tf.math.minimum(n_emph_free, C_global_size)
+    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_emph, dtype=tf.int32)
+    C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, n_emph), latents.dtype)
+    C_delta_latents = tf.concat([C_delta_latents, tf.zeros([minibatch_size, C_global_size - n_emph])], axis=1)
+
     if not random_eps:
         delta_target = C_delta_latents * epsilon
         # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
     else:
         epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
-        delta_target = C_delta_latents * epsilon
+        delta_target = tf.math.abs(C_delta_latents * epsilon)
         # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+
     delta_latents = delta_target + latents
 
     if D_global_size > 0:
