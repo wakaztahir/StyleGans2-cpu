@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Mon 17 Feb 2020 14:09:06 AEDT
+# --- Last Modified: Tue 18 Feb 2020 15:12:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -56,7 +56,7 @@ _valid_configs = [
 def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         mirror_augment, metrics, resume_pkl, D_lambda=1, C_lambda=1, F_beta=0, cls_alpha=0, 
         n_samples_per=10, module_list=None, single_const=True, model_type='spatial_biased', 
-        epsilon_loss=0.4, where_feat_map=15, random_eps=False, latent_type='uniform'):
+        epsilon_loss=0.4, where_feat_map=15, random_eps=False, latent_type='uniform', delta_type='onedim'):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
                      )  # Options for training loop.
@@ -187,13 +187,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     elif model_type == 'vc_gan_with_vc_head':
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
             D_global_size=D_global_size, C_lambda=C_lambda, F_beta=F_beta,
-            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type)  # Options for generator loss.
+            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type, delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss.D_logistic_r1_dsp',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc_gan_with_vc_head_with_cls':
         G_loss = EasyDict(func_name='training.loss.G_logistic_ns_vc',
-            D_global_size=D_global_size, C_lambda=C_lambda, F_beta=F_beta, cls_alpha=cls_alpha, 
-            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type)  # Options for generator loss.
+            D_global_size=D_global_size, C_lambda=C_lambda, F_beta=F_beta, cls_alpha=cls_alpha,
+            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type, delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss.D_logistic_r1_info_gan',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     else:
@@ -369,6 +369,8 @@ def main():
     parser.add_argument( '--random_eps',
         help='If use random epsilon in vc_gan_with_vc_head loss.',
         default=False, metavar='RANDOM_EPS', type=_str_to_bool)
+    parser.add_argument('--delta_type', help='What type of delta use.',
+                        metavar='DELTA_TYPE', default='onedim', choices=['onedim', 'fulldim'], type=str)
 
     args = parser.parse_args()
 

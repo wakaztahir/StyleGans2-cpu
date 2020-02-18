@@ -101,27 +101,19 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size, latent_ty
     I_loss = autosummary('Loss/I_loss', I_loss)
     return G_loss, None, I_loss, None
 
-def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
+def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type):
     assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
     # Continuous latents loss
-    prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
-    I_loss_C = C_delta_latents * tf.log(prob_C + 1e-12)
+    if delta_type == 'onedim':
+        prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
+        I_loss_C = C_delta_latents * tf.log(prob_C + 1e-12)
+        I_loss = C_lambda * I_loss_C
 
-    # # apply cascading
-    # cascade_max = 1e5
-    # cascade_step = cascade_max // int(C_global_size)
-    # global_step = tf.compat.v1.train.get_global_step()
-    # n_emph_free = global_step // int(cascade_step)
-    # n_emph = tf.math.minimum(n_emph_free, C_global_size)
-    # lambda_front = tf.tile([[C_lambda]], [1, n_emph])
-    # lambda_end = tf.tile([[1e-9]], [1, C_global_size - n_emph])
-    # lambda_final = tf.concat([lambda_front, lambda_end], axis=1)
-    # I_loss_C = lambda_final * I_loss_C
-
-    I_loss = C_lambda * I_loss_C
-
-    I_loss_C = tf.reduce_sum(I_loss_C, axis=1)
-    I_loss = - I_loss_C
+        I_loss_C = tf.reduce_sum(I_loss_C, axis=1)
+        I_loss = - I_loss_C
+    elif delta_type == 'fulldim':
+        I_loss_C = tf.reduce_sum((tf.nn.sigmoid(regress_out[:, D_global_size:]) - C_delta_latents) ** 2, axis=1)
+        I_loss = C_lambda * I_loss_C
     return I_loss
 
 # def calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
@@ -139,7 +131,8 @@ def calc_cls_loss(discrete_latents, cls_out, D_global_size, C_global_size, cls_a
     return I_info_loss
 
 def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
-                     D_global_size=0, D_lambda=0, C_lambda=1, F_beta=0, cls_alpha=0, epsilon=0.4, random_eps=False):
+                     D_global_size=0, D_lambda=0, C_lambda=1, F_beta=0, cls_alpha=0, epsilon=0.4,
+                     random_eps=False, delta_type='onedim'):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -167,19 +160,28 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, la
     cascade_max = 1e5
     cascade_step = cascade_max // int(C_global_size)
     global_step = tf.compat.v1.train.get_global_step()
-    n_emph_free = global_step // int(cascade_step) + 1
+    n_emph_free = tf.math.floormod(global_step // int(cascade_step), C_global_size) + 2
     n_emph = tf.math.minimum(n_emph_free, C_global_size)
-    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_emph, dtype=tf.int32)
-    C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, n_emph), latents.dtype)
+
+    if delta_type == 'onedim':
+        C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_emph, dtype=tf.int32)
+        C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, n_emph), latents.dtype)
+    elif delta_type == 'fulldim':
+        C_delta_latents = tf.random.uniform([minibatch_size, n_emph], minval=0, maxval=1.0, dtype=latents.dtype)
+
     C_delta_latents = tf.concat([C_delta_latents, tf.zeros([minibatch_size, C_global_size - n_emph])], axis=1)
 
-    if not random_eps:
-        delta_target = C_delta_latents * epsilon
-        # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+    if delta_type == 'onedim':
+        if not random_eps:
+            delta_target = C_delta_latents * epsilon
+            # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+        else:
+            epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
+            # delta_target = tf.math.abs(C_delta_latents * epsilon)
+            delta_target = C_delta_latents * epsilon
+            # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
     else:
-        epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
-        delta_target = tf.math.abs(C_delta_latents * epsilon)
-        # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+        delta_target = (C_delta_latents - 0.5) * epsilon
 
     delta_latents = delta_target + latents
 
@@ -197,7 +199,7 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, la
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     
     regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
-    I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+    I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type)
     # I_loss = calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
