@@ -132,7 +132,7 @@ def calc_cls_loss(discrete_latents, cls_out, D_global_size, C_global_size, cls_a
 
 def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
                      D_global_size=0, D_lambda=0, C_lambda=1, F_beta=0, cls_alpha=0, epsilon=0.4,
-                     random_eps=False, delta_type='onedim'):
+                     random_eps=False, delta_type='onedim', cascading=False):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -152,24 +152,28 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, la
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
-    # Sample delta latents
-    # C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
-    # C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
+    if not cascading:
+        # Sample delta latents
+        if delta_type == 'onedim':
+            C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+            C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
+        elif delta_type == 'fulldim':
+            C_delta_latents = tf.random.uniform([minibatch_size, C_global_size], minval=0, maxval=1.0, dtype=latents.dtype)
+    else:
+        # apply cascading
+        cascade_max = 1e5
+        cascade_step = cascade_max // int(C_global_size)
+        global_step = tf.compat.v1.train.get_global_step()
+        n_emph_free = tf.math.floormod(global_step // int(cascade_step), C_global_size) + 2
+        n_emph = tf.math.minimum(n_emph_free, C_global_size)
 
-    # apply cascading
-    cascade_max = 1e5
-    cascade_step = cascade_max // int(C_global_size)
-    global_step = tf.compat.v1.train.get_global_step()
-    n_emph_free = tf.math.floormod(global_step // int(cascade_step), C_global_size) + 2
-    n_emph = tf.math.minimum(n_emph_free, C_global_size)
+        if delta_type == 'onedim':
+            C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_emph, dtype=tf.int32)
+            C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, n_emph), latents.dtype)
+        elif delta_type == 'fulldim':
+            C_delta_latents = tf.random.uniform([minibatch_size, n_emph], minval=0, maxval=1.0, dtype=latents.dtype)
 
-    if delta_type == 'onedim':
-        C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=n_emph, dtype=tf.int32)
-        C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, n_emph), latents.dtype)
-    elif delta_type == 'fulldim':
-        C_delta_latents = tf.random.uniform([minibatch_size, n_emph], minval=0, maxval=1.0, dtype=latents.dtype)
-
-    C_delta_latents = tf.concat([C_delta_latents, tf.zeros([minibatch_size, C_global_size - n_emph])], axis=1)
+        C_delta_latents = tf.concat([C_delta_latents, tf.zeros([minibatch_size, C_global_size - n_emph])], axis=1)
 
     if delta_type == 'onedim':
         if not random_eps:
@@ -187,7 +191,8 @@ def G_logistic_ns_vc(G, D, I, opt, training_set, minibatch_size, I_info=None, la
 
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
-        delta_latents = tf.concat([discrete_latents_2, delta_latents], axis=1)
+        # delta_latents = tf.concat([discrete_latents_2, delta_latents], axis=1)
+        delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_latents], axis=1)
 
     labels = training_set.get_random_labels_tf(minibatch_size)
     fake1_out, feat_map1 = G.get_output_for(latents, labels, is_training=True)
