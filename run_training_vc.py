@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Tue 18 Feb 2020 23:27:09 AEDT
+# --- Last Modified: Fri 21 Feb 2020 14:29:04 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -83,12 +83,12 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size, 
             module_list=module_list, single_const=single_const, 
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
-        # I = EasyDict(func_name='training.info_gan_networks.info_gan_head',
-                     # dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-                     # fmap_decay=0.15, fmap_min=16, fmap_max=512)
-        I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
-                     dlatent_size=count_dlatent_size, 
-                     D_global_size=D_global_size, fmap_max=512)
+        I = EasyDict(func_name='training.info_gan_networks.info_gan_head',
+                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+                     fmap_decay=0.15, fmap_min=16, fmap_max=512)
+        # I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
+                     # dlatent_size=count_dlatent_size, 
+                     # D_global_size=D_global_size, fmap_max=512)
         D = EasyDict(
             func_name='training.info_gan_networks.D_info_gan_stylegan2',
             fmap_max=512)  # Options for discriminator network.
