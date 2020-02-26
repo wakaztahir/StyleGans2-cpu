@@ -52,7 +52,7 @@ def G_logistic_ns_dsp(G, D, opt, training_set, minibatch_size, latent_type='unif
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake_images_out = G.get_output_for(latents, labels, is_training=True)
+    fake_images_out, _ = G.get_output_for(latents, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     return loss, None
@@ -95,8 +95,8 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size, latent_ty
     fake_scores_out, hidden = D.get_output_for(fake_images_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     
-    regress_out = I.get_output_for(hidden, is_training=True)
-    # regress_out = I.get_output_for(fake_images_out, is_training=True)
+    # regress_out = I.get_output_for(hidden, is_training=True)
+    regress_out = I.get_output_for(fake_images_out, is_training=True)
     I_loss = calc_info_gan_loss(latents, regress_out, D_global_size, G.input_shapes[0][1]-D_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
     return G_loss, None, I_loss, None
