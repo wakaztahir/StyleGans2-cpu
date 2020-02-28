@@ -3,3 +3,4 @@
 *.pkl
 *.pyc
 run_*.sh
+*.so
