@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Mon 17 Feb 2020 02:20:01 AEDT
+# --- Last Modified: Thu 27 Feb 2020 01:33:34 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -310,6 +310,7 @@ def vc_head(
         resample_kernel=[
             1, 3, 3, 1
         ],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        connect_mode='concat',  # How fake1 and fake2 connected.
         **_kwargs):  # Ignore unrecognized keyword args.
 
     resolution_log2 = int(np.log2(resolution))
@@ -326,7 +327,10 @@ def vc_head(
     fake2.set_shape([None, num_channels, resolution, resolution])
     fake1 = tf.cast(fake1, dtype)
     fake2 = tf.cast(fake2, dtype)
-    images_in = tf.concat([fake1, fake2], axis=1)
+    if connect_mode == 'diff':
+        images_in = fake1 - fake2
+    elif connect_mode == 'concat':
+        images_in = tf.concat([fake1, fake2], axis=1)
 
     # Building blocks for main layers.
     def fromrgb(x, y, res):  # res = 2..resolution_log2

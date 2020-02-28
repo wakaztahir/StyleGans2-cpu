@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sun 23 Feb 2020 02:35:33 AEDT
+# --- Last Modified: Thu 27 Feb 2020 01:35:45 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -57,7 +57,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         mirror_augment, metrics, resume_pkl, D_lambda=1, C_lambda=1, F_beta=0, cls_alpha=0, 
         n_samples_per=10, module_list=None, single_const=True, model_type='spatial_biased', 
         epsilon_loss=0.4, where_feat_map=15, random_eps=False, latent_type='uniform', 
-        delta_type='onedim', cascading=False):
+        delta_type='onedim', cascading=False, connect_mode='concat'):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc.training_loop_vc'
                      )  # Options for training loop.
@@ -114,7 +114,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             module_list=module_list, single_const=single_const,
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
         I = EasyDict(func_name='training.variation_consistency_networks.vc_head',
-            dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512)
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512, 
+            connect_mode=connect_mode)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=512)  # Options for discriminator network.
         I_info = EasyDict()
@@ -139,7 +140,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             module_list=module_list, single_const=single_const,
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
         I = EasyDict(func_name='training.variation_consistency_networks.vc_head',
-            dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512)
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512, 
+            connect_mode=connect_mode)
         I_info = EasyDict(func_name='training.info_gan_networks.info_gan_head_cls',
                      dlatent_size=count_dlatent_size, D_global_size=D_global_size,
                      fmap_decay=0.15, fmap_min=16, fmap_max=512)
@@ -377,6 +379,8 @@ def main():
                         metavar='DELTA_TYPE', default='onedim', choices=['onedim', 'fulldim'], type=str)
     parser.add_argument('--cascading', help='If use cascading',
                         default=False, metavar='CASCADING', type=_str_to_bool)
+    parser.add_argument('--connect_mode', help='How fake1 and fake2 connected.',
+                        default='concat', metavar='CONNECT_MODE', type=str)
 
     args = parser.parse_args()
 
