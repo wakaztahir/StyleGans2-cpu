@@ -8,7 +8,7 @@
 
 # --- File Name: variation_consistency_networks.py
 # --- Creation Date: 03-02-2020
-# --- Last Modified: Thu 05 Mar 2020 04:29:06 AEDT
+# --- Last Modified: Thu 05 Mar 2020 05:00:28 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -180,7 +180,7 @@ def G_synthesis_vc_modular(
             with tf.variable_scope('Const'):
                 x = tf.get_variable(
                     'const',
-                    shape=[1, 1, 4, 4],
+                    shape=[1, 8, 4, 4],
                     initializer=tf.initializers.random_normal())
                 x = tf.tile(tf.cast(x, dtype),
                             [tf.shape(dlatents_withl_in)[0], 1, 1, 1])
@@ -189,7 +189,7 @@ def G_synthesis_vc_modular(
             with tf.variable_scope('Const'):
                 x = tf.get_variable(
                     'const',
-                    shape=[n_content, 1, 4, 4],
+                    shape=[n_content, 8, 4, 4],
                     initializer=tf.initializers.random_normal())
 
     subkwargs = EasyDict()
