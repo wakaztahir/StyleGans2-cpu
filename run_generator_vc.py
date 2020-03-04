@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc.py
 # --- Creation Date: 08-02-2020
-# --- Last Modified: Thu 20 Feb 2020 22:19:56 AEDT
+# --- Last Modified: Mon 02 Mar 2020 14:27:10 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -63,7 +63,7 @@ def generate_images(network_pkl,
 
         grid_size, grid_latents, grid_labels = get_grid_latents(
             n_discrete, n_continuous, n_samples_per, _G, grid_labels)
-        grid_fakes = Gs.run(grid_latents,
+        grid_fakes, _ = Gs.run(grid_latents,
                             grid_labels,
                             is_validation=True,
                             minibatch_size=4,

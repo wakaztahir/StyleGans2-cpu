@@ -8,7 +8,7 @@
 
 # --- File Name: info_gan_networks.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Sun 16 Feb 2020 00:05:28 AEDT
+# --- Last Modified: Wed 04 Mar 2020 17:44:46 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """

@@ -2,5 +2,6 @@
 *.swo
 *.pkl
 *.pyc
+*/*.pyc
 run_*.sh
 *.so

@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Thu 27 Feb 2020 01:35:45 AEDT
+# --- Last Modified: Wed 04 Mar 2020 17:44:06 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -54,7 +54,8 @@ _valid_configs = [
 
 
 def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
-        mirror_augment, metrics, resume_pkl, D_lambda=1, C_lambda=1, F_beta=0, cls_alpha=0, 
+        mirror_augment, metrics, resume_pkl, 
+        fmap_decay=0.15, D_lambda=1, C_lambda=1, F_beta=0, cls_alpha=0, 
         n_samples_per=10, module_list=None, single_const=True, model_type='spatial_biased', 
         epsilon_loss=0.4, where_feat_map=15, random_eps=False, latent_type='uniform', 
         delta_type='onedim', cascading=False, connect_mode='concat'):
@@ -79,13 +80,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             func_name=
             'training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size, 
+            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size, 
             dlatent_size=count_dlatent_size, D_global_size=D_global_size, 
             module_list=module_list, single_const=single_const, 
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
         # I = EasyDict(func_name='training.info_gan_networks.info_gan_head',
                      # dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-                     # fmap_decay=0.15, fmap_min=16, fmap_max=512)
+                     # fmap_decay=fmap_decay, fmap_min=16, fmap_max=512)
         I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
                      dlatent_size=count_dlatent_size, 
                      D_global_size=D_global_size, fmap_max=512)
@@ -109,7 +110,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G = EasyDict(
             func_name='training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size,
+            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, single_const=single_const,
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
@@ -118,6 +119,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             connect_mode=connect_mode)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=512)  # Options for discriminator network.
+        # D = EasyDict(func_name='training.variation_consistency_networks.D_stylegan2_simple',
+                     # fmap_max=512)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc_gan_with_vc_head_net'
     elif model_type == 'vc_gan_with_vc_head_with_cls':
@@ -135,7 +138,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G = EasyDict(
             func_name='training.variation_consistency_networks.G_main_vc',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size,
+            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, single_const=single_const,
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
@@ -144,7 +147,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             connect_mode=connect_mode)
         I_info = EasyDict(func_name='training.info_gan_networks.info_gan_head_cls',
                      dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-                     fmap_decay=0.15, fmap_min=16, fmap_max=512)
+                     fmap_decay=fmap_decay, fmap_min=16, fmap_max=512)
         D = EasyDict(
             func_name='training.info_gan_networks.D_info_gan_stylegan2',
             fmap_max=512)  # Options for discriminator network.
@@ -165,7 +168,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             func_name='training.variation_consistency_networks.G_main_vc',
             # func_name='training.spatial_biased_networks.G_main_spatial_biased_dsp',
             synthesis_func='G_synthesis_vc_modular',
-            fmap_min=16, fmap_max=512, fmap_decay=0.15, latent_size=count_dlatent_size,
+            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size, 
             module_list=module_list, single_const=single_const, 
             where_feat_map=where_feat_map, use_noise=True)  # Options for generator network.
@@ -173,6 +176,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         I_info = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
                      fmap_max=512)  # Options for discriminator network.
+        # D = EasyDict(func_name='training.variation_consistency_networks.D_stylegan2_simple',
+                     # fmap_max=512)  # Options for discriminator network.
         # D         = EasyDict(func_name='training.spatial_biased_networks.D_with_discrete_dsp', fmap_max=128)  # Options for discriminator network.
         desc = 'vc_gan_net'
     else:
@@ -381,6 +386,8 @@ def main():
                         default=False, metavar='CASCADING', type=_str_to_bool)
     parser.add_argument('--connect_mode', help='How fake1 and fake2 connected.',
                         default='concat', metavar='CONNECT_MODE', type=str)
+    parser.add_argument('--fmap_decay', help='fmap decay for network building.',
+                        metavar='FMAP_DECAY', default=0.15, type=float)
 
     args = parser.parse_args()
 
