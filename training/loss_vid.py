@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vid.py
 # --- Creation Date: 24-03-2020
-# --- Last Modified: Thu 02 Apr 2020 00:28:34 AEDT
+# --- Last Modified: Sat 04 Apr 2020 16:10:32 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -408,10 +408,11 @@ def I_vid_blurry(G, I, opt, training_set, minibatch_size, blurry_fake_out_mem, l
     # Sample delta latents
     C_delta_idxes = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
     C_delta_latents = tf.cast(tf.one_hot(C_delta_idxes, C_global_size), latents.dtype)
+    C_delta_idxes = autosummary('Loss/C_delta_idxes', C_delta_idxes)
 
     # Sample n_frames
     # n_frames = tf.random.uniform([], minval=2, maxval=8, dtype=tf.int32)
-    n_frames = tf.constant(3, dtype=tf.int32)
+    n_frames = tf.constant(2, dtype=tf.int32)
 
     # Produce mask
     mask_shared = tf.expand_dims(C_delta_latents, 1)
@@ -424,12 +425,13 @@ def I_vid_blurry(G, I, opt, training_set, minibatch_size, blurry_fake_out_mem, l
 
     # Generate linspace for the delta dimension with randomness
     dim_i = tf.linspace(-2., 2., n_frames, name='linspace_latent')
-    dim_i_delta = tf.random.uniform([n_frames],
+    dim_i = tf.reshape(dim_i, [1, n_frames, 1])
+    dim_i = tf.tile(dim_i, [minibatch_size, 1, C_global_size])
+
+    dim_i_delta = tf.random.uniform([minibatch_size, n_frames, C_global_size],
                                     minval=(-2.)/tf.cast(n_frames, tf.float32),
                                     maxval=2./tf.cast(n_frames, tf.float32))
     dim_i = dim_i + dim_i_delta
-    dim_i = tf.reshape(dim_i, [1, n_frames, 1])
-    dim_i = tf.tile(dim_i, [minibatch_size, 1, C_global_size])
 
     # Assign linspace with masks
     latents = tf.where(mask, dim_i, latents) # [b, n_frames, n_cdim]
@@ -451,7 +453,35 @@ def I_vid_blurry(G, I, opt, training_set, minibatch_size, blurry_fake_out_mem, l
                                      fake_out_shape[2], fake_out_shape[3]])
     fake_out = tf.transpose(fake_out, [0, 2, 1, 3, 4])
     fake_out = autosummary('Loss/I_fake_out', fake_out)
-    blurry_fake_out = (1 - phi) * fake_out + phi * blurry_fake_out_mem
+
+    print('C_delta_idxes.shape:', C_delta_idxes.get_shape().as_list())
+    blurry_fake_out = (1 - phi) * tf.gather(blurry_fake_out_mem, C_delta_idxes, axis=0) + phi * fake_out
+    print('blurry_fake_out.shape:', blurry_fake_out.get_shape().as_list())
+    blurry_fake_out = autosummary('Loss/blurry_fake_out', blurry_fake_out)
+
+    # C_delta_latents_norm, _ = tf.linalg.normalize(C_delta_latents, ord=1, axis=0) # Normalize C_delta_latents along batch (cannot work in this framework, will get None value)
+    C_delta_latents_norm = C_delta_latents
+    C_delta_latents_norm = autosummary('Loss/C_delta_latents_norm', C_delta_latents_norm)
+    print('C_delta_latents_norm.shape:', C_delta_latents_norm.get_shape().as_list())
+    C_delta_latents_norm_trans = tf.transpose(C_delta_latents_norm, [1, 0]) # Transpose for matmul
+    C_delta_latents_norm_trans = autosummary('Loss/C_delta_latents_norm_trans', C_delta_latents_norm_trans)
+    print('C_delta_latents_norm_trans.shape:', C_delta_latents_norm_trans.get_shape().as_list())
+    blurry_fake_out_mem_shape = tf.shape(blurry_fake_out_mem)
+    fake_out_flatten = tf.reshape(fake_out, [minibatch_size, -1])
+    blurry_fake_out_mem_update = tf.matmul(C_delta_latents_norm_trans, fake_out_flatten) # Get blurry update by selecting data for each continuous dim
+    blurry_fake_out_mem_if_update = tf.cast(tf.reduce_any(tf.math.not_equal(blurry_fake_out_mem_update, 0), axis=1), tf.float32)
+    # blurry_fake_out_mem_if_update = tf.cast(tf.reduce_sum(blurry_fake_out_mem_update, axis=1) > 0, tf.float32)
+    blurry_fake_out_mem_if_update = tf.reshape(blurry_fake_out_mem_if_update, [C_global_size, 1, 1, 1, 1])
+    blurry_fake_out_mem_update = tf.reshape(blurry_fake_out_mem_update, blurry_fake_out_mem_shape)
+    # blurry_fake_out_mem_update = tf.tensordot(C_delta_latents_norm_trans, fake_out, axes=[[1], [0]]) # Get blurry update by selecting data for each continuous dim
+    blurry_fake_out_mem_update = autosummary('Loss/blurry_fake_out_mem_update', blurry_fake_out_mem_update)
+    print('blurry_fake_out_mem_update.shape:', blurry_fake_out_mem_update.get_shape().as_list())
+    blurry_fake_out_mem_new = (1 - phi * blurry_fake_out_mem_if_update) * blurry_fake_out_mem + \
+        phi * blurry_fake_out_mem_update
+    blurry_fake_out_mem_new = autosummary('Loss/blurry_fake_out_mem_new', blurry_fake_out_mem_new)
+    print('blurry_fake_out_mem_new.shape:', blurry_fake_out_mem_new.get_shape().as_list())
+
+    # blurry_fake_out = phi * fake_out + (1 - phi) * blurry_fake_out_mem
     regress_out = I.get_output_for(blurry_fake_out, is_training=True)
     regress_out = autosummary('Loss/I_regress_out', regress_out)
 
@@ -459,7 +489,7 @@ def I_vid_blurry(G, I, opt, training_set, minibatch_size, blurry_fake_out_mem, l
                           C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
-    return I_loss, blurry_fake_out, None
+    return I_loss, blurry_fake_out_mem_new, None
 
 def D_logistic_r1_vid(G, D, opt, training_set, minibatch_size, reals, labels,
                       gamma=10.0, latent_type='uniform', D_global_size=0):

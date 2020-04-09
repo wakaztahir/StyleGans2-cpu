@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vid.py
 # --- Creation Date: 23-03-2020
-# --- Last Modified: Thu 02 Apr 2020 00:32:47 AEDT
+# --- Last Modified: Sat 04 Apr 2020 01:23:44 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -324,8 +324,8 @@ def training_loop_vid(
                     blurry_fake_out_mem = tf.Variable(name='blurry_mem',
                                                       trainable=False,
                                                       initial_value=tf.zeros([
-                                                          sched.minibatch_gpu,
-                                                          3, 3, 128, 128 # [b, n_frames, c, h, w]
+                                                          n_continuous,
+                                                          3, 2, 128, 128 # [n_con, c, n_frames, h, w]
                                                       ]))
 
             # Evaluate loss functions.
@@ -359,11 +359,11 @@ def training_loop_vid(
                             labels=labels_read, **D_loss_args)
                     with tf.name_scope('I_loss'):
                         if use_vid_blurry:
-                            I_loss, blurry_fake_out, I_reg = dnnlib.util.call_func_by_name(
+                            I_loss, blurry_fake_out_mem_new, I_reg = dnnlib.util.call_func_by_name(
                                 G=G_gpu, I=I_gpu, opt=I_opt, training_set=training_set,
                                 minibatch_size=minibatch_gpu_in, blurry_fake_out_mem=blurry_fake_out_mem,
                                 **I_loss_args)
-                            blurry_assign_ops += [tf.assign(blurry_fake_out_mem, blurry_fake_out)]
+                            blurry_assign_ops += [tf.assign(blurry_fake_out_mem, blurry_fake_out_mem_new)]
                         else:
                             I_loss, I_reg = dnnlib.util.call_func_by_name(
                                 G=G_gpu, I=I_gpu, opt=I_opt, training_set=training_set,
@@ -593,6 +593,18 @@ def training_loop_vid(
                                          'fakes%06d.png' % (cur_nimg // 1000)),
                                      drange=drange_net,
                                      grid_size=grid_size)
+                if use_vid_blurry:
+                    # [b, c, n_frames, h, w]
+                    blurry_for_show = tflib.run(blurry_fake_out_mem_new, feed_dict=feed_dict)
+                    blurry_for_show = np.transpose(blurry_for_show, (0, 2, 1, 3, 4))
+                    (bl_ncon, bl_nframes, bl_c, bl_h, bl_w) = blurry_for_show.shape
+                    blurry_for_show = np.reshape(blurry_for_show, 
+                                                 (bl_ncon*bl_nframes, bl_c, bl_h, bl_w))
+                    misc.save_image_grid(blurry_for_show,
+                                         dnnlib.make_run_dir_path(
+                                             'blurry_fakes%06d.png' % (cur_nimg // 1000)),
+                                         drange=drange_net,
+                                         grid_size=(bl_nframes, bl_ncon))
             if network_snapshot_ticks is not None and (
                     cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' %
