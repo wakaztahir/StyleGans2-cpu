@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Wed 08 Apr 2020 17:08:50 AEST
+# --- Last Modified: Fri 10 Apr 2020 18:11:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -48,7 +48,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
         mirror_augment, metrics, resume_G_pkl, 
         D_global_size=0, C_global_size=10, model_type=False, latent_type='uniform', 
         resume_pkl=None, n_samples_per=4, D_lambda=0, C_lambda=1,
-        epsilon_in_loss=3, random_eps=True, M_lrmul=0.1):
+        epsilon_in_loss=3, random_eps=True, M_lrmul=0.1, resolution_manual=1024,
+        pretrained_type='with_stylegan2'):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
     M         = EasyDict(func_name='training.hd_networks.net_M',
                          C_global_size=C_global_size, D_global_size=D_global_size,
@@ -98,13 +99,14 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
     sc.submit_target = dnnlib.SubmitTarget.LOCAL
     sc.local.do_not_copy_source_files = True
     kwargs = EasyDict(train)
-    kwargs.update(I_args=I, M_args=M, I_opt_args=I_opt, 
+    kwargs.update(I_args=I, M_args=M, I_opt_args=I_opt,
                   I_loss_args=I_loss, resume_G_pkl=resume_G_pkl)
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid,
                   use_hd_with_cls=(model_type == 'hd_dis_model_with_cls'),
                   metric_arg_list=metrics, tf_config=tf_config, 
                   resume_pkl=resume_pkl, n_discrete=D_global_size,
-                  n_continuous=C_global_size, n_samples_per=n_samples_per)
+                  n_continuous=C_global_size, n_samples_per=n_samples_per,
+                  resolution_manual=resolution_manual, pretrained_type=pretrained_type)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -169,19 +171,25 @@ def main():
     parser.add_argument('--C_lambda', help='Continuous lambda for INFO-GAN and HD-GAN.',
                         metavar='C_LAMBDA', default=1, type=float)
     parser.add_argument('--latent_type', help='What type of latent priori to use.',
-                        metavar='LATENT_TYPE', default='uniform', choices=['uniform', 'normal', 'trunc_normal'], type=str)
+                        metavar='LATENT_TYPE',
+                        default='uniform', choices=['uniform', 'normal', 'trunc_normal'], type=str)
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
-    parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
+    parser.add_argument('--n_samples_per',
+                        help='Number of samples for each line in traversal (default: %(default)s)',
                         metavar='N_SHOWN_SAMPLES_PER_LINE', default=4, type=int)
     parser.add_argument('--resume_G_pkl', help='Pretrained G pkl.',
                         default=None, metavar='RESUME_G_PKL', type=str)
-    parser.add_argument( '--random_eps', help='If use random epsilon in loss.',
+    parser.add_argument('--random_eps', help='If use random epsilon in loss.',
                         default=True, metavar='RANDOM_EPS', type=_str_to_bool)
     parser.add_argument('--epsilon_in_loss', help='The epsilon value used in loss.',
                         metavar='EPSILON_IN_LOSS', default=3, type=float)
     parser.add_argument('--M_lrmul', help='Learning rate multiplier in M net.',
                         metavar='M_LRMUL', default=0.1, type=float)
+    parser.add_argument('--resolution_manual', help='Resolution of generated images.',
+                        metavar='RESOLUTION_MANUAL', default=1024, type=int)
+    parser.add_argument('--pretrained_type', help='Pretrained type for G.',
+                        metavar='PRETRAINED_TYPE', default='with_stylegan2', type=str)
 
     args = parser.parse_args()
 

@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 07 Apr 2020 20:00:12 AEST
+# --- Last Modified: Fri 10 Apr 2020 18:08:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -120,7 +120,8 @@ def training_loop_hd(
     n_continuous=10,  # Number of continuous latents in model.
     n_samples_per=4,  # Number of samples for each line in traversal.
     use_hd_with_cls=False,  # If use info_loss.
-    resolution_manual=1024):
+    resolution_manual=1024,  # Resolution of generated images.
+    pretrained_type='with_stylegan2'):  # Pretrained type for G.
 
     # Initialize dnnlib and TensorFlow.
     tflib.init_tf(tf_config)
@@ -156,8 +157,12 @@ def training_loop_hd(
                     I_info =rI_info
 
         print('Loading generator from "%s"...' % resume_pkl)
-        rG, rD, rGs = misc.load_pkl(resume_G_pkl)
-        G = rG; D = rD; Gs = rGs
+        if pretrained_type == 'with_stylegan2':
+            rG, rD, rGs = misc.load_pkl(resume_G_pkl)
+            G = rG; D = rD; Gs = rGs
+        elif pretrained_type == 'with_cascadeVAE':
+            rG = misc.load_pkl(resume_G_pkl)
+            G = rG; Gs = rG
 
     # Print layers and generate initial image snapshot.
     I.print_layers(); M.print_layers()
