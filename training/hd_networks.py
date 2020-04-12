@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 12 Apr 2020 16:05:28 AEST
+# --- Last Modified: Sun 12 Apr 2020 16:12:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -60,7 +60,7 @@ def net_M(latents_in,
     # x = x * 1.5
     with tf.variable_scope('Dense1'):
         # x = tf.zeros([tf.shape(x)[0], latent_size], dtype=x.dtype)
-        x = tf.random.normal([tf.shape(x)[0], latent_size], mean=0.0, stddev=2.0)
+        x = tf.random.normal([tf.shape(x)[0], latent_size], mean=0.0, stddev=1.0)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
