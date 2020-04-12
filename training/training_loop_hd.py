@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 11 Apr 2020 17:28:13 AEST
+# --- Last Modified: Sun 12 Apr 2020 16:25:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -186,7 +186,7 @@ def training_loop_hd(
                         grid_labels,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu,
-                        randomize_noise=False)
+                        randomize_noise=True)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
