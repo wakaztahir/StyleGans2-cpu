@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Wed 08 Apr 2020 17:17:02 AEST
+# --- Last Modified: Sun 12 Apr 2020 01:59:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -19,10 +19,9 @@ import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 
-def calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda):
-    assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
+def calc_vc_loss(delta_target, regress_out, C_global_size, D_lambda, C_lambda):
     # Continuous latents loss
-    prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
+    prob_C = tf.nn.softmax(regress_out, axis=1)
     I_loss_C = delta_target * tf.log(prob_C + 1e-12)
     I_loss_C = C_lambda * I_loss_C
 
@@ -41,14 +40,19 @@ def calc_cls_loss(discrete_latents, cls_out, D_global_size, C_global_size, cls_a
     return I_info_loss
 
 def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
-                     C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
-                     random_eps=False):
+               C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
+               random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024):
     _ = opt
     if D_global_size > 0:
         discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
         discrete_latents = tf.one_hot(discrete_latents, D_global_size)
         # discrete_latents_2 = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
         # discrete_latents_2 = tf.one_hot(discrete_latents_2, D_global_size)
+
+    resolution_log2 = int(np.log2(resolution_manual))
+    nd_out_base = C_global_size // (resolution_log2 - 1)
+    nd_out_list = [nd_out_base + C_global_size % (resolution_log2 - 1) if i == 0 else nd_out_base for i in range(resolution_log2 - 1)]
+    nd_out_list = nd_out_list[::-1]
 
     if latent_type == 'uniform':
         latents = tf.random.uniform([minibatch_size, C_global_size], minval=-2, maxval=2)
@@ -62,7 +66,7 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
     latents = autosummary('Loss/latents', latents)
 
     # Sample delta latents
-    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=sum(nd_out_list[:n_levels]), dtype=tf.int32)
     C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
 
     if not random_eps:
@@ -94,9 +98,16 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
     fake2_out = G.get_output_for(prior_traj_delta_latents, labels, is_training=True, randomize_noise=False)
     fake1_out = autosummary('Loss/fake1_out', fake1_out)
 
-    regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
-    I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+    regress_out_list = I.get_output_for(fake1_out, fake2_out, is_training=True)
+    regress_out = tf.concat(regress_out_list[:n_levels], axis=1)
+
+    I_loss = calc_vc_loss(C_delta_latents[:,:sum(nd_out_list[:n_levels])], regress_out, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
+
+    if traj_lambda is not None:
+        traj_reg = tf.reduce_sum(prior_traj_latents * prior_traj_latents, axis=1)
+        traj_reg = autosummary('Loss/traj_reg', traj_reg)
+        I_loss = I_loss + traj_lambda * traj_reg
 
     if I_info is not None:
         cls_out = I_info.get_output_for(fake1_out, is_training=True)

@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 10 Apr 2020 18:08:55 AEST
+# --- Last Modified: Sat 11 Apr 2020 17:28:13 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -121,6 +121,7 @@ def training_loop_hd(
     n_samples_per=4,  # Number of samples for each line in traversal.
     use_hd_with_cls=False,  # If use info_loss.
     resolution_manual=1024,  # Resolution of generated images.
+    level_I_kimg=1000,  # Number of kimg of tick for I_level training.
     pretrained_type='with_stylegan2'):  # Pretrained type for G.
 
     # Initialize dnnlib and TensorFlow.
@@ -211,8 +212,12 @@ def training_loop_hd(
             args['learning_rate'] *= mb_ratio
             if 'beta1' in args: args['beta1'] **= mb_ratio
             if 'beta2' in args: args['beta2'] **= mb_ratio
-    I_opt = tflib.Optimizer(name='TrainI', **I_opt_args)
-    I_reg_opt = tflib.Optimizer(name='RegI', share=I_opt, **I_opt_args)
+
+    I_opts = []
+    I_reg_opts = []
+    for n_level in range(training_set_resolution_log2 - 1):
+        I_opts.append(tflib.Optimizer(name='TrainI_%d' % n_level, **I_opt_args))
+        I_reg_opts.append(tflib.Optimizer(name='RegI_%d' % n_level, share=I_opts[-1], **I_opt_args))
 
     # Build training graph for each GPU.
     for gpu in range(num_gpus):
@@ -227,37 +232,46 @@ def training_loop_hd(
 
             # Evaluate loss functions.
             lod_assign_ops = []
+            I_losses = []
+            I_regs = []
             if 'lod' in I_gpu.vars: lod_assign_ops += [tf.assign(I_gpu.vars['lod'], lod_in)]
             if 'lod' in M_gpu.vars: lod_assign_ops += [tf.assign(M_gpu.vars['lod'], lod_in)]
-            with tf.control_dependencies(lod_assign_ops):
-                with tf.name_scope('I_loss'):
-                    if use_hd_with_cls:
-                        I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opt, training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
-                    else:
-                        I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opt, training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
+            for n_level in range(training_set_resolution_log2 - 1):
+                with tf.control_dependencies(lod_assign_ops):
+                    with tf.name_scope('I_loss_%d' % n_level):
+                        if use_hd_with_cls:
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opts[n_level], training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
+                        else:
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=n_level + 1,
+                                                                          training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
+                        I_losses.append(I_loss)
+                        I_regs.append(I_reg)
 
-            # Register gradients.
-            if not lazy_regularization:
-                if I_reg is not None: I_loss += I_reg
-            else:
-                if I_reg is not None: I_reg_opt.register_gradients(tf.reduce_mean(I_reg * I_reg_interval), I_gpu.trainables)
+                # Register gradients.
+                if not lazy_regularization:
+                    if I_regs[n_level] is not None: I_losses[n_level] += I_regs[n_level]
+                else:
+                    if I_regs[n_level] is not None: I_reg_opts[n_level].register_gradients(tf.reduce_mean(I_regs[n_level] * I_reg_interval), I_gpu.trainables)
 
-            if use_hd_with_cls:
-                MIIinfo_gpu_trainables = collections.OrderedDict(
-                    list(M_gpu.trainables.items()) +
-                    list(I_gpu.trainables.items()) +
-                    list(I_info_gpu.trainables.items())
-                )
-                I_opt.register_gradients(tf.reduce_mean(I_loss), MIIinfo_gpu_trainables)
-            else:
-                MI_gpu_trainables = collections.OrderedDict(
-                    list(M_gpu.trainables.items()) +
-                    list(I_gpu.trainables.items()))
-                I_opt.register_gradients(tf.reduce_mean(I_loss), MI_gpu_trainables)
+                if use_hd_with_cls:
+                    MIIinfo_gpu_trainables = collections.OrderedDict(
+                        list(M_gpu.trainables.items()) +
+                        list(I_gpu.trainables.items()) +
+                        list(I_info_gpu.trainables.items())
+                    )
+                    I_opts[n_level].register_gradients(tf.reduce_mean(I_losses[n_level]), MIIinfo_gpu_trainables)
+                else:
+                    MI_gpu_trainables = collections.OrderedDict(
+                        list(M_gpu.trainables.items()) +
+                        list(I_gpu.trainables.items()))
+                    I_opts[n_level].register_gradients(tf.reduce_mean(I_losses[n_level]), MI_gpu_trainables)
 
     # Setup training ops.
-    I_train_op = I_opt.apply_updates()
-    I_reg_op = I_reg_opt.apply_updates(allow_no_op=True)
+    I_train_ops = []
+    I_reg_ops = []
+    for n_level in range(training_set_resolution_log2 - 1):
+        I_train_ops.append(I_opts[n_level].apply_updates())
+        I_reg_ops.append(I_reg_opts[n_level].apply_updates(allow_no_op=True))
     Is_update_op = Is.setup_as_moving_average_of(I, beta=Is_beta)
 
     # Finalize graph.
@@ -287,13 +301,14 @@ def training_loop_hd(
     while cur_nimg < total_kimg * 1000:
         if dnnlib.RunContext.get().should_stop(): break
 
+        n_level = min(cur_nimg // (level_I_kimg * 1000), training_set_resolution_log2 - 2)
         # Choose training parameters and configure training ops.
         sched = training_schedule(cur_nimg=cur_nimg, training_set_resolution_log2=training_set_resolution_log2, **sched_args)
         assert sched.minibatch_size % (sched.minibatch_gpu * num_gpus) == 0
         training_set.configure(sched.minibatch_gpu, sched.lod)
         if reset_opt_for_new_lod:
             if np.floor(sched.lod) != np.floor(prev_lod) or np.ceil(sched.lod) != np.ceil(prev_lod):
-                I_opt.reset_optimizer_state()
+                I_opts[n_level].reset_optimizer_state()
         prev_lod = sched.lod
 
         # Run training ops.
@@ -306,18 +321,18 @@ def training_loop_hd(
 
             # Fast path without gradient accumulation.
             if len(rounds) == 1:
-                tflib.run([I_train_op], feed_dict)
+                tflib.run([I_train_ops[n_level]], feed_dict)
                 if run_I_reg:
-                    tflib.run(I_reg_op, feed_dict)
+                    tflib.run(I_reg_ops[n_level], feed_dict)
                 tflib.run([Is_update_op], feed_dict)
 
             # Slow path with gradient accumulation.
             else:
                 for _round in rounds:
-                    tflib.run(I_train_op, feed_dict)
+                    tflib.run(I_train_ops[n_level], feed_dict)
                 if run_I_reg:
                     for _round in rounds:
-                        tflib.run(I_reg_op, feed_dict)
+                        tflib.run(I_reg_ops[n_level], feed_dict)
                 tflib.run(Is_update_op, feed_dict)
 
         # Perform maintenance tasks once per tick.

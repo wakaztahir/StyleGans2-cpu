@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Wed 08 Apr 2020 15:40:39 AEST
+# --- Last Modified: Sun 12 Apr 2020 04:00:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -49,7 +49,15 @@ def net_M(latents_in,
                 act = mapping_nonlinearity
             x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
                                act=act, lrmul=mapping_lrmul)
-    x = x * 1.5
+            # if layer_idx == mapping_layers - 1:
+                # fmaps = latent_size
+                # act = 'linear'
+            # else:
+                # fmaps = mapping_fmaps
+                # act = mapping_nonlinearity
+            # x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
+                               # act=act, lrmul=mapping_lrmul)
+    # x = x * 1.5
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
@@ -110,7 +118,7 @@ def net_I(
         with tf.variable_scope('Conv0'):
             x = apply_bias_act(conv2d_layer(x, fmaps=nf(res - 1), kernel=3), act=act)
         with tf.variable_scope('Conv1_down'):
-            x = apply_bias_act(conv2d_layer(x, fmaps=nf(res - 2), kernel=3, down=True, 
+            x = apply_bias_act(conv2d_layer(x, fmaps=nf(res - 2), kernel=3, down=True,
                                             resample_kernel=resample_kernel), act=act)
         if architecture == 'resnet':
             with tf.variable_scope('Skip'):
@@ -123,7 +131,19 @@ def net_I(
         with tf.variable_scope('Downsample'):
             return downsample_2d(y, k=resample_kernel)
 
+    def hier_out_branch(x, nd_out):
+        with tf.variable_scope('Output'):
+            if len(x.shape) == 4:
+                x = tf.reduce_mean(tf.reduce_mean(x, axis=3), axis=2)
+            elif len(x.shape) != 2:
+                raise ValueError('Not recognized dimension.')
+            x = apply_bias_act(dense_layer(x, fmaps=nd_out))
+        return x
+
     # Main layers.
+    nd_out_base = C_global_size // (resolution_log2 - 1)
+    nd_out_list = [nd_out_base + C_global_size % (resolution_log2 - 1) if i == 0 else nd_out_base for i in range(resolution_log2 - 1)]
+    out_list = []
     x = None
     y = images_in
     for res in range(resolution_log2, 2, -1):
@@ -133,6 +153,8 @@ def net_I(
             x = block(x, res)
             if architecture == 'skip':
                 y = downsample(y)
+            x_out_branch = hier_out_branch(x, nd_out_list[res-2])
+            out_list.append(x_out_branch)
 
     # Final layers.
     with tf.variable_scope('4x4'):
@@ -146,15 +168,19 @@ def net_I(
             x = apply_bias_act(conv2d_layer(x, fmaps=nf(1), kernel=3), act=act)
         with tf.variable_scope('Dense0'):
             x = apply_bias_act(dense_layer(x, fmaps=nf(0)), act=act)
+        x_out_branch = hier_out_branch(x, nd_out_list[0])
+        out_list.append(x_out_branch)
 
     # Output layer with label conditioning from "Which Training Methods for GANs do actually Converge?"
-    with tf.variable_scope('Output'):
-        with tf.variable_scope('Dense_VC'):
-            x = apply_bias_act(dense_layer(x, fmaps=(D_global_size + C_global_size)))
+    # with tf.variable_scope('Output'):
+        # with tf.variable_scope('Dense_VC'):
+            # x = apply_bias_act(dense_layer(x, fmaps=(D_global_size + C_global_size)))
 
     # Output.
-    assert x.dtype == tf.as_dtype(dtype)
-    return x
+    # assert x.dtype == tf.as_dtype(dtype)
+    # return x
+    assert out_list[-1].dtype == tf.as_dtype(dtype)
+    return tuple(out_list)
 
 #----------------------------------------------------------------------------
 # Info-Gan Discriminator network.

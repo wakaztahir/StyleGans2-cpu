@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Fri 10 Apr 2020 18:11:37 AEST
+# --- Last Modified: Sun 12 Apr 2020 03:29:54 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,12 +44,12 @@ _valid_configs = [
 
 #----------------------------------------------------------------------------
 
-def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, 
-        mirror_augment, metrics, resume_G_pkl, 
-        D_global_size=0, C_global_size=10, model_type=False, latent_type='uniform', 
+def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
+        mirror_augment, metrics, resume_G_pkl, n_batch=2, n_batch_per_gpu=1,
+        D_global_size=0, C_global_size=10, model_type=False, latent_type='uniform',
         resume_pkl=None, n_samples_per=4, D_lambda=0, C_lambda=1,
         epsilon_in_loss=3, random_eps=True, M_lrmul=0.1, resolution_manual=1024,
-        pretrained_type='with_stylegan2'):
+        pretrained_type='with_stylegan2', traj_lambda=None, level_I_kimg=1000):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
     M         = EasyDict(func_name='training.hd_networks.net_M',
                          C_global_size=C_global_size, D_global_size=D_global_size,
@@ -62,11 +62,12 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
     else:
         I_info = EasyDict()
     I_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                  # Options for discriminator optimizer.
-    I_loss    = EasyDict(func_name='training.loss_hd.IandM_loss',
+    I_loss    = EasyDict(func_name='training.loss_hd.IandM_loss', latent_type=latent_type,
                          D_global_size=D_global_size,
-                         C_global_size=C_global_size, 
+                         C_global_size=C_global_size,
                          D_lambda=D_lambda, C_lambda=C_lambda,
-                         epsilon=epsilon_in_loss, random_eps=random_eps)              # Options for discriminator loss.
+                         epsilon=epsilon_in_loss, random_eps=random_eps,
+                         traj_lambda=traj_lambda, resolution_manual=resolution_manual)              # Options for discriminator loss.
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
     sc        = dnnlib.SubmitConfig()                                          # Options for dnnlib.submit_run().
@@ -77,8 +78,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
     train.mirror_augment = mirror_augment
     train.image_snapshot_ticks = train.network_snapshot_ticks = 10
     sched.I_lrate_base = 0.002
-    sched.minibatch_size_base = 4
-    sched.minibatch_gpu_base = 2
+    sched.minibatch_size_base = n_batch
+    sched.minibatch_gpu_base = n_batch_per_gpu
     metrics = [metric_defaults[x] for x in metrics]
     desc = 'hd_disentanglement'
 
@@ -103,10 +104,11 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                   I_loss_args=I_loss, resume_G_pkl=resume_G_pkl)
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid,
                   use_hd_with_cls=(model_type == 'hd_dis_model_with_cls'),
-                  metric_arg_list=metrics, tf_config=tf_config, 
+                  metric_arg_list=metrics, tf_config=tf_config,
                   resume_pkl=resume_pkl, n_discrete=D_global_size,
                   n_continuous=C_global_size, n_samples_per=n_samples_per,
-                  resolution_manual=resolution_manual, pretrained_type=pretrained_type)
+                  resolution_manual=resolution_manual, pretrained_type=pretrained_type,
+                  level_I_kimg=level_I_kimg)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -190,6 +192,14 @@ def main():
                         metavar='RESOLUTION_MANUAL', default=1024, type=int)
     parser.add_argument('--pretrained_type', help='Pretrained type for G.',
                         metavar='PRETRAINED_TYPE', default='with_stylegan2', type=str)
+    parser.add_argument('--traj_lambda', help='Hyperparam for prior trajectory regularization.',
+                        metavar='TRAJ_LAMBDA', default=None, type=float)
+    parser.add_argument('--level_I_kimg', help='Number of kimg of tick for I_level training.',
+                        metavar='LEVEL_I_KIMG', default=1000, type=int)
+    parser.add_argument('--n_batch', help='N batch.',
+                        metavar='N_BATCH', default=2, type=int)
+    parser.add_argument('--n_batch_per_gpu', help='N batch per gpu.',
+                        metavar='N_BATCH_PER_GPU', default=1, type=int)
 
     args = parser.parse_args()
 

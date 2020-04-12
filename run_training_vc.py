@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc.py
 # --- Creation Date: 04-02-2020
-# --- Last Modified: Wed 04 Mar 2020 17:44:06 AEDT
+# --- Last Modified: Sat 11 Apr 2020 18:37:18 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -377,7 +377,7 @@ def main():
                         metavar='WHERE_FEAT_MAP', default=15, type=int)
     parser.add_argument('--latent_type', help='What type of latent priori to use.',
                         metavar='LATENT_TYPE', default='uniform', choices=['uniform', 'normal', 'trunc_normal'], type=str)
-    parser.add_argument( '--random_eps',
+    parser.add_argument('--random_eps',
         help='If use random epsilon in vc_gan_with_vc_head loss.',
         default=False, metavar='RANDOM_EPS', type=_str_to_bool)
     parser.add_argument('--delta_type', help='What type of delta use.',
