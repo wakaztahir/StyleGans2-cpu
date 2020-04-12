@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 12 Apr 2020 16:12:41 AEST
+# --- Last Modified: Sun 12 Apr 2020 17:15:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,8 +39,8 @@ def net_M(latents_in,
     latents_in.set_shape([None, C_global_size + D_global_size])
     x = latents_in
     # Mapping layers.
-    # for layer_idx in range(mapping_layers):
-        # with tf.variable_scope('Dense%d' % layer_idx):
+    for layer_idx in range(mapping_layers):
+        with tf.variable_scope('Dense%d' % layer_idx):
             # if layer_idx == mapping_layers - 1:
                 # fmaps = latent_size
                 # act = 'tanh'
@@ -49,18 +49,18 @@ def net_M(latents_in,
                 # act = mapping_nonlinearity
             # x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
                                # act=act, lrmul=mapping_lrmul)
-            # if layer_idx == mapping_layers - 1:
-                # fmaps = latent_size
-                # act = 'linear'
-            # else:
-                # fmaps = mapping_fmaps
-                # act = mapping_nonlinearity
-            # x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
-                               # act=act, lrmul=mapping_lrmul)
-    # x = x * 1.5
-    with tf.variable_scope('Dense1'):
-        # x = tf.zeros([tf.shape(x)[0], latent_size], dtype=x.dtype)
-        x = tf.random.normal([tf.shape(x)[0], latent_size], mean=0.0, stddev=1.0)
+            if layer_idx == mapping_layers - 1:
+                fmaps = latent_size
+                act = 'linear'
+            else:
+                fmaps = mapping_fmaps
+                act = mapping_nonlinearity
+            x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
+                               act=act, lrmul=mapping_lrmul)
+    # # x = x * 1.5
+    # with tf.variable_scope('Dense1'):
+        # # x = tf.zeros([tf.shape(x)[0], latent_size], dtype=x.dtype) + 0.5
+        # x = tf.random.normal([tf.shape(x)[0], latent_size], mean=0.0, stddev=0.5)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)

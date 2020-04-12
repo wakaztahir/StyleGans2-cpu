@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 12 Apr 2020 15:52:02 AEST
+# --- Last Modified: Sun 12 Apr 2020 16:47:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -94,8 +94,8 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
     prior_traj_latents_0 = autosummary('Loss/prior_traj_latents_0', prior_traj_latents[0])
     prior_traj_latents_1 = autosummary('Loss/prior_traj_latents_1', prior_traj_latents[1])
     prior_traj_delta_latents = M.get_output_for(delta_latents, is_training=True)
-    fake1_out = G.get_output_for(prior_traj_latents, labels, is_training=True, randomize_noise=True)
-    fake2_out = G.get_output_for(prior_traj_delta_latents, labels, is_training=True, randomize_noise=True)
+    fake1_out = G.get_output_for(prior_traj_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
+    fake2_out = G.get_output_for(prior_traj_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake1_out = autosummary('Loss/fake1_out', fake1_out)
 
     regress_out_list = I.get_output_for(fake1_out, fake2_out, is_training=True)
