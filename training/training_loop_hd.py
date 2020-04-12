@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 12 Apr 2020 16:46:34 AEST
+# --- Last Modified: Mon 13 Apr 2020 03:02:54 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -82,6 +82,20 @@ def training_schedule(
     # Other parameters.
     s.tick_kimg = tick_kimg_dict.get(s.resolution, tick_kimg_base)
     return s
+
+def print_traj(prior_traj_latents_show):
+    # prior_traj_latents_show  shape: [batch, n_samples_per, n_continuous])
+    print(prior_traj_latents_show[0,0,::10])
+    print(np.max(prior_traj_latents_show[0,0]))
+    print(np.min(prior_traj_latents_show[0,0]))
+    for i in range(prior_traj_latents_show.shape[0]):
+        line = []
+        for j in range(prior_traj_latents_show.shape[1]):
+            feat = prior_traj_latents_show[i, j]
+            norm = np.sqrt(np.sum(feat * feat))
+            line.append(norm)
+        print(line)
+    return
 
 #----------------------------------------------------------------------------
 # Main training script.
@@ -182,6 +196,8 @@ def training_loop_hd(
     prior_traj_latents = M.run(grid_latents,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu)
+    prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, 512])
+    print_traj(prior_traj_latents_show)
     grid_fakes = Gs.run(prior_traj_latents,
                         grid_labels,
                         is_validation=True,
@@ -364,7 +380,9 @@ def training_loop_hd(
                 prior_traj_latents = M.run(grid_latents,
                                     is_validation=True,
                                     minibatch_size=sched.minibatch_gpu)
-                grid_fakes = Gs.run(prior_traj_latents, grid_labels, is_validation=True, 
+                prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, 512])
+                print_traj(prior_traj_latents_show)
+                grid_fakes = Gs.run(prior_traj_latents, grid_labels, is_validation=True,
                                     minibatch_size=sched.minibatch_gpu, randomize_noise=True, normalize_latents=False)
                 misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
