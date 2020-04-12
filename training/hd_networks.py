@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 12 Apr 2020 04:00:32 AEST
+# --- Last Modified: Sun 12 Apr 2020 16:05:28 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,16 +39,16 @@ def net_M(latents_in,
     latents_in.set_shape([None, C_global_size + D_global_size])
     x = latents_in
     # Mapping layers.
-    for layer_idx in range(mapping_layers):
-        with tf.variable_scope('Dense%d' % layer_idx):
-            if layer_idx == mapping_layers - 1:
-                fmaps = latent_size
-                act = 'tanh'
-            else:
-                fmaps = mapping_fmaps
-                act = mapping_nonlinearity
-            x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
-                               act=act, lrmul=mapping_lrmul)
+    # for layer_idx in range(mapping_layers):
+        # with tf.variable_scope('Dense%d' % layer_idx):
+            # if layer_idx == mapping_layers - 1:
+                # fmaps = latent_size
+                # act = 'tanh'
+            # else:
+                # fmaps = mapping_fmaps
+                # act = mapping_nonlinearity
+            # x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
+                               # act=act, lrmul=mapping_lrmul)
             # if layer_idx == mapping_layers - 1:
                 # fmaps = latent_size
                 # act = 'linear'
@@ -58,6 +58,9 @@ def net_M(latents_in,
             # x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
                                # act=act, lrmul=mapping_lrmul)
     # x = x * 1.5
+    with tf.variable_scope('Dense1'):
+        # x = tf.zeros([tf.shape(x)[0], latent_size], dtype=x.dtype)
+        x = tf.random.normal([tf.shape(x)[0], latent_size], mean=0.0, stddev=2.0)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
