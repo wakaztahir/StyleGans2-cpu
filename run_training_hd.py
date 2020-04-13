@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Mon 13 Apr 2020 19:20:05 AEST
+# --- Last Modified: Mon 13 Apr 2020 22:51:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -208,10 +208,10 @@ def main():
                         metavar='RESUME_KIMG', default=0, type=int)
     parser.add_argument('--use_level_training', help='If use level training strategy.', 
                         default=False, metavar='USE_LEVEL_TRAINING', type=_str_to_bool)
-    parser.add_argument('--use_std_in_m', help='If output prior std in M net.', 
+    parser.add_argument('--use_std_in_m', help='If output prior std in M net.',
                         default=False, metavar='USE_STD_IN_M', type=_str_to_bool)
     parser.add_argument('--prior_latent_size', help='Size of prior latent space.',
-                        metavar='PRIOR_LATENTS_SIZE', default=0, type=int)
+                        metavar='PRIOR_LATENTS_SIZE', default=512, type=int)
 
     args = parser.parse_args()
 

@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 19:09:08 AEST
+# --- Last Modified: Mon 13 Apr 2020 22:52:50 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,10 +39,10 @@ def calc_cls_loss(discrete_latents, cls_out, D_global_size, C_global_size, cls_a
     I_info_loss = - I_info_loss
     return I_info_loss
 
-def reparameterize(prior_traj_latents):
+def reparameterize(prior_traj_latents, minibatch_size):
     prior_traj_latents_mean, prior_traj_latents_logvar = tf.split(
         prior_traj_latents, num_or_size_splits=2, axis=1)
-    eps_traj = tf.random.normal(shape=prior_traj_latents_mean.shape)
+    eps_traj = tf.random.normal(shape=[minibatch_size, prior_traj_latents_mean.shape[1]])
     prior_traj_latents = eps_traj * tf.exp(prior_traj_latents_logvar * .5) + prior_traj_latents_mean
     return prior_traj_latents_mean, prior_traj_latents_logvar, prior_traj_latents
 
@@ -104,13 +104,15 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
 
     prior_traj_latents = M.get_output_for(latents, is_training=True)
     if use_std_in_m:
-        prior_traj_latents_mean, prior_traj_latents_logvar, prior_traj_latents = reparameterize(prior_traj_latents)
+        prior_traj_latents_mean, prior_traj_latents_logvar, prior_traj_latents = reparameterize(prior_traj_latents, minibatch_size)
+        prior_traj_latents_mean = autosummary('Loss/prior_traj_latents_mean', prior_traj_latents_mean)
+        prior_traj_latents_logvar = autosummary('Loss/prior_traj_latents_logvar', prior_traj_latents_logvar)
     prior_traj_latents = autosummary('Loss/prior_traj_latents', prior_traj_latents)
     prior_traj_latents_0 = autosummary('Loss/prior_traj_latents_0', prior_traj_latents[0])
     prior_traj_latents_1 = autosummary('Loss/prior_traj_latents_1', prior_traj_latents[1])
     prior_traj_delta_latents = M.get_output_for(delta_latents, is_training=True)
     if use_std_in_m:
-        prior_traj_delta_latents_mean, prior_traj_delta_latents_logvar, prior_traj_delta_latents = reparameterize(prior_traj_delta_latents)
+        prior_traj_delta_latents_mean, prior_traj_delta_latents_logvar, prior_traj_delta_latents = reparameterize(prior_traj_delta_latents, minibatch_size)
     fake1_out = G.get_output_for(prior_traj_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake2_out = G.get_output_for(prior_traj_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake1_out = autosummary('Loss/fake1_out', fake1_out)

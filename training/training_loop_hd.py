@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 19:30:39 AEST
+# --- Last Modified: Mon 13 Apr 2020 23:19:59 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -270,7 +270,7 @@ def training_loop_hd(
                         if use_hd_with_cls:
                             I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opts[n_level], training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         else:
-                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=(n_level + 1) if use_level_training else ending_level,
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=(n_level + 1) if use_level_training else training_set_resolution_log2 - 1,
                                                                           training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         I_losses.append(I_loss)
                         I_regs.append(I_reg)
