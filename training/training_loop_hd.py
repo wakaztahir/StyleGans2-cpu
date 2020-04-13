@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 03:02:54 AEST
+# --- Last Modified: Mon 13 Apr 2020 19:30:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -135,7 +135,10 @@ def training_loop_hd(
     n_samples_per=4,  # Number of samples for each line in traversal.
     use_hd_with_cls=False,  # If use info_loss.
     resolution_manual=1024,  # Resolution of generated images.
+    use_level_training=False,  # If use level training (hierarchical optimization strategy).
     level_I_kimg=1000,  # Number of kimg of tick for I_level training.
+    use_std_in_m=False,  # If output prior std in M net.
+    prior_latent_size=512,  # Prior latent size.
     pretrained_type='with_stylegan2'):  # Pretrained type for G.
 
     # Initialize dnnlib and TensorFlow.
@@ -196,7 +199,10 @@ def training_loop_hd(
     prior_traj_latents = M.run(grid_latents,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu)
-    prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, 512])
+    if use_std_in_m:
+        prior_traj_latents = prior_traj_latents[:, :prior_latent_size]
+    prior_traj_latents_show = np.reshape(prior_traj_latents,
+                                         [-1, n_samples_per, prior_latent_size])
     print_traj(prior_traj_latents_show)
     grid_fakes = Gs.run(prior_traj_latents,
                         grid_labels,
@@ -208,6 +214,11 @@ def training_loop_hd(
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
                          grid_size=grid_size)
+
+    if use_level_training:
+        ending_level = training_set_resolution_log2 - 1
+    else:
+        ending_level = 1
 
     # Setup training inputs.
     print('Building TensorFlow graph...')
@@ -232,7 +243,7 @@ def training_loop_hd(
 
     I_opts = []
     I_reg_opts = []
-    for n_level in range(training_set_resolution_log2 - 1):
+    for n_level in range(ending_level):
         I_opts.append(tflib.Optimizer(name='TrainI_%d' % n_level, **I_opt_args))
         I_reg_opts.append(tflib.Optimizer(name='RegI_%d' % n_level, share=I_opts[-1], **I_opt_args))
 
@@ -253,13 +264,13 @@ def training_loop_hd(
             I_regs = []
             if 'lod' in I_gpu.vars: lod_assign_ops += [tf.assign(I_gpu.vars['lod'], lod_in)]
             if 'lod' in M_gpu.vars: lod_assign_ops += [tf.assign(M_gpu.vars['lod'], lod_in)]
-            for n_level in range(training_set_resolution_log2 - 1):
+            for n_level in range(ending_level):
                 with tf.control_dependencies(lod_assign_ops):
                     with tf.name_scope('I_loss_%d' % n_level):
                         if use_hd_with_cls:
                             I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opts[n_level], training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         else:
-                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=n_level + 1,
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=(n_level + 1) if use_level_training else ending_level,
                                                                           training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         I_losses.append(I_loss)
                         I_regs.append(I_reg)
@@ -286,7 +297,7 @@ def training_loop_hd(
     # Setup training ops.
     I_train_ops = []
     I_reg_ops = []
-    for n_level in range(training_set_resolution_log2 - 1):
+    for n_level in range(ending_level):
         I_train_ops.append(I_opts[n_level].apply_updates())
         I_reg_ops.append(I_reg_opts[n_level].apply_updates(allow_no_op=True))
     Is_update_op = Is.setup_as_moving_average_of(I, beta=Is_beta)
@@ -318,7 +329,7 @@ def training_loop_hd(
     while cur_nimg < total_kimg * 1000:
         if dnnlib.RunContext.get().should_stop(): break
 
-        n_level = min(cur_nimg // (level_I_kimg * 1000), training_set_resolution_log2 - 2)
+        n_level = 0 if not use_level_training else min(cur_nimg // (level_I_kimg * 1000), training_set_resolution_log2 - 2)
         # Choose training parameters and configure training ops.
         sched = training_schedule(cur_nimg=cur_nimg, training_set_resolution_log2=training_set_resolution_log2, **sched_args)
         assert sched.minibatch_size % (sched.minibatch_gpu * num_gpus) == 0
@@ -380,7 +391,9 @@ def training_loop_hd(
                 prior_traj_latents = M.run(grid_latents,
                                     is_validation=True,
                                     minibatch_size=sched.minibatch_gpu)
-                prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, 512])
+                if use_std_in_m:
+                    prior_traj_latents = prior_traj_latents[:, :prior_latent_size]
+                prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, prior_latent_size])
                 print_traj(prior_traj_latents_show)
                 grid_fakes = Gs.run(prior_traj_latents, grid_labels, is_validation=True,
                                     minibatch_size=sched.minibatch_gpu, randomize_noise=True, normalize_latents=False)

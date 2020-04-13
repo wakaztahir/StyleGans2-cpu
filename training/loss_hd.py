@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 12 Apr 2020 16:47:01 AEST
+# --- Last Modified: Mon 13 Apr 2020 19:09:08 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,9 +39,22 @@ def calc_cls_loss(discrete_latents, cls_out, D_global_size, C_global_size, cls_a
     I_info_loss = - I_info_loss
     return I_info_loss
 
+def reparameterize(prior_traj_latents):
+    prior_traj_latents_mean, prior_traj_latents_logvar = tf.split(
+        prior_traj_latents, num_or_size_splits=2, axis=1)
+    eps_traj = tf.random.normal(shape=prior_traj_latents_mean.shape)
+    prior_traj_latents = eps_traj * tf.exp(prior_traj_latents_logvar * .5) + prior_traj_latents_mean
+    return prior_traj_latents_mean, prior_traj_latents_logvar, prior_traj_latents
+
+def log_normal_pdf(sample, mean, logvar, raxis=1):
+      log2pi = tf.math.log(2. * np.pi)
+      return tf.reduce_sum(
+          -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar + log2pi),
+          axis=raxis)
+
 def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
                C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
-               random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024):
+               random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024, use_std_in_m=False):
     _ = opt
     if D_global_size > 0:
         discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
@@ -90,10 +103,14 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
     labels = training_set.get_random_labels_tf(minibatch_size)
 
     prior_traj_latents = M.get_output_for(latents, is_training=True)
+    if use_std_in_m:
+        prior_traj_latents_mean, prior_traj_latents_logvar, prior_traj_latents = reparameterize(prior_traj_latents)
     prior_traj_latents = autosummary('Loss/prior_traj_latents', prior_traj_latents)
     prior_traj_latents_0 = autosummary('Loss/prior_traj_latents_0', prior_traj_latents[0])
     prior_traj_latents_1 = autosummary('Loss/prior_traj_latents_1', prior_traj_latents[1])
     prior_traj_delta_latents = M.get_output_for(delta_latents, is_training=True)
+    if use_std_in_m:
+        prior_traj_delta_latents_mean, prior_traj_delta_latents_logvar, prior_traj_delta_latents = reparameterize(prior_traj_delta_latents)
     fake1_out = G.get_output_for(prior_traj_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake2_out = G.get_output_for(prior_traj_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake1_out = autosummary('Loss/fake1_out', fake1_out)
@@ -105,7 +122,13 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
     I_loss = autosummary('Loss/I_loss', I_loss)
 
     if traj_lambda is not None:
-        traj_reg = tf.reduce_sum(prior_traj_latents * prior_traj_latents, axis=1)
+        if not use_std_in_m:
+            traj_reg = tf.reduce_sum(prior_traj_latents * prior_traj_latents, axis=1)
+        else:
+            logpz = log_normal_pdf(prior_traj_latents, 0., 0.)
+            logqz_x = log_normal_pdf(prior_traj_latents, 
+                                     prior_traj_latents_mean, prior_traj_latents_logvar)
+            traj_reg = logqz_x - logpz
         traj_reg = autosummary('Loss/traj_reg', traj_reg)
         I_loss = I_loss + traj_lambda * traj_reg
 

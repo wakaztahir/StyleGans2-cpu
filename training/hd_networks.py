@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 03:18:35 AEST
+# --- Last Modified: Mon 13 Apr 2020 18:38:07 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,6 +32,7 @@ def net_M(latents_in,
           mapping_lrmul=0.1,  # Learning rate multiplier for the mapping layers.
           mapping_fmaps=512,  # Number of activations in the mapping layers.
           mapping_nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+          use_std_in_m=False,  # If output prior std.
           dtype='float32',  # Data type to use for activations and outputs.
           **_kwargs):  # Ignore unrecognized keyword args.
     act = mapping_nonlinearity
@@ -50,7 +51,10 @@ def net_M(latents_in,
             # x = apply_bias_act(dense_layer(x, fmaps=fmaps, lrmul=mapping_lrmul),
                                # act=act, lrmul=mapping_lrmul)
             if layer_idx == mapping_layers - 1:
-                fmaps = latent_size
+                if use_std_in_m:
+                    fmaps = 2 * latent_size
+                else:
+                    fmaps = latent_size
                 act = 'linear'
             else:
                 fmaps = mapping_fmaps

@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Sun 12 Apr 2020 03:29:54 AEST
+# --- Last Modified: Mon 13 Apr 2020 19:20:05 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -49,11 +49,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
         D_global_size=0, C_global_size=10, model_type=False, latent_type='uniform',
         resume_pkl=None, n_samples_per=4, D_lambda=0, C_lambda=1,
         epsilon_in_loss=3, random_eps=True, M_lrmul=0.1, resolution_manual=1024,
-        pretrained_type='with_stylegan2', traj_lambda=None, level_I_kimg=1000):
+        pretrained_type='with_stylegan2', traj_lambda=None, level_I_kimg=1000,
+        use_level_training=False, resume_kimg=0, use_std_in_m=False, prior_latent_size=512):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
     M         = EasyDict(func_name='training.hd_networks.net_M',
                          C_global_size=C_global_size, D_global_size=D_global_size,
-                         mapping_lrmul=M_lrmul)  # Options for dismapper network.
+                         latent_size=prior_latent_size,
+                         mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)  # Options for dismapper network.
     I         = EasyDict(func_name='training.hd_networks.net_I',
                          C_global_size=C_global_size, D_global_size=D_global_size)  # Options for recognizor network.
     if model_type == 'hd_dis_model_with_cls':
@@ -67,7 +69,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                          C_global_size=C_global_size,
                          D_lambda=D_lambda, C_lambda=C_lambda,
                          epsilon=epsilon_in_loss, random_eps=random_eps,
-                         traj_lambda=traj_lambda, resolution_manual=resolution_manual)              # Options for discriminator loss.
+                         traj_lambda=traj_lambda, resolution_manual=resolution_manual,
+                         use_std_in_m=use_std_in_m)              # Options for discriminator loss.
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
     sc        = dnnlib.SubmitConfig()                                          # Options for dnnlib.submit_run().
@@ -108,7 +111,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                   resume_pkl=resume_pkl, n_discrete=D_global_size,
                   n_continuous=C_global_size, n_samples_per=n_samples_per,
                   resolution_manual=resolution_manual, pretrained_type=pretrained_type,
-                  level_I_kimg=level_I_kimg)
+                  level_I_kimg=level_I_kimg, use_level_training=use_level_training,
+                  resume_kimg=resume_kimg, use_std_in_m=use_std_in_m)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -200,6 +204,14 @@ def main():
                         metavar='N_BATCH', default=2, type=int)
     parser.add_argument('--n_batch_per_gpu', help='N batch per gpu.',
                         metavar='N_BATCH_PER_GPU', default=1, type=int)
+    parser.add_argument('--resume_kimg', help='K number of imgs have been trained.',
+                        metavar='RESUME_KIMG', default=0, type=int)
+    parser.add_argument('--use_level_training', help='If use level training strategy.', 
+                        default=False, metavar='USE_LEVEL_TRAINING', type=_str_to_bool)
+    parser.add_argument('--use_std_in_m', help='If output prior std in M net.', 
+                        default=False, metavar='USE_STD_IN_M', type=_str_to_bool)
+    parser.add_argument('--prior_latent_size', help='Size of prior latent space.',
+                        metavar='PRIOR_LATENTS_SIZE', default=0, type=int)
 
     args = parser.parse_args()
 
