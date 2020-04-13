@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_dsp.py
 # --- Creation Date: 23-01-2020
-# --- Last Modified: Sat 08 Feb 2020 16:30:03 AEDT
+# --- Last Modified: Mon 13 Apr 2020 16:01:17 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,7 +46,7 @@ def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels):
             grid_latents[(i * n_continuous + j) *
                          n_samples_per:(i * n_continuous + j + 1) *
                          n_samples_per, j] = np.arange(
-                             -2., 2., 4. / float(n_samples_per))
+                             -2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
     if real_has_discrete:
         grid_discrete_ls = []
         for i in range(n_discrete):
