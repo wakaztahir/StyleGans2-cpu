@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 23:19:59 AEST
+# --- Last Modified: Tue 14 Apr 2020 15:57:23 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -193,9 +193,10 @@ def training_loop_hd(
     print('grid_size:', grid_size)
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
-    grid_size = (grid_size[0], grid_size[1]//5)
-    grid_latents = grid_latents[:grid_latents.shape[0]//5]
-    grid_labels = grid_labels[:grid_labels.shape[0]//5]
+    if resolution_manual >= 256:
+        grid_size = (grid_size[0], grid_size[1]//5)
+        grid_latents = grid_latents[:grid_latents.shape[0]//5]
+        grid_labels = grid_labels[:grid_labels.shape[0]//5]
     prior_traj_latents = M.run(grid_latents,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu)
