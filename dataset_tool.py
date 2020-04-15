@@ -661,7 +661,7 @@ def create_from_dsprites_npz(tfrecord_dir, dsprites_filename, shuffle,
     print('Loading images from "%s"' % dsprites_filename)
     data = np.load(dsprites_filename, encoding='latin1', allow_pickle=True)
     images = data['imgs'] * 255
-    labels = data['latents_classes']
+    labels = data['latents_classes']  # [color(0), shape(3), scale(6), orientation(40), x(32), y(32)]
     if shape_only:
         labels = convert_to_shape(labels)
     img = images[0]
@@ -695,6 +695,58 @@ def create_from_dsprites_npz(tfrecord_dir, dsprites_filename, shuffle,
             tfr.add_image(img)
         tfr.add_labels(labels[order])
 
+def str_to_intlist(v):
+    v = v[1:-1]
+    v_list = [int(i.strip()) for i in v.strip().split(',')]
+    return v_list
+
+def create_subset_from_dsprites_npz(tfrecord_dir, dsprites_filename, shuffle,
+                                    latents_static='[2,3,20,15,15]',
+                                    use_latents='[0,1,2,3,4]'):
+    latents_static = str_to_intlist(latents_static)
+    use_latents = str_to_intlist(use_latents)
+    print('Loading images from "%s"' % dsprites_filename)
+    data = np.load(dsprites_filename, encoding='latin1', allow_pickle=True)
+    images = data['imgs'] * 255
+    labels = data['latents_classes']  # [color(0, discarded), shape(3), scale(6), orientation(40), x(32), y(32)]
+    img = images[0]
+    resolution = img.shape[0]
+    channels = img.shape[2] if img.ndim == 3 else 1
+    if img.shape[1] != resolution:
+        error('Input images must have the same width and height')
+    if resolution != 2**int(np.floor(np.log2(resolution))):
+        error('Input image resolution must be a power-of-two')
+    if channels not in [1, 3]:
+        error('Input images must be stored as RGB or grayscale')
+    labels = labels[:, 1:]
+    full_factor_sizes = np.array([3, 6, 40, 32, 32])
+    factor_bases = np.prod(full_factor_sizes) // np.cumprod(full_factor_sizes)
+    # [245760, 40960, 1024, 32, 1]
+
+    latents_cur = np.array(latents_static)
+    images_af = []
+    labels_af = []
+    print(use_latents)
+    for modified_values in np.ndindex(tuple(full_factor_sizes[use_latents])):
+        latents_cur[use_latents] = modified_values
+        img_idx = np.sum(factor_bases * latents_cur)
+        images_af.append(images[img_idx])
+        labels_af.append(labels[img_idx])
+    images_af = np.array(images_af)
+    labels_af = np.array(labels_af)
+
+    with TFRecordExporter(tfrecord_dir, images_af.shape[0]) as tfr:
+        order = tfr.choose_shuffled_order() if shuffle else np.arange(
+            images_af.shape[0])
+        for idx in range(order.size):
+            img = images_af[order[idx]]
+            if channels == 1:
+                img = img[np.newaxis, :, :]  # HW => CHW
+            else:
+                img = img.transpose([2, 0, 1])  # HWC => CHW
+
+            tfr.add_image(img)
+        tfr.add_labels(labels_af[order])
 
 #----------------------------------------------------------------------------
 
@@ -884,6 +936,25 @@ def execute_cmdline(argv):
                    help='Build dsprites color dataset.',
                    type=int,
                    default=0)
+
+    p = add_command(
+        'create_subset_from_dsprites_npz', 'Create dataset from a dsprites_filename with sub dimensions.',
+        'create_subset_from_dsprites_npz datasets/mydataset dsprites_py3.npz')
+    p.add_argument('tfrecord_dir', help='New dataset directory to be created')
+    p.add_argument('dsprites_filename',
+                   help='dsprites_filename containing the images')
+    p.add_argument('--shuffle',
+                   help='Randomize image order (default: 0)',
+                   type=int,
+                   default=0)
+    p.add_argument('--latents_static',
+                   help='Basic latents to use',
+                   type=str,
+                   default='[2,3,20,15,15]')
+    p.add_argument('--use_latents',
+                   help='Dimensions used',
+                   type=str,
+                   default='[0,1,2,3,4]')
 
     # p = add_command(    'create_dsprites_shape_labels_from_tfr', 'Create shape labels from a dsprites_tfr_label.',
     # 'create_from_dsprites_npz datasets/mydataset dsprites_py3.npz')

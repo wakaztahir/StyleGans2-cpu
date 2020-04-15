@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_dsp.py
 # --- Creation Date: 23-01-2020
-# --- Last Modified: Mon 13 Apr 2020 16:01:17 AEST
+# --- Last Modified: Wed 15 Apr 2020 18:01:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,14 +32,20 @@ from training.training_loop import process_reals, training_schedule
 # Get latents for grid traversal of continuous factors.
 
 
-def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels):
+def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels, latent_type='normal'):
     if n_discrete == 0:
         n_discrete = 1  # 0 discrete means 1 discrete
         real_has_discrete = False
     else:
         real_has_discrete = True
     grid_size = (n_samples_per, n_continuous * n_discrete)
-    z = np.random.randn(1, n_continuous)  # [minibatch, component-3]
+    if latent_type == 'uniform':
+        z = np.random.uniform(low=-2., high=2., size=(1, n_continuous))
+    elif latent_type == 'normal':
+        z = np.random.normal(size=(1, n_continuous))
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+        # z = np.random.randn(1, n_continuous)  # [minibatch, component-3]
     grid_latents = np.tile(z, (n_continuous * n_samples_per * n_discrete, 1))
     for i in range(n_discrete):
         for j in range(n_continuous):

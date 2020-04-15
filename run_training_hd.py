@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Mon 13 Apr 2020 22:51:25 AEST
+# --- Last Modified: Thu 16 Apr 2020 03:16:21 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -50,11 +50,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
         resume_pkl=None, n_samples_per=4, D_lambda=0, C_lambda=1,
         epsilon_in_loss=3, random_eps=True, M_lrmul=0.1, resolution_manual=1024,
         pretrained_type='with_stylegan2', traj_lambda=None, level_I_kimg=1000,
-        use_level_training=False, resume_kimg=0, use_std_in_m=False, prior_latent_size=512):
+        use_level_training=False, resume_kimg=0, use_std_in_m=False, prior_latent_size=512,
+        M_mapping_fmaps=512):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
     M         = EasyDict(func_name='training.hd_networks.net_M',
                          C_global_size=C_global_size, D_global_size=D_global_size,
                          latent_size=prior_latent_size,
+                         mapping_fmaps=M_mapping_fmaps,
                          mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)  # Options for dismapper network.
     I         = EasyDict(func_name='training.hd_networks.net_I',
                          C_global_size=C_global_size, D_global_size=D_global_size)  # Options for recognizor network.
@@ -112,7 +114,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                   n_continuous=C_global_size, n_samples_per=n_samples_per,
                   resolution_manual=resolution_manual, pretrained_type=pretrained_type,
                   level_I_kimg=level_I_kimg, use_level_training=use_level_training,
-                  resume_kimg=resume_kimg, use_std_in_m=use_std_in_m)
+                  resume_kimg=resume_kimg, use_std_in_m=use_std_in_m,
+                  prior_latent_size=prior_latent_size)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -212,6 +215,8 @@ def main():
                         default=False, metavar='USE_STD_IN_M', type=_str_to_bool)
     parser.add_argument('--prior_latent_size', help='Size of prior latent space.',
                         metavar='PRIOR_LATENTS_SIZE', default=512, type=int)
+    parser.add_argument('--M_mapping_fmaps', help='M mapping net fmaps size.',
+                        metavar='M_MAPPING_FMAPS', default=512, type=int)
 
     args = parser.parse_args()
 

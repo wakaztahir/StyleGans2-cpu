@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 14 Apr 2020 22:29:45 AEST
+# --- Last Modified: Thu 16 Apr 2020 03:22:02 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -21,6 +21,7 @@ import collections
 import tensorflow as tf
 import dnnlib
 import dnnlib.tflib as tflib
+from PIL import Image, ImageDraw
 from dnnlib.tflib.autosummary import autosummary
 
 from training import dataset
@@ -120,6 +121,49 @@ def print_traj(prior_traj_latents_show):
         print(line_ang)
         print('#'*10)
     return
+
+colors = ['yellow', 'red', 'green', 'orange', 'blue']
+def draw_traj_on_prior_grid(img_to_draw, prior_traj_latents_show,
+                            ex_latent_value=3, n_per_line=20):
+    # prior_traj_latents_show: [n_trajs, n_samples_per, 2]
+    w, h = img_to_draw.size
+    draw = ImageDraw.Draw(img_to_draw)
+    img_latent_ratio = (h - (h / n_per_line)) / (2 * ex_latent_value)
+    for i, traj in enumerate(prior_traj_latents_show):
+        if i > 4:
+            break
+        for j in range(len(traj[1:])):
+            start_y = traj[j-1][0] * img_latent_ratio + h / 2
+            start_x = traj[j-1][1] * img_latent_ratio + h / 2
+            end_y = traj[j][0] * img_latent_ratio + w / 2
+            end_x = traj[j][1] * img_latent_ratio + w / 2
+            draw.ellipse(xy=[(start_x-2, start_y-2), (start_x+2, start_y+2)],
+                         fill=colors[i])
+            draw.line(xy=[(start_x, start_y), (end_x, end_y)],
+                      fill=colors[i], width=2)
+    del draw
+    return img_to_draw
+
+def get_2d_grid_latents(low=-3, high=3, n_per_line=20, grid_labels=None):
+    trav_line = np.arange(low+(high-low)/float(n_per_line+1),
+                          high,
+                          (high-low)/float(n_per_line+1))
+    grid_latents = []
+    for i in range(len(trav_line)):
+        for j in range(len(trav_line)):
+            grid_latents.append([trav_line[i], trav_line[j]])
+    grid_labels = np.tile(grid_labels[:1],
+                          (len(trav_line) * len(trav_line), 1))
+    return np.array(grid_latents), grid_labels
+
+def add_outline(images, width=1):
+    num, img_w, img_h = images.shape[0], images.shape[-1], images.shape[-2]
+    for i in range(num):
+        images[i, :, 0:width, :] = 255
+        images[i, :, -width:, :] = 255
+        images[i, :, :, 0:width] = 255
+        images[i, :, :, -width:] = 255
+    return images
 
 #----------------------------------------------------------------------------
 # Main training script.
@@ -235,10 +279,34 @@ def training_loop_hd(
                         minibatch_size=sched.minibatch_gpu,
                         randomize_noise=True,
                         normalize_latents=False)
+    grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
                          grid_size=grid_size)
+    if (n_continuous == 2) and (n_discrete == 0):
+        n_per_line = 20
+        ex_latent_value = 3
+        prior_grid_latents, prior_grid_labels = get_2d_grid_latents(low=-ex_latent_value,
+                                                                    high=ex_latent_value,
+                                                                    n_per_line=n_per_line,
+                                                                    grid_labels=grid_labels)
+        grid_showing_fakes = Gs.run(prior_grid_latents,
+                                    prior_grid_labels,
+                                    is_validation=True,
+                                    minibatch_size=sched.minibatch_gpu,
+                                    randomize_noise=True,
+                                    normalize_latents=False)
+        grid_showing_fakes = add_outline(grid_showing_fakes, width=1)
+        misc.save_image_grid(grid_showing_fakes,
+                             dnnlib.make_run_dir_path('fakes_init_2d_prior_grid.png'),
+                             drange=drange_net,
+                             grid_size=[n_per_line, n_per_line])
+        img_to_draw = Image.open(dnnlib.make_run_dir_path('fakes_init_2d_prior_grid.png'))
+        img_to_draw = img_to_draw.convert('RGB')
+        img_to_draw = draw_traj_on_prior_grid(img_to_draw, prior_traj_latents_show,
+                                ex_latent_value, n_per_line)
+        img_to_draw.save(dnnlib.make_run_dir_path('fakes_init_2d_prior_grid_drawn.png'))
 
     if use_level_training:
         ending_level = training_set_resolution_log2 - 1
@@ -422,7 +490,33 @@ def training_loop_hd(
                 print_traj(prior_traj_latents_show)
                 grid_fakes = Gs.run(prior_traj_latents, grid_labels, is_validation=True,
                                     minibatch_size=sched.minibatch_gpu, randomize_noise=True, normalize_latents=False)
+                grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
+                if (n_continuous == 2) and (n_discrete == 0):
+                    n_per_line = 20
+                    ex_latent_value = 3
+                    prior_grid_latents, prior_grid_labels = get_2d_grid_latents(low=-ex_latent_value,
+                                                                                high=ex_latent_value,
+                                                                                n_per_line=n_per_line,
+                                                                                grid_labels=grid_labels)
+                    grid_showing_fakes = Gs.run(prior_grid_latents,
+                                                prior_grid_labels,
+                                                is_validation=True,
+                                                minibatch_size=sched.minibatch_gpu,
+                                                randomize_noise=True,
+                                                normalize_latents=False)
+                    grid_showing_fakes = add_outline(grid_showing_fakes, width=1)
+                    misc.save_image_grid(grid_showing_fakes,
+                                         dnnlib.make_run_dir_path('fakes_2d_prior_grid%06d.png' % (cur_nimg // 1000)),
+                                         drange=drange_net,
+                                         grid_size=[n_per_line, n_per_line])
+                    img_to_draw = Image.open(dnnlib.make_run_dir_path('fakes_2d_prior_grid%06d.png' % (cur_nimg // 1000)))
+                    img_to_draw = img_to_draw.convert('RGB')
+                    img_to_draw = draw_traj_on_prior_grid(img_to_draw, prior_traj_latents_show,
+                                            ex_latent_value, n_per_line)
+                    img_to_draw.save(dnnlib.make_run_dir_path('fakes_2d_prior_grid_drawn%06d.png' % (cur_nimg // 1000)))
+
+
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((I, M, Is), pkl)
