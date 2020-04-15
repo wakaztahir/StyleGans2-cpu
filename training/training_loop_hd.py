@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 14 Apr 2020 15:57:23 AEST
+# --- Last Modified: Tue 14 Apr 2020 22:29:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -95,6 +95,30 @@ def print_traj(prior_traj_latents_show):
             norm = np.sqrt(np.sum(feat * feat))
             line.append(norm)
         print(line)
+        print('-'*10)
+        line_dis = []
+        feat_0 = prior_traj_latents_show[i, 0]
+        for j in range(1, prior_traj_latents_show.shape[1]):
+            feat = prior_traj_latents_show[i, j]
+            feat_dis = feat - feat_0
+            norm_dis = np.sqrt(np.sum(feat_dis * feat_dis))
+            line_dis.append(norm_dis)
+        print(line_dis)
+        print('-'*10)
+        line_ang = []
+        feat_0 = prior_traj_latents_show[i, 0]
+        feat_1 = prior_traj_latents_show[i, 1]
+        feat_dir_1 = feat_1 - feat_0
+        norm_1 = np.sqrt(np.sum(feat_dir_1 * feat_dir_1))
+        for j in range(2, prior_traj_latents_show.shape[1]):
+            feat_last = prior_traj_latents_show[i, j-1]
+            feat = prior_traj_latents_show[i, j]
+            feat_dir = feat - feat_last
+            norm_cur = np.sqrt(np.sum(feat_dir * feat_dir))
+            cos_ang = np.sum(feat_dir * feat_dir_1) / (norm_1 * norm_cur)
+            line_ang.append(cos_ang)
+        print(line_ang)
+        print('#'*10)
     return
 
 #----------------------------------------------------------------------------
@@ -271,7 +295,7 @@ def training_loop_hd(
                         if use_hd_with_cls:
                             I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opts[n_level], training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         else:
-                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=(n_level + 1) if use_level_training else training_set_resolution_log2 - 1,
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=(n_level + 1) if use_level_training else None,
                                                                           training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         I_losses.append(I_loss)
                         I_regs.append(I_reg)

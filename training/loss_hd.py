@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 22:52:50 AEST
+# --- Last Modified: Tue 14 Apr 2020 22:41:23 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -108,8 +108,6 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
         prior_traj_latents_mean = autosummary('Loss/prior_traj_latents_mean', prior_traj_latents_mean)
         prior_traj_latents_logvar = autosummary('Loss/prior_traj_latents_logvar', prior_traj_latents_logvar)
     prior_traj_latents = autosummary('Loss/prior_traj_latents', prior_traj_latents)
-    prior_traj_latents_0 = autosummary('Loss/prior_traj_latents_0', prior_traj_latents[0])
-    prior_traj_latents_1 = autosummary('Loss/prior_traj_latents_1', prior_traj_latents[1])
     prior_traj_delta_latents = M.get_output_for(delta_latents, is_training=True)
     if use_std_in_m:
         prior_traj_delta_latents_mean, prior_traj_delta_latents_logvar, prior_traj_delta_latents = reparameterize(prior_traj_delta_latents, minibatch_size)
@@ -128,7 +126,7 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
             traj_reg = tf.reduce_sum(prior_traj_latents * prior_traj_latents, axis=1)
         else:
             logpz = log_normal_pdf(prior_traj_latents, 0., 0.)
-            logqz_x = log_normal_pdf(prior_traj_latents, 
+            logqz_x = log_normal_pdf(prior_traj_latents,
                                      prior_traj_latents_mean, prior_traj_latents_logvar)
             traj_reg = logqz_x - logpz
         traj_reg = autosummary('Loss/traj_reg', traj_reg)
