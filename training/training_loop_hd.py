@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Thu 16 Apr 2020 03:22:02 AEST
+# --- Last Modified: Thu 16 Apr 2020 18:05:40 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -132,7 +132,7 @@ def draw_traj_on_prior_grid(img_to_draw, prior_traj_latents_show,
     for i, traj in enumerate(prior_traj_latents_show):
         if i > 4:
             break
-        for j in range(len(traj[1:])):
+        for j in range(1, len(traj)):
             start_y = traj[j-1][0] * img_latent_ratio + h / 2
             start_x = traj[j-1][1] * img_latent_ratio + h / 2
             end_y = traj[j][0] * img_latent_ratio + w / 2
@@ -361,9 +361,11 @@ def training_loop_hd(
                 with tf.control_dependencies(lod_assign_ops):
                     with tf.name_scope('I_loss_%d' % n_level):
                         if use_hd_with_cls:
-                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opts[n_level], training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, I_info=I_info_gpu, opt=I_opts[n_level],
+                                                                          training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         else:
-                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level], n_levels=(n_level + 1) if use_level_training else None,
+                            I_loss, I_reg = dnnlib.util.call_func_by_name(I=I_gpu, M=M_gpu, G=G_gpu, opt=I_opts[n_level],
+                                                                          n_levels=(n_level + 1) if use_level_training else None,
                                                                           training_set=training_set, minibatch_size=minibatch_gpu_in, **I_loss_args)
                         I_losses.append(I_loss)
                         I_regs.append(I_reg)
@@ -442,7 +444,7 @@ def training_loop_hd(
 
             # Fast path without gradient accumulation.
             if len(rounds) == 1:
-                tflib.run([I_train_ops[n_level]], feed_dict)
+                tflib.run(I_train_ops[n_level], feed_dict)
                 if run_I_reg:
                     tflib.run(I_reg_ops[n_level], feed_dict)
                 tflib.run([Is_update_op], feed_dict)
