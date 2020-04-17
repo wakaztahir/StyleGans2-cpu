@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 03:25:51 AEST
+# --- Last Modified: Sat 18 Apr 2020 03:36:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -180,7 +180,8 @@ def get_prior_traj_by_dirs(latent_dirs, M, n_samples_per, prior_latent_size, gri
                         minibatch_size=sched.minibatch_gpu)
     print('hyperplane_reg:', hyperplane_reg)
     # print('prior_traj_dirs.shape:', prior_traj_dirs.shape)
-    z = np.random.normal(size=(1, prior_latent_size))
+    # z = np.random.normal(loc=0., scale=1., size=(1, prior_latent_size))
+    z = np.random.randn(1, prior_latent_size)
     grid_latents = np.tile(z, (prior_traj_dirs.shape[0] * n_samples_per, 1))
     z_base = np.tile(z, (n_samples_per, 1))
     arange_np = np.arange(-2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
