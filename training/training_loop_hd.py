@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 17:34:01 AEST
+# --- Last Modified: Fri 17 Apr 2020 17:41:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -266,6 +266,7 @@ def training_loop_hd(
         grid_size = (grid_size[0], grid_size[1]//5)
         grid_latents = grid_latents[:grid_latents.shape[0]//5]
         grid_labels = grid_labels[:grid_labels.shape[0]//5]
+    print('grid_latents:', grid_latents)
     prior_traj_latents = M.run(grid_latents,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu)
