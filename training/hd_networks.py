@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 19:16:54 AEST
+# --- Last Modified: Fri 17 Apr 2020 20:22:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,6 +44,7 @@ def net_M_hyperplane(latents_in,
     x = tf.matmul(x, W)
     orth_constraint = tf.matmul(W, W, transpose_b=True) - tf.eye(latent_size, dtype=x.dtype)
     orth_constraint = tf.reduce_sum(orth_constraint * orth_constraint)
+    print('orth_constraint.shape:', orth_constraint.get_shape().as_list())
     # with tf.variable_scope('hyperplane_transform'):
         # x = dense_layer(x, fmaps=latent_size, lrmul=mapping_lrmul)
 
