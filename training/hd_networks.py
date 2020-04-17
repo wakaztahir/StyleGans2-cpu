@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 16:38:41 AEST
+# --- Last Modified: Fri 17 Apr 2020 19:16:54 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -36,14 +36,20 @@ def net_M_hyperplane(latents_in,
     latents_in.set_shape([None, C_global_size])
     x = latents_in
 
-    # W = tf.Variable(tf.random_normal((C_global_size, latent_size)))
-    # x = tf.matmul(x, W)
-    with tf.variable_scope('hyperplane_transform'):
-        x = dense_layer(x, fmaps=latent_size, lrmul=mapping_lrmul)
+    x = tf.concat([x, tf.zeros([tf.shape(x)[0], latent_size - C_global_size], dtype=x.dtype)], axis=1)
+
+    # W = tf.Variable(tf.random_normal((latent_size, latent_size)))
+    W = get_weight([latent_size, latent_size], lrmul=mapping_lrmul, weight_var='orth_weight')
+    W = tf.cast(W, x.dtype)
+    x = tf.matmul(x, W)
+    orth_constraint = tf.matmul(W, W, transpose_b=True) - tf.eye(latent_size, dtype=x.dtype)
+    orth_constraint = tf.reduce_sum(orth_constraint * orth_constraint)
+    # with tf.variable_scope('hyperplane_transform'):
+        # x = dense_layer(x, fmaps=latent_size, lrmul=mapping_lrmul)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
-    return tf.identity(x, name='to_latent_out')
+    return tf.identity(x, name='to_latent_out'), orth_constraint
 
 #----------------------------------------------------------------------------
 # Mapper disentanglement network.

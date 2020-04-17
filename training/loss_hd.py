@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 16:37:00 AEST
+# --- Last Modified: Fri 17 Apr 2020 19:26:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -54,7 +54,8 @@ def log_normal_pdf(sample, mean, logvar, raxis=1):
 
 def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
                C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
-               random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024, use_std_in_m=False):
+               random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024, use_std_in_m=False,
+               model_type='hd_dis_model', hyperplane_lambda=1):
     _ = opt
     if D_global_size > 0:
         discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
@@ -102,13 +103,17 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
 
     labels = training_set.get_random_labels_tf(minibatch_size)
 
-    prior_traj_latents = M.get_output_for(latents, is_training=True)
+    if model_type == 'hd_hyperplane':
+        prior_traj_latents, orth_constraint = M.get_output_for(latents, is_training=True)
+        prior_traj_delta_latents, orth_constraint_2 = M.get_output_for(delta_latents, is_training=True)
+    else:
+        prior_traj_latents = M.get_output_for(latents, is_training=True)
+        prior_traj_delta_latents = M.get_output_for(delta_latents, is_training=True)
     if use_std_in_m:
         prior_traj_latents_mean, prior_traj_latents_logvar, prior_traj_latents = reparameterize(prior_traj_latents, minibatch_size)
         prior_traj_latents_mean = autosummary('Loss/prior_traj_latents_mean', prior_traj_latents_mean)
         prior_traj_latents_logvar = autosummary('Loss/prior_traj_latents_logvar', prior_traj_latents_logvar)
     prior_traj_latents = autosummary('Loss/prior_traj_latents', prior_traj_latents)
-    prior_traj_delta_latents = M.get_output_for(delta_latents, is_training=True)
     if use_std_in_m:
         prior_traj_delta_latents_mean, prior_traj_delta_latents_logvar, prior_traj_delta_latents = reparameterize(prior_traj_delta_latents, minibatch_size)
     fake1_out = G.get_output_for(prior_traj_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
@@ -138,5 +143,8 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
         I_info_loss = autosummary('Loss/I_info_loss', I_info_loss)
         I_loss = I_loss + I_info_loss
         I_loss = autosummary('Loss/I_loss_after_INFO', I_loss)
+
+    if model_type == 'hd_hyperplane':
+        I_loss = I_loss + hyperplane_lambda * (orth_constraint + orth_constraint_2) / 2.
 
     return I_loss, None

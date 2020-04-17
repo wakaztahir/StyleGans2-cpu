@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Fri 17 Apr 2020 16:38:56 AEST
+# --- Last Modified: Fri 17 Apr 2020 19:34:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,12 +46,12 @@ _valid_configs = [
 
 def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
         mirror_augment, metrics, resume_G_pkl, n_batch=2, n_batch_per_gpu=1,
-        D_global_size=0, C_global_size=10, model_type=False, latent_type='uniform',
+        D_global_size=0, C_global_size=10, model_type='hd_dis_model', latent_type='uniform',
         resume_pkl=None, n_samples_per=4, D_lambda=0, C_lambda=1,
         epsilon_in_loss=3, random_eps=True, M_lrmul=0.1, resolution_manual=1024,
         pretrained_type='with_stylegan2', traj_lambda=None, level_I_kimg=1000,
         use_level_training=False, resume_kimg=0, use_std_in_m=False, prior_latent_size=512,
-        M_mapping_fmaps=512):
+        M_mapping_fmaps=512, hyperplane_lambda=1):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
     if model_type == 'hd_hyperplane':
         M         = EasyDict(func_name='training.hd_networks.net_M_hyperplane',
@@ -80,7 +80,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                          D_lambda=D_lambda, C_lambda=C_lambda,
                          epsilon=epsilon_in_loss, random_eps=random_eps,
                          traj_lambda=traj_lambda, resolution_manual=resolution_manual,
-                         use_std_in_m=use_std_in_m)              # Options for discriminator loss.
+                         use_std_in_m=use_std_in_m, model_type=model_type,
+                         hyperplane_lambda=hyperplane_lambda)              # Options for discriminator loss.
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
     sc        = dnnlib.SubmitConfig()                                          # Options for dnnlib.submit_run().
@@ -117,6 +118,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                   I_loss_args=I_loss, resume_G_pkl=resume_G_pkl)
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid,
                   use_hd_with_cls=(model_type == 'hd_dis_model_with_cls'),
+                  use_hyperplane=(model_type == 'hd_hyperplane'),
                   metric_arg_list=metrics, tf_config=tf_config,
                   resume_pkl=resume_pkl, n_discrete=D_global_size,
                   n_continuous=C_global_size, n_samples_per=n_samples_per,
@@ -225,6 +227,8 @@ def main():
                         metavar='PRIOR_LATENTS_SIZE', default=512, type=int)
     parser.add_argument('--M_mapping_fmaps', help='M mapping net fmaps size.',
                         metavar='M_MAPPING_FMAPS', default=512, type=int)
+    parser.add_argument('--hyperplane_lambda', help='Hyperparam for use_hyperplane loss.',
+                        metavar='HYPERPLANE_LAMBDA', default=1, type=float)
 
     args = parser.parse_args()
 
