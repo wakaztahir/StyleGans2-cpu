@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 19:38:53 AEST
+# --- Last Modified: Fri 17 Apr 2020 20:10:16 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -272,9 +272,10 @@ def training_loop_hd(
         grid_labels = grid_labels[:grid_labels.shape[0]//5]
     print('grid_latents:', grid_latents)
     if use_hyperplane:
-        prior_traj_latents, _ = M.run(grid_latents,
+        prior_traj_latents, orth_reg = M.run(grid_latents,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu)
+        print('orth_reg:', orth_reg)
     else:
         prior_traj_latents = M.run(grid_latents,
                             is_validation=True,
@@ -494,10 +495,12 @@ def training_loop_hd(
 
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
+                print('grid_latents:', grid_latents)
                 if use_hyperplane:
-                    prior_traj_latents, _ = M.run(grid_latents,
+                    prior_traj_latents, orth_reg = M.run(grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu)
+                    print('orth_reg:', orth_reg)
                 else:
                     prior_traj_latents = M.run(grid_latents,
                                         is_validation=True,
