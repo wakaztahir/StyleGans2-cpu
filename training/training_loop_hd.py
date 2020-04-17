@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 01:52:25 AEST
+# --- Last Modified: Sat 18 Apr 2020 01:54:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -181,7 +181,7 @@ def get_prior_traj_by_dirs(latent_dirs, M, n_samples_per, prior_latent_size, gri
     print('hyperplane_reg:', hyperplane_reg)
     # print('prior_traj_dirs.shape:', prior_traj_dirs.shape)
     z = np.random.normal(size=(1, prior_latent_size))
-    grid_latents = np.tile(z, (prior_latent_size * n_samples_per, 1))
+    grid_latents = np.tile(z, (prior_traj_dirs.shape[0] * n_samples_per, 1))
     z_base = np.tile(z, (n_samples_per, 1))
     for i in range(prior_traj_dirs.shape[0]):
         prior_traj_dirs_reshaped = np.reshape(prior_traj_dirs[i], (1, prior_traj_dirs[i].shape[0]))
