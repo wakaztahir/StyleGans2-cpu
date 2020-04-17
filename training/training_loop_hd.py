@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 20:10:16 AEST
+# --- Last Modified: Sat 18 Apr 2020 01:44:28 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -169,6 +169,32 @@ def add_outline(images, width=1):
         images[i, :, :, -width:] = 255
     return images
 
+def get_latent_dirs(n_continuous):
+    # latent_dirs = get_latent_dirs(n_continuous)
+    return np.eye(n_continuous)
+
+def get_prior_traj_by_dirs(latent_dirs, M, n_samples_per, prior_latent_size, grid_labels, sched):
+    # return: prior_traj_latents
+    prior_traj_dirs, hyperplane_reg = M.run(latent_dirs,
+                        is_validation=True,
+                        minibatch_size=sched.minibatch_gpu)
+    print('hyperplane_reg:', hyperplane_reg)
+    print('prior_traj_dirs.shape:', prior_traj_dirs.shape)
+    z = np.random.normal(size=(1, prior_latent_size))
+    grid_latents = np.tile(z, (prior_latent_size * n_samples_per, 1))
+    z_base = np.tile(z, (n_samples_per, 1))
+    for i in range(prior_latent_size):
+        prior_traj_dirs_reshaped = np.reshape(prior_traj_dirs[i], (1, prior_traj_dirs[i].shape[0]))
+        arange_np = np.arange(-2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
+        arange_np_reshaped = np.reshape(arange_np, (n_samples_per, 1))
+        print('prior_traj_dirs_reshaped.shape:', prior_traj_dirs_reshaped.shape)
+        print('arange_np_reshaped.shape:', arange_np_reshaped.shape)
+        pdb.set_trace()
+        grid_latents[i * n_samples_per:(i + 1) *
+                     n_samples_per] = z_base + prior_traj_dirs_reshaped * arange_np_reshaped
+    return grid_latents
+
+
 #----------------------------------------------------------------------------
 # Main training script.
 
@@ -261,27 +287,28 @@ def training_loop_hd(
     training_set_resolution_log2 = int(np.log2(resolution_manual))
     sched = training_schedule(cur_nimg=total_kimg*1000, training_set_resolution_log2=training_set_resolution_log2, **sched_args)
 
-    grid_size, grid_latents, grid_labels = get_grid_latents(
-        n_discrete, n_continuous, n_samples_per, G, grid_labels)
-    print('grid_size:', grid_size)
-    print('grid_latents.shape:', grid_latents.shape)
-    print('grid_labels.shape:', grid_labels.shape)
-    if resolution_manual >= 256:
-        grid_size = (grid_size[0], grid_size[1]//5)
-        grid_latents = grid_latents[:grid_latents.shape[0]//5]
-        grid_labels = grid_labels[:grid_labels.shape[0]//5]
-    print('grid_latents:', grid_latents)
-    if use_hyperplane:
-        prior_traj_latents, orth_reg = M.run(grid_latents,
-                            is_validation=True,
-                            minibatch_size=sched.minibatch_gpu)
-        print('orth_reg:', orth_reg)
-    else:
+    if not use_hyperplane:
+        grid_size, grid_latents, grid_labels = get_grid_latents(
+            n_discrete, n_continuous, n_samples_per, G, grid_labels)
+        print('grid_size:', grid_size)
+        print('grid_latents.shape:', grid_latents.shape)
+        print('grid_labels.shape:', grid_labels.shape)
+        if resolution_manual >= 256:
+            grid_size = (grid_size[0], grid_size[1]//5)
+            grid_latents = grid_latents[:grid_latents.shape[0]//5]
+            grid_labels = grid_labels[:grid_labels.shape[0]//5]
         prior_traj_latents = M.run(grid_latents,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu)
-    if use_std_in_m:
-        prior_traj_latents = prior_traj_latents[:, :prior_latent_size]
+        if use_std_in_m:
+            prior_traj_latents = prior_traj_latents[:, :prior_latent_size]
+    else:
+        grid_size = (n_samples_per, n_continuous)
+        grid_labels = np.tile(grid_labels[:1], (n_continuous * n_samples_per, 1))
+        latent_dirs = get_latent_dirs(n_continuous)
+        prior_traj_latents = get_prior_traj_by_dirs(latent_dirs, M, n_samples_per,
+                                                    prior_latent_size, grid_labels,
+                                                    sched)
     prior_traj_latents_show = np.reshape(prior_traj_latents,
                                          [-1, n_samples_per, prior_latent_size])
     print_traj(prior_traj_latents_show)
@@ -495,18 +522,18 @@ def training_loop_hd(
 
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
-                print('grid_latents:', grid_latents)
-                if use_hyperplane:
-                    prior_traj_latents, orth_reg = M.run(grid_latents,
-                                        is_validation=True,
-                                        minibatch_size=sched.minibatch_gpu)
-                    print('orth_reg:', orth_reg)
-                else:
+
+                if not use_hyperplane:
                     prior_traj_latents = M.run(grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu)
-                if use_std_in_m:
-                    prior_traj_latents = prior_traj_latents[:, :prior_latent_size]
+                    if use_std_in_m:
+                        prior_traj_latents = prior_traj_latents[:, :prior_latent_size]
+                else:
+                    prior_traj_latents = get_prior_traj_by_dirs(latent_dirs, M, n_samples_per,
+                                                                prior_latent_size, grid_labels,
+                                                                sched)
+
                 prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, prior_latent_size])
                 print_traj(prior_traj_latents_show)
                 grid_fakes = Gs.run(prior_traj_latents, grid_labels, is_validation=True,
