@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 19:32:10 AEST
+# --- Last Modified: Fri 17 Apr 2020 19:38:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -495,11 +495,11 @@ def training_loop_hd(
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
                 if use_hyperplane:
-                    prior_traj_latents = M.run(grid_latents,
+                    prior_traj_latents, _ = M.run(grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu)
                 else:
-                    prior_traj_latents, _ = M.run(grid_latents,
+                    prior_traj_latents = M.run(grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu)
                 if use_std_in_m:
