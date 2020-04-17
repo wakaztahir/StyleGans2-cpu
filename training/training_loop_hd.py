@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Thu 16 Apr 2020 18:05:40 AEST
+# --- Last Modified: Fri 17 Apr 2020 17:34:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -149,6 +149,7 @@ def get_2d_grid_latents(low=-3, high=3, n_per_line=20, grid_labels=None):
                           high,
                           (high-low)/float(n_per_line+1))
     grid_latents = []
+    print(trav_line)
     for i in range(len(trav_line)):
         for j in range(len(trav_line)):
             grid_latents.append([trav_line[i], trav_line[j]])
