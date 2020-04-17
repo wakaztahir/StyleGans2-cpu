@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 01:44:28 AEST
+# --- Last Modified: Sat 18 Apr 2020 01:47:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -179,7 +179,7 @@ def get_prior_traj_by_dirs(latent_dirs, M, n_samples_per, prior_latent_size, gri
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu)
     print('hyperplane_reg:', hyperplane_reg)
-    print('prior_traj_dirs.shape:', prior_traj_dirs.shape)
+    # print('prior_traj_dirs.shape:', prior_traj_dirs.shape)
     z = np.random.normal(size=(1, prior_latent_size))
     grid_latents = np.tile(z, (prior_latent_size * n_samples_per, 1))
     z_base = np.tile(z, (n_samples_per, 1))
@@ -187,9 +187,9 @@ def get_prior_traj_by_dirs(latent_dirs, M, n_samples_per, prior_latent_size, gri
         prior_traj_dirs_reshaped = np.reshape(prior_traj_dirs[i], (1, prior_traj_dirs[i].shape[0]))
         arange_np = np.arange(-2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
         arange_np_reshaped = np.reshape(arange_np, (n_samples_per, 1))
-        print('prior_traj_dirs_reshaped.shape:', prior_traj_dirs_reshaped.shape)
-        print('arange_np_reshaped.shape:', arange_np_reshaped.shape)
-        pdb.set_trace()
+        # print('prior_traj_dirs_reshaped.shape:', prior_traj_dirs_reshaped.shape)
+        # print('arange_np_reshaped.shape:', arange_np_reshaped.shape)
+        # pdb.set_trace()
         grid_latents[i * n_samples_per:(i + 1) *
                      n_samples_per] = z_base + prior_traj_dirs_reshaped * arange_np_reshaped
     return grid_latents
