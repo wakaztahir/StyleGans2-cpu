@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 17:41:44 AEST
+# --- Last Modified: Fri 17 Apr 2020 17:56:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -86,7 +86,10 @@ def training_schedule(
 
 def print_traj(prior_traj_latents_show):
     # prior_traj_latents_show  shape: [batch, n_samples_per, n_continuous])
-    print(prior_traj_latents_show[0,0,::10])
+    if prior_traj_latents_show.shape[2] > 100:
+        print(prior_traj_latents_show[0,0,::10])
+    else:
+        print('prior_traj_latents_show_0:', prior_traj_latents_show[0])
     print(np.max(prior_traj_latents_show[0,0]))
     print(np.min(prior_traj_latents_show[0,0]))
     for i in range(prior_traj_latents_show.shape[0]):
