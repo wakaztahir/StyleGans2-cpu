@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 03:12:41 AEST
+# --- Last Modified: Sat 18 Apr 2020 03:25:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -319,8 +319,8 @@ def training_loop_hd(
                         grid_labels,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu,
-                        randomize_noise=False,
-                        normalize_latents=False)
+                        randomize_noise=True,
+                        normalize_latents=True)
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
@@ -337,8 +337,8 @@ def training_loop_hd(
                                     prior_grid_labels,
                                     is_validation=True,
                                     minibatch_size=sched.minibatch_gpu,
-                                    randomize_noise=False,
-                                    normalize_latents=False)
+                                    randomize_noise=True,
+                                    normalize_latents=True)
         grid_showing_fakes = add_outline(grid_showing_fakes, width=1)
         misc.save_image_grid(grid_showing_fakes,
                              dnnlib.make_run_dir_path('fakes_init_2d_prior_grid.png'),
@@ -540,7 +540,7 @@ def training_loop_hd(
                 prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, prior_latent_size])
                 print_traj(prior_traj_latents_show)
                 grid_fakes = Gs.run(prior_traj_latents, grid_labels, is_validation=True,
-                                    minibatch_size=sched.minibatch_gpu, randomize_noise=False, normalize_latents=False)
+                                    minibatch_size=sched.minibatch_gpu, randomize_noise=True, normalize_latents=True)
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes, dnnlib.make_run_dir_path('fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
                 if (n_continuous == 2) and (n_discrete == 0):
@@ -554,8 +554,8 @@ def training_loop_hd(
                                                 prior_grid_labels,
                                                 is_validation=True,
                                                 minibatch_size=sched.minibatch_gpu,
-                                                randomize_noise=False,
-                                                normalize_latents=False)
+                                                randomize_noise=True,
+                                                normalize_latents=True)
                     grid_showing_fakes = add_outline(grid_showing_fakes, width=1)
                     misc.save_image_grid(grid_showing_fakes,
                                          dnnlib.make_run_dir_path('fakes_2d_prior_grid%06d.png' % (cur_nimg // 1000)),
