@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Sat 18 Apr 2020 03:28:53 AEST
+# --- Last Modified: Sat 18 Apr 2020 03:41:35 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -97,7 +97,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
     sc        = dnnlib.SubmitConfig()                                          # Options for dnnlib.submit_run().
-    tf_config = {'rnd.np_random_seed': 1001}                                   # Options for tflib.init_tf().
+    tf_config = {'rnd.np_random_seed': 1000}                                   # Options for tflib.init_tf().
 
     train.data_dir = data_dir
     train.total_kimg = total_kimg
