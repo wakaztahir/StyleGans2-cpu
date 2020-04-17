@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 20:24:30 AEST
+# --- Last Modified: Fri 17 Apr 2020 22:56:08 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,16 +42,19 @@ def net_M_hyperplane(latents_in,
     W = get_weight([latent_size, latent_size], lrmul=mapping_lrmul, weight_var='orth_weight')
     W = tf.cast(W, x.dtype)
     x = tf.matmul(x, W)
-    orth_constraint = tf.matmul(W, W, transpose_b=True) - tf.eye(latent_size, dtype=x.dtype)
-    print('orth_constraint_1.shape:', orth_constraint.get_shape().as_list())
-    orth_constraint = tf.reduce_sum(orth_constraint * orth_constraint)
-    print('orth_constraint.shape:', orth_constraint.get_shape().as_list())
-    # with tf.variable_scope('hyperplane_transform'):
-        # x = dense_layer(x, fmaps=latent_size, lrmul=mapping_lrmul)
+
+    # # Orthogonal constraint on W
+    # constraint = tf.matmul(W, W, transpose_b=True) - tf.eye(latent_size, dtype=x.dtype)
+    # print('orth_constraint_1.shape:', constraint.get_shape().as_list())
+    # constraint = tf.reduce_sum(constraint * constraint)
+    # print('constraint.shape:', constraint.get_shape().as_list())
+
+    # Magnitude constraint on W
+    constraint = tf.reduce_sum(W * W)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
-    return tf.identity(x, name='to_latent_out'), orth_constraint
+    return tf.identity(x, name='to_latent_out'), constraint
 
 #----------------------------------------------------------------------------
 # Mapper disentanglement network.

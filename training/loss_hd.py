@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 19:26:39 AEST
+# --- Last Modified: Sat 18 Apr 2020 00:36:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -55,7 +55,7 @@ def log_normal_pdf(sample, mean, logvar, raxis=1):
 def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
                C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
                random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024, use_std_in_m=False,
-               model_type='hd_dis_model', hyperplane_lambda=1):
+               model_type='hd_dis_model', hyperplane_lambda=1, prior_latent_size=512):
     _ = opt
     if D_global_size > 0:
         discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
@@ -144,7 +144,60 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
         I_loss = I_loss + I_info_loss
         I_loss = autosummary('Loss/I_loss_after_INFO', I_loss)
 
-    if model_type == 'hd_hyperplane':
-        I_loss = I_loss + hyperplane_lambda * (orth_constraint + orth_constraint_2) / 2.
+    return I_loss, None
+
+def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
+               C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
+               random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024, use_std_in_m=False,
+               model_type='hd_dis_model', hyperplane_lambda=1, prior_latent_size=512):
+    _ = opt
+    resolution_log2 = int(np.log2(resolution_manual))
+    nd_out_base = C_global_size // (resolution_log2 - 1)
+    nd_out_list = [nd_out_base + C_global_size % (resolution_log2 - 1) if i == 0 else nd_out_base for i in range(resolution_log2 - 1)]
+    nd_out_list = nd_out_list[::-1]
+
+    # Sample delta latents
+    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=sum(nd_out_list[:n_levels]), dtype=tf.int32)
+    C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), tf.float32)
+
+    if not random_eps:
+        delta_target = C_delta_latents * epsilon
+    else:
+        epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
+        # delta_target = tf.math.abs(C_delta_latents * epsilon)
+        delta_target = C_delta_latents * epsilon
+
+    delta_var_latents = delta_target
+
+    labels = training_set.get_random_labels_tf(minibatch_size)
+
+    # Get variation direction in prior latent space.
+    prior_var_latents, hyperplane_constraint = M.get_output_for(delta_var_latents, is_training=True)
+
+    prior_var_latents = autosummary('Loss/prior_var_latents', prior_var_latents)
+
+    if latent_type == 'uniform':
+        prior_latents = tf.random.uniform([minibatch_size, prior_latent_size], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        prior_latents = tf.random.normal([minibatch_size, prior_latent_size])
+    elif latent_type == 'trunc_normal':
+        prior_latents = tf.random.truncated_normal([minibatch_size, prior_latent_size])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+
+    prior_latents = autosummary('Loss/prior_latents', prior_latents)
+    prior_delta_latents = prior_latents + prior_var_latents
+
+    fake1_out = G.get_output_for(prior_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
+    fake2_out = G.get_output_for(prior_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
+    fake1_out = autosummary('Loss/fake1_out', fake1_out)
+
+    regress_out_list = I.get_output_for(fake1_out, fake2_out, is_training=True)
+    regress_out = tf.concat(regress_out_list[:n_levels], axis=1)
+
+    I_loss = calc_vc_loss(C_delta_latents[:,:sum(nd_out_list[:n_levels])], regress_out, C_global_size, D_lambda, C_lambda)
+    I_loss = autosummary('Loss/I_loss', I_loss)
+
+    I_loss = I_loss + hyperplane_lambda * hyperplane_constraint
 
     return I_loss, None

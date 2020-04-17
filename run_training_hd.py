@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Fri 17 Apr 2020 19:34:55 AEST
+# --- Last Modified: Fri 17 Apr 2020 23:08:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -74,14 +74,26 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
     else:
         I_info = EasyDict()
     I_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)                  # Options for discriminator optimizer.
-    I_loss    = EasyDict(func_name='training.loss_hd.IandM_loss', latent_type=latent_type,
-                         D_global_size=D_global_size,
-                         C_global_size=C_global_size,
-                         D_lambda=D_lambda, C_lambda=C_lambda,
-                         epsilon=epsilon_in_loss, random_eps=random_eps,
-                         traj_lambda=traj_lambda, resolution_manual=resolution_manual,
-                         use_std_in_m=use_std_in_m, model_type=model_type,
-                         hyperplane_lambda=hyperplane_lambda)              # Options for discriminator loss.
+    if model_type == 'hd_hyperplane':
+        I_loss    = EasyDict(func_name='training.loss_hd.IandM_hyperplane_loss', latent_type=latent_type,
+                             D_global_size=D_global_size,
+                             C_global_size=C_global_size,
+                             D_lambda=D_lambda, C_lambda=C_lambda,
+                             epsilon=epsilon_in_loss, random_eps=random_eps,
+                             traj_lambda=traj_lambda, resolution_manual=resolution_manual,
+                             use_std_in_m=use_std_in_m, model_type=model_type,
+                             hyperplane_lambda=hyperplane_lambda,
+                             prior_latent_size=prior_latent_size)              # Options for discriminator loss.
+    else:
+        I_loss    = EasyDict(func_name='training.loss_hd.IandM_loss', latent_type=latent_type,
+                             D_global_size=D_global_size,
+                             C_global_size=C_global_size,
+                             D_lambda=D_lambda, C_lambda=C_lambda,
+                             epsilon=epsilon_in_loss, random_eps=random_eps,
+                             traj_lambda=traj_lambda, resolution_manual=resolution_manual,
+                             use_std_in_m=use_std_in_m, model_type=model_type,
+                             hyperplane_lambda=hyperplane_lambda,
+                             prior_latent_size=prior_latent_size)              # Options for discriminator loss.
     sched     = EasyDict()                                                     # Options for TrainingSchedule.
     grid      = EasyDict(size='1080p', layout='random')                           # Options for setup_snapshot_image_grid().
     sc        = dnnlib.SubmitConfig()                                          # Options for dnnlib.submit_run().
