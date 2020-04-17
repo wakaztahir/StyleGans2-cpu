@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 13 Apr 2020 18:38:07 AEST
+# --- Last Modified: Fri 17 Apr 2020 16:38:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -21,6 +21,29 @@ from dnnlib.tflib.ops.upfirdn_2d import upsample_2d, downsample_2d
 from training.networks_stylegan2 import get_weight, dense_layer, conv2d_layer
 from training.networks_stylegan2 import apply_bias_act, naive_upsample_2d
 from training.networks_stylegan2 import minibatch_stddev_layer
+
+#----------------------------------------------------------------------------
+# Hyperplane Mapper disentanglement network.
+def net_M_hyperplane(latents_in,
+          C_global_size=10,
+          D_global_size=0,
+          latent_size=512,  # Latent vector (Z) dimensionality.
+          mapping_lrmul=0.1,  # Learning rate multiplier for the mapping layers.
+          use_std_in_m=False,  # If output prior std.
+          dtype='float32',  # Data type to use for activations and outputs.
+          **_kwargs):  # Ignore unrecognized keyword args.
+
+    latents_in.set_shape([None, C_global_size])
+    x = latents_in
+
+    # W = tf.Variable(tf.random_normal((C_global_size, latent_size)))
+    # x = tf.matmul(x, W)
+    with tf.variable_scope('hyperplane_transform'):
+        x = dense_layer(x, fmaps=latent_size, lrmul=mapping_lrmul)
+
+    # Output.
+    assert x.dtype == tf.as_dtype(dtype)
+    return tf.identity(x, name='to_latent_out')
 
 #----------------------------------------------------------------------------
 # Mapper disentanglement network.

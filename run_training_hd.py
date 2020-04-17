@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Thu 16 Apr 2020 03:16:21 AEST
+# --- Last Modified: Fri 17 Apr 2020 16:38:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -53,13 +53,21 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
         use_level_training=False, resume_kimg=0, use_std_in_m=False, prior_latent_size=512,
         M_mapping_fmaps=512):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
-    M         = EasyDict(func_name='training.hd_networks.net_M',
-                         C_global_size=C_global_size, D_global_size=D_global_size,
-                         latent_size=prior_latent_size,
-                         mapping_fmaps=M_mapping_fmaps,
-                         mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)  # Options for dismapper network.
-    I         = EasyDict(func_name='training.hd_networks.net_I',
-                         C_global_size=C_global_size, D_global_size=D_global_size)  # Options for recognizor network.
+    if model_type == 'hd_hyperplane':
+        M         = EasyDict(func_name='training.hd_networks.net_M_hyperplane',
+                             C_global_size=C_global_size, D_global_size=D_global_size,
+                             latent_size=prior_latent_size,
+                             mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)  # Options for dismapper network.
+        I         = EasyDict(func_name='training.hd_networks.net_I',
+                             C_global_size=C_global_size, D_global_size=D_global_size)  # Options for recognizor network.
+    else:
+        M         = EasyDict(func_name='training.hd_networks.net_M',
+                             C_global_size=C_global_size, D_global_size=D_global_size,
+                             latent_size=prior_latent_size,
+                             mapping_fmaps=M_mapping_fmaps,
+                             mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)  # Options for dismapper network.
+        I         = EasyDict(func_name='training.hd_networks.net_I',
+                             C_global_size=C_global_size, D_global_size=D_global_size)  # Options for recognizor network.
     if model_type == 'hd_dis_model_with_cls':
         I_info = EasyDict(func_name='training.hd_networks.net_I_info',
                           C_global_size=C_global_size, D_global_size=D_global_size)
@@ -170,7 +178,7 @@ def main():
     parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)', default=False, metavar='BOOL', type=_str_to_bool)
     parser.add_argument('--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)', default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='hd_dis_model',
-                        type=str, metavar='MODEL_TYPE', choices=['hd_dis_model', 'hd_dis_model_with_cls'])
+                        type=str, metavar='MODEL_TYPE', choices=['hd_dis_model', 'hd_dis_model_with_cls', 'hd_hyperplane'])
     parser.add_argument('--D_global_size', help='Number of discrete latents',
                         metavar='D_GLOBAL_SIZE', default=0, type=int)
     parser.add_argument('--C_global_size', help='Number of continuous latents',
@@ -209,7 +217,7 @@ def main():
                         metavar='N_BATCH_PER_GPU', default=1, type=int)
     parser.add_argument('--resume_kimg', help='K number of imgs have been trained.',
                         metavar='RESUME_KIMG', default=0, type=int)
-    parser.add_argument('--use_level_training', help='If use level training strategy.', 
+    parser.add_argument('--use_level_training', help='If use level training strategy.',
                         default=False, metavar='USE_LEVEL_TRAINING', type=_str_to_bool)
     parser.add_argument('--use_std_in_m', help='If output prior std in M net.',
                         default=False, metavar='USE_STD_IN_M', type=_str_to_bool)

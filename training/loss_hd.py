@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Thu 16 Apr 2020 18:40:03 AEST
+# --- Last Modified: Fri 17 Apr 2020 16:37:00 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -88,7 +88,7 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
     else:
         epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
         # delta_target = tf.math.abs(C_delta_latents * epsilon)
-        delta_target = C_delta_latents * tf.math.abs(epsilon)
+        delta_target = C_delta_latents * epsilon
         # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
 
     if D_global_size > 0:
