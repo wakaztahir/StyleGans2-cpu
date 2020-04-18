@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 00:36:04 AEST
+# --- Last Modified: Sat 18 Apr 2020 19:03:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -149,7 +149,7 @@ def IandM_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_t
 def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
                C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=3,
                random_eps=False, traj_lambda=None, n_levels=None, resolution_manual=1024, use_std_in_m=False,
-               model_type='hd_dis_model', hyperplane_lambda=1, prior_latent_size=512):
+               model_type='hd_dis_model', hyperplane_lambda=1, prior_latent_size=512, hyperdir_lambda=1):
     _ = opt
     resolution_log2 = int(np.log2(resolution_manual))
     nd_out_base = C_global_size // (resolution_log2 - 1)
@@ -169,12 +169,20 @@ def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=Non
 
     delta_var_latents = delta_target
 
+    all_delta_var_latents = tf.eye(C_global_size, dtype=tf.float32)
+
     labels = training_set.get_random_labels_tf(minibatch_size)
 
     # Get variation direction in prior latent space.
     prior_var_latents, hyperplane_constraint = M.get_output_for(delta_var_latents, is_training=True)
+    prior_all_dirs, _ = M.get_output_for(all_delta_var_latents, is_training=True)
 
     prior_var_latents = autosummary('Loss/prior_var_latents', prior_var_latents)
+    manipulated_prior_dir = tf.matmul(prior_var_latents, tf.transpose(prior_all_dirs)) # [batch, C_global_size]
+    manipulated_prior_dir = manipulated_prior_dir * (1. - C_delta_latents) # [batch, C_global_size]
+    manipulated_prior_dir = tf.matmul(manipulated_prior_dir, prior_all_dirs) # [batch, prior_latent_size]
+    prior_dir_to_go = prior_var_latents - manipulated_prior_dir
+    prior_dir_to_go = autosummary('Loss/prior_dir_to_go', prior_dir_to_go)
 
     if latent_type == 'uniform':
         prior_latents = tf.random.uniform([minibatch_size, prior_latent_size], minval=-2, maxval=2)
@@ -186,7 +194,7 @@ def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=Non
         raise ValueError('Latent type not supported: ' + latent_type)
 
     prior_latents = autosummary('Loss/prior_latents', prior_latents)
-    prior_delta_latents = prior_latents + prior_var_latents
+    prior_delta_latents = prior_latents + prior_dir_to_go
 
     fake1_out = G.get_output_for(prior_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake2_out = G.get_output_for(prior_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
@@ -198,6 +206,8 @@ def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=Non
     I_loss = calc_vc_loss(C_delta_latents[:,:sum(nd_out_list[:n_levels])], regress_out, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
-    I_loss = I_loss + hyperplane_lambda * hyperplane_constraint
+    dir_constraint = - tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
+
+    I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + hyperdir_lambda * dir_constraint
 
     return I_loss, None

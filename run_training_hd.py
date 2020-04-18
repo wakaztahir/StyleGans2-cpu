@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hd.py
 # --- Creation Date: 06-04-2020
-# --- Last Modified: Sat 18 Apr 2020 03:41:35 AEST
+# --- Last Modified: Sat 18 Apr 2020 19:06:06 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -51,7 +51,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
         epsilon_in_loss=3, random_eps=True, M_lrmul=0.1, resolution_manual=1024,
         pretrained_type='with_stylegan2', traj_lambda=None, level_I_kimg=1000,
         use_level_training=False, resume_kimg=0, use_std_in_m=False, prior_latent_size=512,
-        M_mapping_fmaps=512, hyperplane_lambda=1):
+        M_mapping_fmaps=512, hyperplane_lambda=1, hyperdir_lambda=1):
     train     = EasyDict(run_func_name='training.training_loop_hd.training_loop_hd') # Options for training loop with pretrained HD.
     if model_type == 'hd_hyperplane':
         M         = EasyDict(func_name='training.hd_networks.net_M_hyperplane',
@@ -83,7 +83,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg,
                              traj_lambda=traj_lambda, resolution_manual=resolution_manual,
                              use_std_in_m=use_std_in_m, model_type=model_type,
                              hyperplane_lambda=hyperplane_lambda,
-                             prior_latent_size=prior_latent_size)              # Options for discriminator loss.
+                             prior_latent_size=prior_latent_size,
+                             hyperdir_lambda=hyperdir_lambda)              # Options for discriminator loss.
     else:
         I_loss    = EasyDict(func_name='training.loss_hd.IandM_loss', latent_type=latent_type,
                              D_global_size=D_global_size,
@@ -241,6 +242,8 @@ def main():
                         metavar='M_MAPPING_FMAPS', default=512, type=int)
     parser.add_argument('--hyperplane_lambda', help='Hyperparam for use_hyperplane loss.',
                         metavar='HYPERPLANE_LAMBDA', default=1, type=float)
+    parser.add_argument('--hyperdir_lambda', help='Hyperparam for use_hyperplane direction consistency loss.',
+                        metavar='HYPERDIR_LAMBDA', default=1, type=float)
 
     args = parser.parse_args()
 

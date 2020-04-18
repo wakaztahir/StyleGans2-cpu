@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Fri 17 Apr 2020 22:56:08 AEST
+# --- Last Modified: Sat 18 Apr 2020 17:09:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -50,7 +50,10 @@ def net_M_hyperplane(latents_in,
     # print('constraint.shape:', constraint.get_shape().as_list())
 
     # Magnitude constraint on W
-    constraint = tf.reduce_sum(W * W)
+    # constraint = tf.reduce_sum(W * W)
+    W_norms = tf.reduce_sum(W * W, axis=1)
+    constraint = W_norms - tf.ones([latent_size], dtype=W_norms.dtype)
+    constraint = tf.reduce_mean(constraint * constraint)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
