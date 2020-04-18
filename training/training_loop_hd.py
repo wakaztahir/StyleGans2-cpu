@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 03:42:42 AEST
+# --- Last Modified: Sat 18 Apr 2020 19:28:42 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -179,21 +179,21 @@ def get_prior_traj_by_dirs(latent_dirs, M, n_samples_per, prior_latent_size, gri
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu)
     print('hyperplane_reg:', hyperplane_reg)
-    # print('prior_traj_dirs.shape:', prior_traj_dirs.shape)
-    # z = np.random.normal(loc=0., scale=1., size=(1, prior_latent_size))
     z = np.random.randn(1, prior_latent_size)
     grid_latents = np.tile(z, (prior_traj_dirs.shape[0] * n_samples_per, 1))
     z_base = np.tile(z, (n_samples_per, 1))
     arange_np = np.arange(-2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
     arange_np_reshaped = np.reshape(arange_np, (n_samples_per, 1))
     for i in range(prior_traj_dirs.shape[0]):
+
+        manipulated_prior_dir = tf.matmul(prior_traj_dirs, tf.transpose(prior_traj_dirs)) # [batch, C_global_size]
+        manipulated_prior_dir = manipulated_prior_dir * (1. - latent_dirs) # [batch, C_global_size]
+        manipulated_prior_dir = tf.matmul(manipulated_prior_dir, prior_traj_dirs) # [batch, prior_latent_size]
+        prior_dir_to_go = prior_traj_dirs - manipulated_prior_dir
+
         prior_traj_dirs_reshaped = np.reshape(prior_traj_dirs[i], (1, prior_traj_dirs[i].shape[0]))
-        # print('prior_traj_dirs_reshaped.shape:', prior_traj_dirs_reshaped.shape)
-        # print('arange_np_reshaped.shape:', arange_np_reshaped.shape)
-        # pdb.set_trace()
         grid_latents[i * n_samples_per:(i + 1) *
                      n_samples_per] = z_base + prior_traj_dirs_reshaped * arange_np_reshaped
-        # grid_latents[i * n_samples_per:(i + 1) * n_samples_per] = z_base
     return grid_latents
 
 

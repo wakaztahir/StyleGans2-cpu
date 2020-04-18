@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 19:03:01 AEST
+# --- Last Modified: Sat 18 Apr 2020 19:22:40 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -163,9 +163,9 @@ def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=Non
     if not random_eps:
         delta_target = C_delta_latents * epsilon
     else:
-        epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
-        # delta_target = tf.math.abs(C_delta_latents * epsilon)
-        delta_target = C_delta_latents * epsilon
+        # epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
+        # delta_target = C_delta_latents * epsilon
+        delta_target = C_delta_latents
 
     delta_var_latents = delta_target
 
@@ -207,6 +207,7 @@ def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=Non
     I_loss = autosummary('Loss/I_loss', I_loss)
 
     dir_constraint = - tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
+    dir_constraint = autosummary('Loss/dir_constraint', dir_constraint)
 
     I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + hyperdir_lambda * dir_constraint
 
