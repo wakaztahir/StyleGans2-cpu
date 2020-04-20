@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 17:09:39 AEST
+# --- Last Modified: Mon 20 Apr 2020 18:56:36 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -36,10 +36,11 @@ def net_M_hyperplane(latents_in,
     latents_in.set_shape([None, C_global_size])
     x = latents_in
 
-    x = tf.concat([x, tf.zeros([tf.shape(x)[0], latent_size - C_global_size], dtype=x.dtype)], axis=1)
+    # x = tf.concat([x, tf.zeros([tf.shape(x)[0], latent_size - C_global_size], dtype=x.dtype)], axis=1)
 
     # W = tf.Variable(tf.random_normal((latent_size, latent_size)))
-    W = get_weight([latent_size, latent_size], lrmul=mapping_lrmul, weight_var='orth_weight')
+    # W = get_weight([latent_size, latent_size], lrmul=mapping_lrmul, weight_var='orth_weight')
+    W = get_weight([C_global_size, latent_size], lrmul=mapping_lrmul, weight_var='weight')
     W = tf.cast(W, x.dtype)
     x = tf.matmul(x, W)
 
@@ -51,8 +52,9 @@ def net_M_hyperplane(latents_in,
 
     # Magnitude constraint on W
     # constraint = tf.reduce_sum(W * W)
+    # W_norms = tf.math.sqrt(tf.reduce_sum(W * W, axis=1))
     W_norms = tf.reduce_sum(W * W, axis=1)
-    constraint = W_norms - tf.ones([latent_size], dtype=W_norms.dtype)
+    constraint = W_norms - tf.ones([C_global_size], dtype=W_norms.dtype)
     constraint = tf.reduce_mean(constraint * constraint)
 
     # Output.

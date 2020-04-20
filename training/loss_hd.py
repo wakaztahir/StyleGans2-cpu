@@ -8,12 +8,13 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sat 18 Apr 2020 19:22:40 AEST
+# --- Last Modified: Sun 19 Apr 2020 15:46:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
 HD disentanglement model losses.
 """
+
 import numpy as np
 import tensorflow as tf
 import dnnlib.tflib as tflib
