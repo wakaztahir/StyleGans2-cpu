@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Mon 20 Apr 2020 16:23:45 AEST
+# --- Last Modified: Mon 20 Apr 2020 22:14:40 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,11 +46,12 @@ def IandMandG_hyperplane_loss(G, D, I, M, opt, training_set, minibatch_size, I_i
     prior_var_latents, hyperplane_constraint = M.get_output_for(delta_var_latents, is_training=True)
     prior_all_dirs, _ = M.get_output_for(all_delta_var_latents, is_training=True)
 
-    prior_var_latents = autosummary('Loss/prior_var_latents', prior_var_latents)
-    manipulated_prior_dir = tf.matmul(prior_var_latents, tf.transpose(prior_all_dirs)) # [batch, C_global_size]
-    manipulated_prior_dir = manipulated_prior_dir * (1. - C_delta_latents) # [batch, C_global_size]
-    manipulated_prior_dir = tf.matmul(manipulated_prior_dir, prior_all_dirs) # [batch, prior_latent_size]
-    prior_dir_to_go = prior_var_latents - manipulated_prior_dir
+    # prior_var_latents = autosummary('Loss/prior_var_latents', prior_var_latents)
+    # manipulated_prior_dir = tf.matmul(prior_var_latents, tf.transpose(prior_all_dirs)) # [batch, C_global_size]
+    # manipulated_prior_dir = manipulated_prior_dir * (1. - C_delta_latents) # [batch, C_global_size]
+    # manipulated_prior_dir = tf.matmul(manipulated_prior_dir, prior_all_dirs) # [batch, prior_latent_size]
+    # prior_dir_to_go = prior_var_latents - manipulated_prior_dir
+    prior_dir_to_go = prior_var_latents
     prior_dir_to_go = autosummary('Loss/prior_dir_to_go', prior_dir_to_go)
 
     if latent_type == 'uniform':
