@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Mon 20 Apr 2020 22:14:40 AEST
+# --- Last Modified: Mon 20 Apr 2020 22:25:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -83,13 +83,13 @@ def IandMandG_hyperplane_loss(G, D, I, M, opt, training_set, minibatch_size, I_i
     I_loss = calc_vc_loss(C_delta_latents, regress_out, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
-    # dir_constraint = - tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
-    dir_constraint = tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
-    norm_prior_var_latents = tf.math.sqrt(tf.reduce_sum(prior_var_latents * prior_var_latents, axis=1))
-    norm_prior_dir_to_go = tf.math.sqrt(tf.reduce_sum(prior_dir_to_go * prior_dir_to_go, axis=1))
-    dir_constraint = - dir_constraint / (norm_prior_var_latents * norm_prior_dir_to_go)
-    dir_constraint = autosummary('Loss/dir_constraint', dir_constraint)
+    # dir_constraint = tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
+    # norm_prior_var_latents = tf.math.sqrt(tf.reduce_sum(prior_var_latents * prior_var_latents, axis=1))
+    # norm_prior_dir_to_go = tf.math.sqrt(tf.reduce_sum(prior_dir_to_go * prior_dir_to_go, axis=1))
+    # dir_constraint = - dir_constraint / (norm_prior_var_latents * norm_prior_dir_to_go)
+    # dir_constraint = autosummary('Loss/dir_constraint', dir_constraint)
 
-    I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + hyperdir_lambda * dir_constraint + G_loss
+    # I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + hyperdir_lambda * dir_constraint + G_loss
+    I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + G_loss
 
     return I_loss, None
