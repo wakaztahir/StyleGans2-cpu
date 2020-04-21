@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Tue 21 Apr 2020 16:13:16 AEST
+# --- Last Modified: Tue 21 Apr 2020 23:57:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -92,5 +92,63 @@ def IandMandG_hyperplane_loss(G, D, I, M, opt, training_set, minibatch_size, I_i
 
     I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + hyperdir_lambda * dir_constraint + G_loss
     # I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + G_loss
+
+    return I_loss, None
+
+
+def IandG_vc_loss(G, D, I, M, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
+               C_global_size=10, D_global_size=0, D_lambda=0, C_lambda=1, cls_alpha=0, epsilon=1,
+               random_eps=False, traj_lambda=None, resolution_manual=1024, use_std_in_m=False,
+               model_type='hd_dis_model', hyperplane_lambda=1, prior_latent_size=512, hyperdir_lambda=1):
+    _ = opt
+
+    if latent_type == 'uniform':
+        latents = tf.random.uniform([minibatch_size, C_global_size], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        latents = tf.random.normal([minibatch_size, C_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size, C_global_size])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+
+    latents = autosummary('Loss/latents', latents)
+
+    # Sample delta latents
+    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+    C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), tf.float32)
+
+    if not random_eps:
+        delta_target = C_delta_latents * epsilon
+        # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+    else:
+        epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
+        # delta_target = tf.math.abs(C_delta_latents * epsilon)
+        delta_target = C_delta_latents * epsilon
+        # delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_target], axis=1)
+    delta_var_latents = delta_target
+    delta_latents = delta_var_latents + latents
+
+    labels = training_set.get_random_labels_tf(minibatch_size)
+
+    # Get variation direction in prior latent space.
+    prior_latents = M.get_output_for(latents, is_training=True)
+    prior_delta_latents = M.get_output_for(delta_latents, is_training=True)
+    prior_delta_latents = autosummary('Loss/prior_delta_latents', prior_delta_latents)
+
+    fake1_out = G.get_output_for(prior_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
+    fake2_out = G.get_output_for(prior_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
+    fake1_out = autosummary('Loss/fake1_out', fake1_out)
+
+    # Send to D
+    fake_scores_out = D.get_output_for(fake1_out, labels, is_training=True)
+    G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+
+    # Send to I
+    regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
+
+    I_loss = calc_vc_loss(C_delta_latents, regress_out, C_global_size, D_lambda, C_lambda)
+    I_loss = autosummary('Loss/I_loss', I_loss)
+
+    I_loss = I_loss + G_loss
 
     return I_loss, None

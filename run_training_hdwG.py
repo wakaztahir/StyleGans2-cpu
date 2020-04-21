@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Sun 19 Apr 2020 22:07:42 AEST
+# --- Last Modified: Wed 22 Apr 2020 02:08:06 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -57,10 +57,22 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     G         = EasyDict(func_name='training.networks_stylegan2.G_main',
                          latent_size=prior_latent_size,
                          dlatent_size=stylegan2_dlatent_size,
-                         mapping_fmaps=stylegan2_mapping_fmaps)
+                         mapping_fmaps=stylegan2_mapping_fmaps,
+                         mapping_lrmul=M_lrmul,
+                         style_mixing_prob=None,
+                         dlatent_avg_beta=None,
+                         truncation_psi=None,
+                         normalize_latents=False)
     D         = EasyDict(func_name='training.networks_stylegan2.D_stylegan2')
     if model_type == 'hd_hyperplane':
         M         = EasyDict(func_name='training.hd_networks.net_M_hyperplane',
+                             C_global_size=C_global_size, D_global_size=D_global_size,
+                             latent_size=prior_latent_size,
+                             mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)
+        I         = EasyDict(func_name='training.hd_networks.net_I',
+                             C_global_size=C_global_size, D_global_size=D_global_size)
+    elif model_type == 'vc_gan':
+        M         = EasyDict(func_name='training.hd_networks.net_M_vc',
                              C_global_size=C_global_size, D_global_size=D_global_size,
                              latent_size=prior_latent_size,
                              mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)
@@ -81,17 +93,30 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         I_info = EasyDict()
     I_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)
     D_opt     = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)
-    I_loss    = EasyDict(func_name='training.loss_hdwG.IandMandG_hyperplane_loss',
-                         latent_type=latent_type,
-                         D_global_size=D_global_size,
-                         C_global_size=C_global_size,
-                         D_lambda=D_lambda, C_lambda=C_lambda,
-                         epsilon=epsilon_in_loss, random_eps=random_eps,
-                         traj_lambda=traj_lambda, resolution_manual=resolution_manual,
-                         use_std_in_m=use_std_in_m, model_type=model_type,
-                         hyperplane_lambda=hyperplane_lambda,
-                         prior_latent_size=prior_latent_size,
-                         hyperdir_lambda=hyperdir_lambda)
+    if model_type == 'vc_gan':
+        I_loss    = EasyDict(func_name='training.loss_hdwG.IandG_vc_loss',
+                             latent_type=latent_type,
+                             D_global_size=D_global_size,
+                             C_global_size=C_global_size,
+                             D_lambda=D_lambda, C_lambda=C_lambda,
+                             epsilon=epsilon_in_loss, random_eps=random_eps,
+                             traj_lambda=traj_lambda, resolution_manual=resolution_manual,
+                             use_std_in_m=use_std_in_m, model_type=model_type,
+                             hyperplane_lambda=hyperplane_lambda,
+                             prior_latent_size=prior_latent_size,
+                             hyperdir_lambda=hyperdir_lambda)
+    else:
+        I_loss    = EasyDict(func_name='training.loss_hdwG.IandMandG_hyperplane_loss',
+                             latent_type=latent_type,
+                             D_global_size=D_global_size,
+                             C_global_size=C_global_size,
+                             D_lambda=D_lambda, C_lambda=C_lambda,
+                             epsilon=epsilon_in_loss, random_eps=random_eps,
+                             traj_lambda=traj_lambda, resolution_manual=resolution_manual,
+                             use_std_in_m=use_std_in_m, model_type=model_type,
+                             hyperplane_lambda=hyperplane_lambda,
+                             prior_latent_size=prior_latent_size,
+                             hyperdir_lambda=hyperdir_lambda)
     D_loss    = EasyDict(func_name='training.loss.D_logistic_r1')
     sched     = EasyDict()
     grid      = EasyDict(size='1080p', layout='random')
@@ -204,7 +229,7 @@ def main():
     parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)', default=False, metavar='BOOL', type=_str_to_bool)
     parser.add_argument('--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)', default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='hd_dis_model',
-                        type=str, metavar='MODEL_TYPE', choices=['hd_dis_model', 'hd_dis_model_with_cls', 'hd_hyperplane'])
+                        type=str, metavar='MODEL_TYPE', choices=['hd_dis_model', 'hd_dis_model_with_cls', 'hd_hyperplane', 'vc_gan'])
     parser.add_argument('--D_global_size', help='Number of discrete latents',
                         metavar='D_GLOBAL_SIZE', default=0, type=int)
     parser.add_argument('--C_global_size', help='Number of continuous latents',
