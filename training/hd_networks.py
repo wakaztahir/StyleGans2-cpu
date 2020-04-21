@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Mon 20 Apr 2020 18:56:36 AEST
+# --- Last Modified: Tue 21 Apr 2020 16:12:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -199,8 +199,8 @@ def net_I(
             x = block(x, res)
             if architecture == 'skip':
                 y = downsample(y)
-            x_out_branch = hier_out_branch(x, nd_out_list[res-2])
-            out_list.append(x_out_branch)
+            # x_out_branch = hier_out_branch(x, nd_out_list[res-2])
+            # out_list.append(x_out_branch)
 
     # Final layers.
     with tf.variable_scope('4x4'):
@@ -214,19 +214,19 @@ def net_I(
             x = apply_bias_act(conv2d_layer(x, fmaps=nf(1), kernel=3), act=act)
         with tf.variable_scope('Dense0'):
             x = apply_bias_act(dense_layer(x, fmaps=nf(0)), act=act)
-        x_out_branch = hier_out_branch(x, nd_out_list[0])
-        out_list.append(x_out_branch)
+        # x_out_branch = hier_out_branch(x, nd_out_list[0])
+        # out_list.append(x_out_branch)
 
     # Output layer with label conditioning from "Which Training Methods for GANs do actually Converge?"
-    # with tf.variable_scope('Output'):
-        # with tf.variable_scope('Dense_VC'):
-            # x = apply_bias_act(dense_layer(x, fmaps=(D_global_size + C_global_size)))
+    with tf.variable_scope('Output'):
+        with tf.variable_scope('Dense_VC'):
+            x = apply_bias_act(dense_layer(x, fmaps=(D_global_size + C_global_size)))
 
     # Output.
-    # assert x.dtype == tf.as_dtype(dtype)
-    # return x
-    assert out_list[-1].dtype == tf.as_dtype(dtype)
-    return tuple(out_list)
+    assert x.dtype == tf.as_dtype(dtype)
+    return x
+    # assert out_list[-1].dtype == tf.as_dtype(dtype)
+    # return tuple(out_list)
 
 #----------------------------------------------------------------------------
 # Info-Gan Discriminator network.

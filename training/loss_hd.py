@@ -8,7 +8,7 @@
 
 # --- File Name: loss_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Sun 19 Apr 2020 15:46:45 AEST
+# --- Last Modified: Tue 21 Apr 2020 16:24:36 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -201,13 +201,20 @@ def IandM_hyperplane_loss(I, M, G, opt, training_set, minibatch_size, I_info=Non
     fake2_out = G.get_output_for(prior_delta_latents, labels, is_training=True, randomize_noise=True, normalize_latents=False)
     fake1_out = autosummary('Loss/fake1_out', fake1_out)
 
-    regress_out_list = I.get_output_for(fake1_out, fake2_out, is_training=True)
-    regress_out = tf.concat(regress_out_list[:n_levels], axis=1)
+    # regress_out_list = I.get_output_for(fake1_out, fake2_out, is_training=True)
+    # regress_out = tf.concat(regress_out_list[:n_levels], axis=1)
+    regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
 
-    I_loss = calc_vc_loss(C_delta_latents[:,:sum(nd_out_list[:n_levels])], regress_out, C_global_size, D_lambda, C_lambda)
+    # I_loss = calc_vc_loss(C_delta_latents[:,:sum(nd_out_list[:n_levels])], regress_out, C_global_size, D_lambda, C_lambda)
+    I_loss = calc_vc_loss(C_delta_latents, regress_out, C_global_size, D_lambda, C_lambda)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
-    dir_constraint = - tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
+    # dir_constraint = - tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
+    # dir_constraint = autosummary('Loss/dir_constraint', dir_constraint)
+    dir_constraint = tf.reduce_sum(prior_var_latents * prior_dir_to_go, axis=1)
+    norm_prior_var_latents = tf.math.sqrt(tf.reduce_sum(prior_var_latents * prior_var_latents, axis=1))
+    norm_prior_dir_to_go = tf.math.sqrt(tf.reduce_sum(prior_dir_to_go * prior_dir_to_go, axis=1))
+    dir_constraint = - dir_constraint / (norm_prior_var_latents * norm_prior_dir_to_go)
     dir_constraint = autosummary('Loss/dir_constraint', dir_constraint)
 
     I_loss = I_loss + hyperplane_lambda * hyperplane_constraint + hyperdir_lambda * dir_constraint
