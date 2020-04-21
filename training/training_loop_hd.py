@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 21 Apr 2020 16:49:30 AEST
+# --- Last Modified: Tue 21 Apr 2020 16:53:57 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -542,6 +542,8 @@ def training_loop_hd(
                     prior_traj_latents = get_prior_traj_by_dirs(latent_dirs, M, n_samples_per,
                                                                 prior_latent_size, grid_labels,
                                                                 sched)
+                    if resolution_manual >= 256:
+                        prior_traj_latents = prior_traj_latents[:prior_traj_latents.shape[0]//5]
 
                 prior_traj_latents_show = np.reshape(prior_traj_latents, [-1, n_samples_per, prior_latent_size])
                 print_traj(prior_traj_latents_show)
