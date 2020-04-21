@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 21 Apr 2020 16:45:37 AEST
+# --- Last Modified: Tue 21 Apr 2020 16:49:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -309,13 +309,13 @@ def training_loop_hd(
         grid_size = (n_samples_per, n_continuous)
         grid_labels = np.tile(grid_labels[:1], (n_continuous * n_samples_per, 1))
         latent_dirs = get_latent_dirs(n_continuous)
-        if resolution_manual >= 256:
-            grid_size = (grid_size[0], grid_size[1]//5)
-            latent_dirs = latent_dirs[:latent_dirs.shape[0]//5]
-            grid_labels = grid_labels[:grid_labels.shape[0]//5]
         prior_traj_latents = get_prior_traj_by_dirs(latent_dirs, M, n_samples_per,
                                                     prior_latent_size, grid_labels,
                                                     sched)
+        if resolution_manual >= 256:
+            grid_size = (grid_size[0], grid_size[1]//5)
+            prior_traj_latents = prior_traj_latents[:prior_traj_latents.shape[0]//5]
+            grid_labels = grid_labels[:grid_labels.shape[0]//5]
     print('prior_traj_latents.shape:', prior_traj_latents.shape)
     # pdb.set_trace()
     prior_traj_latents_show = np.reshape(prior_traj_latents,
