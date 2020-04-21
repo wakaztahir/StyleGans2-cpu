@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hd.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 21 Apr 2020 03:26:00 AEST
+# --- Last Modified: Tue 21 Apr 2020 16:36:02 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -276,7 +276,7 @@ def training_loop_hd(
                 if use_hd_with_cls:
                     I_info =rI_info
 
-        print('Loading generator from "%s"...' % resume_pkl)
+        print('Loading generator from "%s"...' % resume_G_pkl)
         if pretrained_type == 'with_stylegan2':
             rG, rD, rGs = misc.load_pkl(resume_G_pkl)
             G = rG; D = rD; Gs = rGs
