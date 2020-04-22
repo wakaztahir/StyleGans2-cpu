@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Wed 22 Apr 2020 14:08:51 AEST
+# --- Last Modified: Thu 23 Apr 2020 01:04:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -62,7 +62,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                          style_mixing_prob=None,
                          dlatent_avg_beta=None,
                          truncation_psi=None,
-                         normalize_latents=False)
+                         normalize_latents=False,
+                         structure='fixed')
     D         = EasyDict(func_name='training.networks_stylegan2.D_stylegan2')
     if model_type == 'hd_hyperplane':
         M         = EasyDict(func_name='training.hd_networks.net_M_hyperplane',
@@ -71,13 +72,21 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                              mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)
         I         = EasyDict(func_name='training.hd_networks.net_I',
                              C_global_size=C_global_size, D_global_size=D_global_size)
-    elif model_type == 'vc_gan':
+    elif model_type == 'vc_gan_preprior':
         M         = EasyDict(func_name='training.hd_networks.net_M_vc',
                              C_global_size=C_global_size, D_global_size=D_global_size,
                              latent_size=prior_latent_size,
                              mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)
         I         = EasyDict(func_name='training.hd_networks.net_I',
                              C_global_size=C_global_size, D_global_size=D_global_size)
+    elif model_type == 'vc_gan':
+        M         = EasyDict(func_name='training.hd_networks.net_M_empty',
+                             C_global_size=C_global_size, D_global_size=D_global_size,
+                             latent_size=prior_latent_size,
+                             mapping_lrmul=M_lrmul, use_std_in_m=use_std_in_m)
+        I         = EasyDict(func_name='training.hd_networks.net_I',
+                             C_global_size=C_global_size, D_global_size=D_global_size)
+        G.mapping_func = 'G_mapping_hd_dis_to_dlatent'
     else:
         M         = EasyDict(func_name='training.hd_networks.net_M',
                              C_global_size=C_global_size, D_global_size=D_global_size,
@@ -146,14 +155,45 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
 
     # Configs A-E: Shrink networks to match original StyleGAN.
     if config_id != 'config-f':
+        # G.fmap_base = D.fmap_base = 8 << 10
         if resolution_manual <= 256:
             I.fmap_base = 2 << 10
             G.fmap_base = D.fmap_base = 2 << 10
         else:
             I.fmap_base = 8 << 10
             G.fmap_base = D.fmap_base = 8 << 10
+
+    # Config E: Set gamma to 100 and override G & D architecture.
     if config_id.startswith('config-e'):
         D_loss.gamma = 100
+        if 'Gorig'   in config_id: G.architecture = 'orig'
+        if 'Gskip'   in config_id: G.architecture = 'skip' # (default)
+        if 'Gresnet' in config_id: G.architecture = 'resnet'
+        if 'Dorig'   in config_id: D.architecture = 'orig'
+        if 'Dskip'   in config_id: D.architecture = 'skip'
+        if 'Dresnet' in config_id: D.architecture = 'resnet' # (default)
+
+    # Configs A-D: Enable progressive growing and switch to networks that support it.
+    if config_id in ['config-a', 'config-b', 'config-c', 'config-d']:
+        # sched.lod_initial_resolution = 8
+        sched.G_lrate_base = sched.D_lrate_base = 0.001
+        # sched.G_lrate_dict = sched.D_lrate_dict = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
+        sched.minibatch_size_base = n_batch # (default)
+        # sched.minibatch_size_dict = {8: 256, 16: 128, 32: 64, 64: 32}
+        sched.minibatch_gpu_base = n_batch_per_gpu # (default)
+        # sched.minibatch_gpu_dict = {8: 32, 16: 16, 32: 8, 64: 4}
+        G.synthesis_func = 'G_synthesis_stylegan_revised'
+        # D.func_name = 'training.networks_stylegan2.D_stylegan'
+
+    # Configs A-B: Disable lazy regularization.
+    if config_id in ['config-a', 'config-b']:
+        train.lazy_regularization = False
+
+    # Config A: Switch to original StyleGAN networks.
+    if config_id == 'config-a':
+        G = EasyDict(func_name='training.networks_stylegan.G_style')
+        D = EasyDict(func_name='training.networks_stylegan.D_basic')
+
     if gamma is not None:
         D_loss.gamma = gamma
 
@@ -173,7 +213,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                   resolution_manual=resolution_manual, pretrained_type=pretrained_type,
                   level_I_kimg=level_I_kimg, use_level_training=use_level_training,
                   resume_kimg=resume_kimg, use_std_in_m=use_std_in_m,
-                  prior_latent_size=prior_latent_size)
+                  prior_latent_size=prior_latent_size, latent_type=latent_type)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc

@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Mon 20 Apr 2020 18:21:52 AEST
+# --- Last Modified: Wed 22 Apr 2020 21:23:58 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -139,6 +139,7 @@ def training_loop_hdwG(
     use_std_in_m=False,  # If output prior std in M net.
     prior_latent_size=512,  # Prior latent size.
     use_hyperplane=False,  # If use hyperplane model.
+    latent_type='uniform',  # Latent distribution type.
     pretrained_type='with_stylegan2'):  # Pretrained type for G.
 
     # Initialize dnnlib and TensorFlow.
@@ -192,7 +193,7 @@ def training_loop_hdwG(
 
     if not use_hyperplane:
         grid_size, grid_latents, grid_labels = get_grid_latents(
-            n_discrete, n_continuous, n_samples_per, G, grid_labels)
+            n_discrete, n_continuous, n_samples_per, G, grid_labels, latent_type=latent_type)
         print('grid_size:', grid_size)
         print('grid_latents.shape:', grid_latents.shape)
         print('grid_labels.shape:', grid_labels.shape)

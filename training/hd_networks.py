@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks.py
 # --- Creation Date: 07-04-2020
-# --- Last Modified: Tue 21 Apr 2020 22:10:20 AEST
+# --- Last Modified: Wed 22 Apr 2020 23:33:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -21,6 +21,24 @@ from dnnlib.tflib.ops.upfirdn_2d import upsample_2d, downsample_2d
 from training.networks_stylegan2 import get_weight, dense_layer, conv2d_layer
 from training.networks_stylegan2 import apply_bias_act, naive_upsample_2d
 from training.networks_stylegan2 import minibatch_stddev_layer
+
+#----------------------------------------------------------------------------
+# Empty M network.
+def net_M_empty(latents_in,
+          C_global_size=10,
+          D_global_size=0,
+          latent_size=512,  # Latent vector (Z) dimensionality.
+          mapping_lrmul=0.1,  # Learning rate multiplier for the mapping layers.
+          use_std_in_m=False,  # If output prior std.
+          dtype='float32',  # Data type to use for activations and outputs.
+          **_kwargs):  # Ignore unrecognized keyword args.
+
+    latents_in.set_shape([None, C_global_size])
+    x = latents_in
+
+    # Output.
+    assert x.dtype == tf.as_dtype(dtype)
+    return tf.identity(x, name='to_latent_out')
 
 #----------------------------------------------------------------------------
 # VC disentanglement network.
