@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Wed 22 Apr 2020 14:06:17 AEST
+# --- Last Modified: Wed 22 Apr 2020 14:08:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -147,11 +147,11 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     # Configs A-E: Shrink networks to match original StyleGAN.
     if config_id != 'config-f':
         if resolution_manual <= 256:
-            I.fmap_base = 2 << 8
-            G.fmap_base = D.fmap_base = 2 << 8
+            I.fmap_base = 2 << 10
+            G.fmap_base = D.fmap_base = 2 << 10
         else:
-            I.fmap_base = 8 << 12
-            G.fmap_base = D.fmap_base = 8 << 12
+            I.fmap_base = 8 << 10
+            G.fmap_base = D.fmap_base = 8 << 10
     if config_id.startswith('config-e'):
         D_loss.gamma = 100
     if gamma is not None:
