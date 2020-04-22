@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Wed 22 Apr 2020 02:08:06 AEST
+# --- Last Modified: Wed 22 Apr 2020 14:06:17 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -150,8 +150,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             I.fmap_base = 2 << 8
             G.fmap_base = D.fmap_base = 2 << 8
         else:
-            I.fmap_base = 8 << 10
-            G.fmap_base = D.fmap_base = 8 << 10
+            I.fmap_base = 8 << 12
+            G.fmap_base = D.fmap_base = 8 << 12
     if config_id.startswith('config-e'):
         D_loss.gamma = 100
     if gamma is not None:
