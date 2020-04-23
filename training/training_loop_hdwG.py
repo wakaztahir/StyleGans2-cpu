@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Wed 22 Apr 2020 21:23:58 AEST
+# --- Last Modified: Thu 23 Apr 2020 18:31:11 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -453,6 +453,15 @@ def training_loop_hdwG(
             # Save snapshots.
             if image_snapshot_ticks is not None and (cur_tick % image_snapshot_ticks == 0 or done):
                 if not use_hyperplane:
+                    grid_size, grid_latents, grid_labels = get_grid_latents(
+                        n_discrete, n_continuous, n_samples_per, G, grid_labels, latent_type=latent_type)
+                    print('grid_size:', grid_size)
+                    print('grid_latents.shape:', grid_latents.shape)
+                    print('grid_labels.shape:', grid_labels.shape)
+                    if resolution_manual >= 256:
+                        grid_size = (grid_size[0], grid_size[1]//5)
+                        grid_latents = grid_latents[:grid_latents.shape[0]//5]
+                        grid_labels = grid_labels[:grid_labels.shape[0]//5]
                     prior_traj_latents = M.run(grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu)
