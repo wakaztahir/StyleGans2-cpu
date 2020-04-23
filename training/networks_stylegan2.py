@@ -143,7 +143,7 @@ def minibatch_stddev_layer(x, group_size=4, num_new_features=1):
     y = tf.tile(y, [group_size, 1, s[2], s[3]])             # [NnHW]  Replicate over group and pixels.
     return tf.concat([x, y], axis=1)                        # [NCHW]  Append as new fmap.
 
-from training.hd_networks_stylegan2 import G_mapping_hd_dis_to_dlatent
+import training.hd_networks_stylegan2.G_mapping_hd_dis_to_dlatent
 
 #----------------------------------------------------------------------------
 # Main generator network.
