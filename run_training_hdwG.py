@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Thu 23 Apr 2020 18:20:36 AEST
+# --- Last Modified: Thu 23 Apr 2020 22:16:02 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -54,7 +54,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         prior_latent_size=512, stylegan2_dlatent_size=512, stylegan2_mapping_fmaps=512,
         M_mapping_fmaps=512, hyperplane_lambda=1, hyperdir_lambda=1):
     train     = EasyDict(run_func_name='training.training_loop_hdwG.training_loop_hdwG')
-    G         = EasyDict(func_name='training.networks_stylegan2.G_main',
+    G         = EasyDict(func_name='training.hd_networks_stylegan2.G_main',
                          latent_size=prior_latent_size,
                          dlatent_size=stylegan2_dlatent_size,
                          mapping_fmaps=stylegan2_mapping_fmaps,
@@ -157,8 +157,9 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     if config_id != 'config-f':
         # G.fmap_base = D.fmap_base = 8 << 10
         if resolution_manual <= 256:
-            I.fmap_base = 2 << 10
-            G.fmap_base = D.fmap_base = 2 << 10
+            I.fmap_base = 2 << 8
+            G.fmap_base = 2 << 10
+            D.fmap_base = 2 << 8
         else:
             I.fmap_base = 8 << 10
             G.fmap_base = D.fmap_base = 8 << 10
@@ -176,13 +177,14 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     # Configs A-D: Enable progressive growing and switch to networks that support it.
     if config_id in ['config-a', 'config-b', 'config-c', 'config-d']:
         # sched.lod_initial_resolution = 8
-        sched.G_lrate_base = sched.D_lrate_base = 0.001
+        sched.G_lrate_base = sched.D_lrate_base = 0.002
         # sched.G_lrate_dict = sched.D_lrate_dict = {128: 0.0015, 256: 0.002, 512: 0.003, 1024: 0.003}
         sched.minibatch_size_base = n_batch # (default)
         # sched.minibatch_size_dict = {8: 256, 16: 128, 32: 64, 64: 32}
         sched.minibatch_gpu_base = n_batch_per_gpu # (default)
         # sched.minibatch_gpu_dict = {8: 32, 16: 16, 32: 8, 64: 4}
-        G.synthesis_func = 'hd_networks_stylegan2.G_synthesis_stylegan_revised'
+        # G.synthesis_func = 'hd_networks_stylegan2.G_synthesis_stylegan_revised'
+        G.synthesis_func = 'G_synthesis_stylegan_revised_hd'
         # D.func_name = 'training.networks_stylegan2.D_stylegan'
 
     # Configs A-B: Disable lazy regularization.
