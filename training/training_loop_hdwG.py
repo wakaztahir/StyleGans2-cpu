@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Thu 23 Apr 2020 18:31:11 AEST
+# --- Last Modified: Thu 23 Apr 2020 22:56:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -429,7 +429,7 @@ def training_loop_hdwG(
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
-        if cur_tick < 0 or cur_nimg >= tick_start_nimg + sched.tick_kimg * 100 or done:
+        if cur_tick < 0 or cur_nimg >= tick_start_nimg + sched.tick_kimg * 1000 or done:
             cur_tick += 1
             tick_kimg = (cur_nimg - tick_start_nimg) / 1000.0
             tick_start_nimg = cur_nimg
