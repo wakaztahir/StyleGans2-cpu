@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_hdwG.py
 # --- Creation Date: 19-04-2020
-# --- Last Modified: Thu 23 Apr 2020 01:04:53 AEST
+# --- Last Modified: Thu 23 Apr 2020 18:20:36 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -182,7 +182,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         # sched.minibatch_size_dict = {8: 256, 16: 128, 32: 64, 64: 32}
         sched.minibatch_gpu_base = n_batch_per_gpu # (default)
         # sched.minibatch_gpu_dict = {8: 32, 16: 16, 32: 8, 64: 4}
-        G.synthesis_func = 'G_synthesis_stylegan_revised'
+        G.synthesis_func = 'hd_networks_stylegan2.G_synthesis_stylegan_revised'
         # D.func_name = 'training.networks_stylegan2.D_stylegan'
 
     # Configs A-B: Disable lazy regularization.
