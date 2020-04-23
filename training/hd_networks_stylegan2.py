@@ -8,7 +8,7 @@
 
 # --- File Name: hd_networks_stylegan2.py
 # --- Creation Date: 22-04-2020
-# --- Last Modified: Thu 23 Apr 2020 18:01:13 AEST
+# --- Last Modified: Thu 23 Apr 2020 18:22:38 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 # from training.networks_stylegan2 import dense_layer
 # from training.networks_stylegan2 import apply_bias_act
-import training.networks_stylegan2
+import training.networks_stylegan2 as networks_stylegan2
 
 #----------------------------------------------------------------------------
 # G_mapping with hd_dis network.
