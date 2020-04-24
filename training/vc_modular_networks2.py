@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 24 Apr 2020 03:43:01 AEST
+# --- Last Modified: Sat 25 Apr 2020 00:30:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -99,8 +99,7 @@ def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     Build continuous latent layers, e.g. C_global layers.
     '''
     with tf.variable_scope(name + '-' + str(scope_idx)):
-        C_global_latents = dlatents_in[:, start_idx:start_idx +
-                                             n_latents]
+        C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
         x = apply_bias_act(modulated_conv2d_layer(x, C_global_latents, fmaps=fmaps, kernel=3,
                                                   up=False, fused_modconv=fused_modconv), act=act)
     return x
