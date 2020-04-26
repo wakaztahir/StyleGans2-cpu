@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 24 Apr 2020 03:40:40 AEST
+# --- Last Modified: Sun 26 Apr 2020 03:18:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -119,7 +119,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
 
     # Configs A-E: Shrink networks to match original StyleGAN.
     # I.fmap_base = G.fmap_base = D.fmap_base = 8 << 10
-    I.fmap_base = G.fmap_base = D.fmap_base = 2 << 8
+    I.fmap_base = G.fmap_base = 2 << 8
+    D.fmap_base = 2 << 9
 
     # Config E: Set gamma to 100 and override G & D architecture.
     D_loss.gamma = 100
