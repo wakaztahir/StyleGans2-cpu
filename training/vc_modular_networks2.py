@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 25 Apr 2020 00:30:04 AEST
+# --- Last Modified: Sun 26 Apr 2020 22:26:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -241,10 +241,18 @@ def build_conv_layer(x, name, n_layers, scope_idx, act, resample_kernel, fmaps=1
     # e.g. {'Conv-up': 2}, {'Conv-id': 1}
     sample_type = name.split('-')[-1]
     assert sample_type in ['up', 'down', 'id']
+    x_ori = x
     for i in range(n_layers):
         with tf.variable_scope(name + '-' + str(scope_idx) + '-' + str(i)):
             x = apply_bias_act(conv2d_layer(x, fmaps=fmaps, kernel=3, up=(sample_type == 'up'),
                                             down=(sample_type == 'down'), resample_kernel=resample_kernel), act=act)
+        if sample_type == 'up':
+            with tf.variable_scope('Upsampling' + '-' + str(scope_idx) + '-' + str(i)):
+                x_ori = naive_upsample_2d(x_ori)
+        elif sample_type == 'down':
+            with tf.variable_scope('Downsampling' + '-' + str(scope_idx) + '-' + str(i)):
+                x_ori = naive_downsample_2d(x_ori)
+    x = x + x_ori
     return x
 
 
