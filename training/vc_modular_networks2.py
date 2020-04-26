@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 26 Apr 2020 22:26:27 AEST
+# --- Last Modified: Sun 26 Apr 2020 22:31:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -252,6 +252,9 @@ def build_conv_layer(x, name, n_layers, scope_idx, act, resample_kernel, fmaps=1
         elif sample_type == 'down':
             with tf.variable_scope('Downsampling' + '-' + str(scope_idx) + '-' + str(i)):
                 x_ori = naive_downsample_2d(x_ori)
+
+    with tf.variable_scope(name + 'Resampled-' + str(scope_idx)):
+        x_ori = apply_bias_act(conv2d_layer(x_ori, fmaps=fmaps, kernel=1), act=act)
     x = x + x_ori
     return x
 
