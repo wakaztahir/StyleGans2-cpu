@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 27 Apr 2020 03:30:27 AEST
+# --- Last Modified: Tue 28 Apr 2020 00:01:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -38,7 +38,7 @@ from training.vc_modular_networks2 import build_Const_layers, build_D_layers
 from training.vc_modular_networks2 import build_C_global_layers
 from training.vc_modular_networks2 import build_local_heat_layers, build_local_hfeat_layers
 from training.vc_modular_networks2 import build_noise_layer, build_conv_layer
-from training.vc_modular_networks2 import build_res_conv_layer
+from training.vc_modular_networks2 import build_res_conv_layer, build_C_fgroup_layers
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -171,39 +171,44 @@ def G_synthesis_modular_vc2(
     start_idx = 0
     x = dlatents_in
     for scope_idx, k in enumerate(key_ls):
-        if k.startswith('Const'):
+        if k == 'Const':
             # e.g. {'Const': 3}
             x = build_Const_layers(init_dlatents_in=x, name=k, n_feats=size_ls[scope_idx],
                                scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
-        elif k.startswith('D_global'):
+        elif k == 'D_global':
             # e.g. {'D_global': 3}
             x = build_D_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
             start_idx += size_ls[scope_idx]
-        elif k.startswith('C_global'):
+        elif k == 'C_global':
             # e.g. {'C_global': 2}
             x = build_C_global_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                       scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
             start_idx += size_ls[scope_idx]
-        elif k.startswith('C_local_heat'):
+        elif k == 'C_fgroup':
+            # e.g. {'C_fgroup': 2}
+            x = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k == 'C_local_heat':
             # e.g. {'C_local_heat': 4}
             x = build_local_heat_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                         scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
             start_idx += size_ls[scope_idx]
-        elif k.startswith('C_local_hfeat'):
+        elif k == 'C_local_hfeat':
             # e.g. {'C_local_hfeat_size': 4}
             x = build_local_hfeat_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
             start_idx += size_ls[scope_idx]
-        elif k.startswith('Noise'):
+        elif k == 'Noise':
             # e.g. {'Noise': 1}
             x = build_noise_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                   fmaps=nf(scope_idx//4), **subkwargs)
-        elif k.startswith('ResConv'):
+        elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                  fmaps=nf(scope_idx//4), **subkwargs)
-        elif k.startswith('Conv'):
+        elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                  fmaps=nf(scope_idx//4), **subkwargs)
