@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 26 Apr 2020 22:31:49 AEST
+# --- Last Modified: Mon 27 Apr 2020 03:42:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -237,7 +237,30 @@ def build_noise_layer(x, name, n_layers, scope_idx, act, use_noise, randomize_no
     return x
 
 
-def build_conv_layer(x, name, n_layers, scope_idx, act, resample_kernel, fmaps=128, **kwargs):
+def build_conv_layer(x,
+                     name,
+                     n_layers,
+                     scope_idx,
+                     act,
+                     resample_kernel,
+                     fmaps=128,
+                     **kwargs):
+    # e.g. {'Conv-up': 2}, {'Conv-id': 1}
+    sample_type = name.split('-')[-1]
+    assert sample_type in ['up', 'down', 'id']
+    for i in range(n_layers):
+        with tf.variable_scope(name + '-' + str(scope_idx) + '-' + str(i)):
+            x = apply_bias_act(conv2d_layer(x,
+                                            fmaps=fmaps,
+                                            kernel=3,
+                                            up=(sample_type == 'up'),
+                                            down=(sample_type == 'down'),
+                                            resample_kernel=resample_kernel),
+                               act=act)
+    return x
+
+
+def build_res_conv_layer(x, name, n_layers, scope_idx, act, resample_kernel, fmaps=128, **kwargs):
     # e.g. {'Conv-up': 2}, {'Conv-id': 1}
     sample_type = name.split('-')[-1]
     assert sample_type in ['up', 'down', 'id']
@@ -255,7 +278,7 @@ def build_conv_layer(x, name, n_layers, scope_idx, act, resample_kernel, fmaps=1
 
     with tf.variable_scope(name + 'Resampled-' + str(scope_idx)):
         x_ori = apply_bias_act(conv2d_layer(x_ori, fmaps=fmaps, kernel=1), act=act)
-    x = x + x_ori
+        x = x + x_ori
     return x
 
 

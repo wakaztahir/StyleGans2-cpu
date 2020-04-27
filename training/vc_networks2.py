@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 24 Apr 2020 04:12:35 AEST
+# --- Last Modified: Mon 27 Apr 2020 03:30:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -38,6 +38,7 @@ from training.vc_modular_networks2 import build_Const_layers, build_D_layers
 from training.vc_modular_networks2 import build_C_global_layers
 from training.vc_modular_networks2 import build_local_heat_layers, build_local_hfeat_layers
 from training.vc_modular_networks2 import build_noise_layer, build_conv_layer
+from training.vc_modular_networks2 import build_res_conv_layer
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -198,6 +199,10 @@ def G_synthesis_modular_vc2(
             # e.g. {'Noise': 1}
             x = build_noise_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                   fmaps=nf(scope_idx//4), **subkwargs)
+        elif k.startswith('ResConv'):
+            # e.g. {'Conv-up': 2}, {'Conv-id': 1}
+            x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
+                                 fmaps=nf(scope_idx//4), **subkwargs)
         elif k.startswith('Conv'):
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
