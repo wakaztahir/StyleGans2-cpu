@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 27 Apr 2020 18:01:01 AEST
+# --- Last Modified: Mon 27 Apr 2020 18:14:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -237,11 +237,11 @@ def main():
     parser.add_argument('--fmap_decay', help='fmap decay for network building.',
                         metavar='FMAP_DECAY', default=0.15, type=float)
     parser.add_argument('--I_fmap_base', help='Fmap base for I.',
-                        metavar='I_FMAP_BASE', default=8, type=float)
+                        metavar='I_FMAP_BASE', default=8, type=int)
     parser.add_argument('--G_fmap_base', help='Fmap base for G.',
-                        metavar='G_FMAP_BASE', default=8, type=float)
+                        metavar='G_FMAP_BASE', default=8, type=int)
     parser.add_argument('--D_fmap_base', help='Fmap base for D.',
-                        metavar='D_FMAP_BASE', default=9, type=float)
+                        metavar='D_FMAP_BASE', default=9, type=int)
 
     args = parser.parse_args()
 
