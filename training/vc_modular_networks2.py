@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 00:27:14 AEST
+# --- Last Modified: Tue 28 Apr 2020 00:59:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,7 @@ from stn.stn import spatial_transformer_network as transformer
 
 LATENT_MODULES = [
     'D_global', 'C_nocond_global', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat',
-    'C_fgroup'
+    'C_fgroup', 'C_spfgroup'
 ]
 
 #----------------------------------------------------------------------------
