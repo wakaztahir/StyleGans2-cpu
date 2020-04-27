@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 26 Apr 2020 03:18:32 AEST
+# --- Last Modified: Mon 27 Apr 2020 18:01:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,6 +32,7 @@ from training.vc_modular_networks2 import split_module_names, LATENT_MODULES
 
 def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         mirror_augment, metrics, resume_pkl, 
+        I_fmap_base=8, G_fmap_base=8, D_fmap_base=9,
         fmap_decay=0.15, D_lambda=1, C_lambda=1, cls_alpha=0, 
         n_samples_per=10, module_list=None, model_type='vc_gan2', 
         epsilon_loss=3, random_eps=False, latent_type='uniform', 
@@ -118,9 +119,12 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     desc += '-' + config_id
 
     # Configs A-E: Shrink networks to match original StyleGAN.
-    # I.fmap_base = G.fmap_base = D.fmap_base = 8 << 10
-    I.fmap_base = G.fmap_base = 2 << 8
-    D.fmap_base = 2 << 9
+    # I.fmap_base = 2 << 8
+    # G.fmap_base = 2 << 8
+    # D.fmap_base = 2 << 9
+    I.fmap_base = 2 << I_fmap_base
+    G.fmap_base = 2 << G_fmap_base
+    D.fmap_base = 2 << D_fmap_base
 
     # Config E: Set gamma to 100 and override G & D architecture.
     D_loss.gamma = 100
@@ -232,6 +236,12 @@ def main():
                         default='concat', metavar='CONNECT_MODE', type=str)
     parser.add_argument('--fmap_decay', help='fmap decay for network building.',
                         metavar='FMAP_DECAY', default=0.15, type=float)
+    parser.add_argument('--I_fmap_base', help='Fmap base for I.',
+                        metavar='I_FMAP_BASE', default=8, type=float)
+    parser.add_argument('--G_fmap_base', help='Fmap base for G.',
+                        metavar='G_FMAP_BASE', default=8, type=float)
+    parser.add_argument('--D_fmap_base', help='Fmap base for D.',
+                        metavar='D_FMAP_BASE', default=9, type=float)
 
     args = parser.parse_args()
 
