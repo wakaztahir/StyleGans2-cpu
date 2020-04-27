@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 00:01:30 AEST
+# --- Last Modified: Tue 28 Apr 2020 00:56:00 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,6 +39,7 @@ from training.vc_modular_networks2 import build_C_global_layers
 from training.vc_modular_networks2 import build_local_heat_layers, build_local_hfeat_layers
 from training.vc_modular_networks2 import build_noise_layer, build_conv_layer
 from training.vc_modular_networks2 import build_res_conv_layer, build_C_fgroup_layers
+from training.vc_modular_networks2 import build_C_spfgroup_layers
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -188,6 +189,11 @@ def G_synthesis_modular_vc2(
         elif k == 'C_fgroup':
             # e.g. {'C_fgroup': 2}
             x = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k == 'C_spfgroup':
+            # e.g. {'C_fgroup': 2}
+            x = build_C_spfgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                       scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_local_heat':
