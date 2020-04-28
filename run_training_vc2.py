@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 27 Apr 2020 18:14:47 AEST
+# --- Last Modified: Tue 28 Apr 2020 16:18:21 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -36,7 +36,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         fmap_decay=0.15, D_lambda=1, C_lambda=1, cls_alpha=0, 
         n_samples_per=10, module_list=None, model_type='vc_gan2', 
         epsilon_loss=3, random_eps=False, latent_type='uniform', 
-        delta_type='onedim', connect_mode='concat'):
+        delta_type='onedim', connect_mode='concat', batch_size=32, batch_per_gpu=16):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -105,8 +105,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     train.mirror_augment = mirror_augment
     train.image_snapshot_ticks = train.network_snapshot_ticks = 10
     sched.G_lrate_base = sched.D_lrate_base = 0.002
-    sched.minibatch_size_base = 32
-    sched.minibatch_gpu_base = 16
+    sched.minibatch_size_base = batch_size
+    sched.minibatch_gpu_base = batch_per_gpu
     D_loss.gamma = 10
     metrics = [metric_defaults[x] for x in metrics]
 
@@ -217,6 +217,10 @@ def main():
         metavar='N_SHOWN_SAMPLES_PER_LINE', default=10, type=int)
     parser.add_argument('--module_list', help='Module list for modular network.',
                         default=None, metavar='MODULE_LIST', type=str)
+    parser.add_argument('--batch_size', help='N batch.',
+                        metavar='N_BATCH', default=32, type=int)
+    parser.add_argument('--batch_per_gpu', help='N batch per gpu.',
+                        metavar='N_BATCH_PER_GPU', default=16, type=int)
     parser.add_argument('--D_lambda', help='Discrete lambda for INFO-GAN and VC-GAN.',
                         metavar='D_LAMBDA', default=1, type=float)
     parser.add_argument('--C_lambda', help='Continuous lambda for INFO-GAN and VC-GAN.',

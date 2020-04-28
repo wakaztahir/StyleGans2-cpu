@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 00:59:41 AEST
+# --- Last Modified: Tue 28 Apr 2020 16:13:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -107,7 +107,7 @@ def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     return x
 
 def build_C_fgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
-                          act, fused_modconv, fmaps=128, **kwargs):
+                          act, fused_modconv, fmaps=128, return_atts=False, **kwargs):
     '''
     Build continuous latent layers with learned group attention.
     '''
@@ -128,12 +128,16 @@ def build_C_fgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
             x_norm = instance_norm(x)
             x_styled = style_mod(x_norm, C_global_latents)
             x = x * (1 - atts) + x_styled * atts
-        return x
+        if return_atts:
+            return x, [atts]
+        else:
+            return x
 
 def build_C_spfgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
-                          act, fused_modconv, fmaps=128, **kwargs):
+                          act, fused_modconv, fmaps=128, return_atts=False, **kwargs):
     '''
     Build continuous latent layers with learned group attention.
+    Support square images only.
     '''
     with tf.variable_scope(name + '-' + str(scope_idx)):
         x_mean = tf.reduce_mean(x, axis=[2, 3]) # [b, in_dim]
@@ -170,7 +174,10 @@ def build_C_spfgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_i
             x_norm = instance_norm(x)
             x_styled = style_mod(x_norm, C_global_latents)
             x = x * (1 - atts) + x_styled * atts
-        return x
+        if return_atts:
+            return x, [att_channel, att_sp]
+        else:
+            return x
 
 def build_SB_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in, n_content,
                     act, resample_kernel, fused_modconv, fmaps=128, **kwargs):
