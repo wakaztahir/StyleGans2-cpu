@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 24 Apr 2020 03:45:34 AEST
+# --- Last Modified: Tue 28 Apr 2020 22:36:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -79,8 +79,8 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
         delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_latents], axis=1)
 
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake1_out = G.get_output_for(latents, labels, is_training=True)
-    fake2_out = G.get_output_for(delta_latents, labels, is_training=True)
+    fake1_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    fake2_out = G.get_output_for(delta_latents, labels, is_training=True, return_atts=False)
     if I_info is not None:
         fake_scores_out, hidden = D.get_output_for(fake1_out, labels, is_training=True)
     else:
@@ -114,7 +114,7 @@ def D_logistic_r1_vc2(G, D, opt, training_set, minibatch_size, reals, labels, ga
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
-    fake_images_out = G.get_output_for(latents, labels, is_training=True)
+    fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
     real_scores_out = D.get_output_for(reals, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)

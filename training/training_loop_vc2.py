@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 24 Apr 2020 13:40:49 AEST
+# --- Last Modified: Tue 28 Apr 2020 23:38:57 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -29,6 +29,29 @@ from training import misc
 from metrics import metric_base
 from training.training_loop import process_reals, training_schedule
 from training.training_loop_dsp import get_grid_latents
+
+def save_atts(atts, filename, grid_size, resolution, drange, grid_fakes, n_samples_per):
+    canvas = np.zeros([grid_fakes.shape[0], 1, grid_fakes.shape[2], grid_fakes.shape[3]])
+    # atts: [b, n_latents, 1, res, res]
+
+    for i in range(atts.shape[1]):
+        att_sp = atts[:, i]  # [b, 1, x_h, x_w]
+        grid_start_idx = i * n_samples_per
+        canvas[grid_start_idx : grid_start_idx + n_samples_per] = att_sp[grid_start_idx : grid_start_idx + n_samples_per]
+
+    # already_n_latents = 0
+    # for i, att in enumerate(atts):
+        # att_sp = att[-1]  # [b, n_latents, 1, x_h, x_w]
+        # for j in range(att_sp.shape[1]):
+            # att_sp_sub = att_sp[:, j]  # [b, 1, x_h, x_w]
+            # grid_start_idx = already_n_latents * n_samples_per
+            # canvas[grid_start_idx : grid_start_idx + n_samples_per] = att_sp_sub[grid_start_idx : grid_start_idx + n_samples_per]
+            # already_n_latents += 1
+    misc.save_image_grid(canvas,
+                         filename,
+                         drange=drange,
+                         grid_size=grid_size)
+    return
 
 #----------------------------------------------------------------------------
 # Main training script.
@@ -73,6 +96,7 @@ def training_loop_vc2(
         traversal_grid=False,  # Used for disentangled representation learning.
         n_discrete=3,  # Number of discrete latents in model.
         n_continuous=4,  # Number of continuous latents in model.
+        return_atts=False,  # If return attention maps.
         n_samples_per=10):  # Number of samples for each line in traversal.
 
     # Initialize dnnlib and TensorFlow.
@@ -94,6 +118,7 @@ def training_loop_vc2(
     with tf.device('/gpu:0'):
         if resume_pkl is None or resume_with_new_nets:
             print('Constructing networks...')
+            print('G_args:', G_args)
             G = tflib.Network('G',
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
@@ -148,11 +173,27 @@ def training_loop_vc2(
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
     # pdb.set_trace()
-    grid_fakes = Gs.run(grid_latents,
-                        grid_labels,
-                        is_validation=True,
-                        minibatch_size=sched.minibatch_gpu,
-                        randomize_noise=False)
+    if return_atts:
+        grid_fakes, atts = Gs.run(grid_latents,
+                            grid_labels,
+                            is_validation=True,
+                            minibatch_size=sched.minibatch_gpu,
+                            randomize_noise=False,
+                            return_atts=True,
+                            resolution=training_set.shape[1])
+        save_atts(atts,
+                  filename=dnnlib.make_run_dir_path('fakes_atts_init.png'),
+                  grid_size=grid_size,
+                  resolution=training_set.shape[1],
+                  drange=drange_net,
+                  grid_fakes=grid_fakes,
+                  n_samples_per=n_samples_per)
+    else:
+        grid_fakes = Gs.run(grid_latents,
+                            grid_labels,
+                            is_validation=True,
+                            minibatch_size=sched.minibatch_gpu,
+                            randomize_noise=False)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
@@ -417,11 +458,28 @@ def training_loop_vc2(
                         n_discrete, n_continuous, n_samples_per, G, grid_labels)
                 else:
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
-                grid_fakes = Gs.run(grid_latents,
-                                    grid_labels,
-                                    is_validation=True,
-                                    minibatch_size=sched.minibatch_gpu,
-                                    randomize_noise=False)
+
+                if return_atts:
+                    grid_fakes, atts = Gs.run(grid_latents,
+                                        grid_labels,
+                                        is_validation=True,
+                                        minibatch_size=sched.minibatch_gpu,
+                                        randomize_noise=False,
+                                        return_atts=True,
+                                        resolution=training_set.shape[1])
+                    save_atts(atts,
+                              filename=dnnlib.make_run_dir_path('fakes_atts%06d.png' % (cur_nimg // 1000)),
+                              grid_size=grid_size,
+                              resolution=training_set.shape[1],
+                              drange=drange_net,
+                              grid_fakes=grid_fakes,
+                              n_samples_per=n_samples_per)
+                else:
+                    grid_fakes = Gs.run(grid_latents,
+                                        grid_labels,
+                                        is_validation=True,
+                                        minibatch_size=sched.minibatch_gpu,
+                                        randomize_noise=False)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
                                          'fakes%06d.png' % (cur_nimg // 1000)),
@@ -439,7 +497,8 @@ def training_loop_vc2(
                             run_dir=dnnlib.make_run_dir_path(),
                             data_dir=dnnlib.convert_path(data_dir),
                             num_gpus=num_gpus,
-                            tf_config=tf_config)
+                            tf_config=tf_config,
+                            Gs_kwargs=dict(is_validation=True, return_atts=False))
 
             # Update summaries and RunContext.
             metrics.update_autosummaries()

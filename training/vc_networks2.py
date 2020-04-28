@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 00:56:00 AEST
+# --- Last Modified: Tue 28 Apr 2020 23:21:48 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,7 +39,7 @@ from training.vc_modular_networks2 import build_C_global_layers
 from training.vc_modular_networks2 import build_local_heat_layers, build_local_hfeat_layers
 from training.vc_modular_networks2 import build_noise_layer, build_conv_layer
 from training.vc_modular_networks2 import build_res_conv_layer, build_C_fgroup_layers
-from training.vc_modular_networks2 import build_C_spfgroup_layers
+from training.vc_modular_networks2 import build_C_spfgroup_layers, build_C_spgroup_layers
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -49,12 +49,12 @@ def G_main_vc2(
         labels_in,  # Second input: Conditioning labels [minibatch, label_size].
         is_training=False,  # Network is under training? Enables and disables specific features.
         is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
-        return_dlatents=False,  # Return dlatents in addition to the images?
         is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
         components=dnnlib.EasyDict(
         ),  # Container for sub-networks. Retained between calls.
         mapping_func='G_mapping_vc2',  # Build func name for the mapping network.
         synthesis_func='G_synthesis_modular_vc2',  # Build func name for the synthesis network.
+        return_atts=False,  # If return atts.
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     # Validate arguments.
     assert not is_training or not is_validation
@@ -62,7 +62,7 @@ def G_main_vc2(
     # Setup components.
     if 'synthesis' not in components:
         components.synthesis = tflib.Network(
-            'G_vc_synthesis', func_name=globals()[synthesis_func], **kwargs)
+            'G_vc_synthesis', func_name=globals()[synthesis_func], return_atts=return_atts, **kwargs)
     if 'mapping' not in components:
         components.mapping = tflib.Network('G_vc_mapping', func_name=globals()[mapping_func],
                                            dlatent_broadcast=None, **kwargs)
@@ -79,14 +79,20 @@ def G_main_vc2(
     if 'lod' in components.synthesis.vars:
         deps.append(tf.assign(components.synthesis.vars['lod'], lod_in))
     with tf.control_dependencies(deps):
-        images_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
-                                                         force_clean_graph=is_template_graph, **kwargs)
+        if return_atts:
+            images_out, atts_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
+                                                             force_clean_graph=is_template_graph, return_atts=True, **kwargs)
+        else:
+            images_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
+                                                             force_clean_graph=is_template_graph, return_atts=False, **kwargs)
 
     # Return requested outputs.
     images_out = tf.identity(images_out, name='images_out')
-    if return_dlatents:
-        return images_out, dlatents
-    return images_out
+    if return_atts:
+        atts_out = tf.identity(atts_out, name='atts_out')
+        return images_out, atts_out
+    else:
+        return images_out
 
 
 def G_mapping_vc2(
@@ -134,7 +140,8 @@ def G_synthesis_modular_vc2(
         fused_modconv=True,  # Implement modulated_conv2d_layer() as a single fused op?
         use_noise=False,  # If noise is used in this dataset.
         randomize_noise=True,  # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
-        **_kwargs):  # Ignore unrecognized keyword args.
+        return_atts=False,  # If return atts.
+        **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized variation-consistent network2.
     '''
@@ -166,11 +173,13 @@ def G_synthesis_modular_vc2(
 
     subkwargs = EasyDict()
     subkwargs.update(dlatents_in=dlatents_in, act=act, dtype=dtype, resample_kernel=resample_kernel,
-                     fused_modconv=fused_modconv, use_noise=use_noise, randomize_noise=randomize_noise)
+                     fused_modconv=fused_modconv, use_noise=use_noise, randomize_noise=randomize_noise,
+                     **kwargs)
 
     # Build modules by module_dict.
     start_idx = 0
     x = dlatents_in
+    atts = []
     for scope_idx, k in enumerate(key_ls):
         if k == 'Const':
             # e.g. {'Const': 3}
@@ -188,13 +197,33 @@ def G_synthesis_modular_vc2(
             start_idx += size_ls[scope_idx]
         elif k == 'C_fgroup':
             # e.g. {'C_fgroup': 2}
-            x = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+            if return_atts:
+                x, atts_tmp = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k == 'C_spgroup':
+            # e.g. {'C_spgroup': 2}
+            if return_atts:
+                x, atts_tmp = build_C_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = build_C_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spfgroup':
-            # e.g. {'C_fgroup': 2}
-            x = build_C_spfgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+            # e.g. {'C_spfgroup': 2}
+            if return_atts:
+                x, atts_tmp = build_C_spfgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = build_C_spfgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_local_heat':
             # e.g. {'C_local_heat': 4}
@@ -224,8 +253,14 @@ def G_synthesis_modular_vc2(
     y = torgb(x, y, num_channels=num_channels)
     images_out = y
     assert images_out.dtype == tf.as_dtype(dtype)
-    return tf.identity(images_out,
-                       name='images_out')
+
+    print('atts:', atts)
+
+    if return_atts:
+        atts_out = tf.concat(atts, axis=1)
+        return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
+    else:
+        return tf.identity(images_out, name='images_out')
 
 
 #----------------------------------------------------------------------------
