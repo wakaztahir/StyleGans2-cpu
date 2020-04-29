@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 23:21:48 AEST
+# --- Last Modified: Wed 29 Apr 2020 16:27:42 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -257,8 +257,9 @@ def G_synthesis_modular_vc2(
     print('atts:', atts)
 
     if return_atts:
-        atts_out = tf.concat(atts, axis=1)
-        return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
+        with tf.variable_scope('ConcatAtts'):
+            atts_out = tf.concat(atts, axis=1)
+            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
     else:
         return tf.identity(images_out, name='images_out')
 
