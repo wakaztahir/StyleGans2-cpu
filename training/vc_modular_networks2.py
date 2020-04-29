@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 17:29:42 AEST
+# --- Last Modified: Wed 29 Apr 2020 17:34:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -119,9 +119,10 @@ def build_C_fgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
             atts = tf.reshape(atts, [-1, n_latents, 2, att_dim, 1, 1]) # [b, n_latents, 2, att_dim, 1, 1]
             att_sm = tf.nn.softmax(atts, axis=3)
             att_cs = tf.cumsum(att_sm, axis=3)
-            att_cs_starts, att_cs_ends = tf.split(att_cs, 2, axis=2) # [b, n_latents, att_dim, 1, 1]
+            att_cs_starts, att_cs_ends = tf.split(att_cs, 2, axis=2) # [b, n_latents, 1, att_dim, 1, 1]
             att_cs_ends = 1 - att_cs_ends
-            atts = att_cs_starts * att_cs_ends # [b, n_latents, att_dim, 1, 1]
+            atts = att_cs_starts * att_cs_ends # [b, n_latents, 1, att_dim, 1, 1]
+            atts = tf.reshape(atts, [-1, n_latents, att_dim, 1, 1])
 
         with tf.variable_scope('Att_apply'):
             C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
@@ -194,7 +195,8 @@ def build_C_spfgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_i
             att_cs = tf.cumsum(att_sm, axis=3)
             att_cs_starts, att_cs_ends = tf.split(att_cs, 2, axis=2)
             att_cs_ends = 1 - att_cs_ends
-            att_channel = att_cs_starts * att_cs_ends # [b, n_latents, att_dim, 1, 1]
+            att_channel = att_cs_starts * att_cs_ends # [b, n_latents, 1, att_dim, 1, 1]
+            att_channel = tf.reshape(att_channel, [-1, n_latents, att_dim, 1, 1])
 
         with tf.variable_scope('Att_spatial'):
             x_wh = x.shape[2]
