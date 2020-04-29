@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 23:38:57 AEST
+# --- Last Modified: Wed 29 Apr 2020 23:35:19 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -103,6 +103,9 @@ def training_loop_vc2(
     tflib.init_tf(tf_config)
     num_gpus = dnnlib.submit_config.num_gpus
 
+    # If include I
+    include_I = use_info_gan or use_vc_head
+
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir),
                                         verbose=True,
@@ -129,7 +132,7 @@ def training_loop_vc2(
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
                               **D_args)
-            if use_info_gan or use_vc_head:
+            if include_I:
                 I = tflib.Network('I',
                                   num_channels=training_set.shape[0],
                                   resolution=training_set.shape[1],
@@ -139,27 +142,27 @@ def training_loop_vc2(
             Gs = G.clone('Gs')
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)
-            if use_info_gan or use_vc_head:
+            if include_I:
                 rG, rD, rI, rGs = misc.load_pkl(resume_pkl)
             else:
                 rG, rD, rGs = misc.load_pkl(resume_pkl)
             if resume_with_new_nets:
                 G.copy_vars_from(rG)
                 D.copy_vars_from(rD)
-                if use_info_gan or use_vc_head:
+                if include_I:
                     I.copy_vars_from(rI)
                 Gs.copy_vars_from(rGs)
             else:
                 G = rG
                 D = rD
-                if use_info_gan or use_vc_head:
+                if include_I:
                     I = rI
                 Gs = rGs
 
     # Print layers and generate initial image snapshot.
     G.print_layers()
     D.print_layers()
-    if use_info_gan or use_vc_head:
+    if include_I:
         I.print_layers()
     # pdb.set_trace()
     sched = training_schedule(cur_nimg=total_kimg * 1000,
@@ -241,7 +244,7 @@ def training_loop_vc2(
             # Create GPU-specific shadow copies of G and D.
             G_gpu = G if gpu == 0 else G.clone(G.name + '_shadow')
             D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
-            if use_info_gan or use_vc_head:
+            if include_I:
                 I_gpu = I if gpu == 0 else I.clone(I.name + '_shadow')
 
             # Fetch training data via temporary variables.
@@ -281,7 +284,7 @@ def training_loop_vc2(
                 lod_assign_ops += [tf.assign(D_gpu.vars['lod'], lod_in)]
             with tf.control_dependencies(lod_assign_ops):
                 with tf.name_scope('G_loss'):
-                    if use_info_gan or use_vc_head:
+                    if include_I:
                         G_loss, G_reg = dnnlib.util.call_func_by_name(
                             G=G_gpu, D=D_gpu, I=I_gpu, opt=G_opt,
                             training_set=training_set,
@@ -315,7 +318,7 @@ def training_loop_vc2(
                     D_reg_opt.register_gradients(
                         tf.reduce_mean(D_reg * D_reg_interval),
                         D_gpu.trainables)
-            if use_info_gan or use_vc_head:
+            if include_I:
                 GI_gpu_trainables = collections.OrderedDict(
                     list(G_gpu.trainables.items()) +
                     list(I_gpu.trainables.items()))
@@ -352,7 +355,7 @@ def training_loop_vc2(
     if save_weight_histograms:
         G.setup_weight_histograms()
         D.setup_weight_histograms()
-        if use_info_gan or use_vc_head:
+        if include_I:
             I.setup_weight_histograms()
     metrics = metric_base.MetricGroup(metric_arg_list)
 
@@ -489,7 +492,7 @@ def training_loop_vc2(
                     cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' %
                                                (cur_nimg // 1000))
-                if use_info_gan or use_vc_head:
+                if include_I:
                     misc.save_pkl((G, D, I, Gs), pkl)
                 else:
                     misc.save_pkl((G, D, Gs), pkl)
@@ -498,6 +501,7 @@ def training_loop_vc2(
                             data_dir=dnnlib.convert_path(data_dir),
                             num_gpus=num_gpus,
                             tf_config=tf_config,
+                            include_I=include_I,
                             Gs_kwargs=dict(is_validation=True, return_atts=False))
 
             # Update summaries and RunContext.
@@ -510,7 +514,7 @@ def training_loop_vc2(
             ).get_last_update_interval() - tick_time
 
     # Save final snapshot.
-    if use_info_gan or use_vc_head:
+    if include_I:
         misc.save_pkl((G, D, I, Gs),
                       dnnlib.make_run_dir_path('network-final.pkl'))
     else:
