@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 22:48:47 AEST
+# --- Last Modified: Wed 29 Apr 2020 23:28:12 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -19,6 +19,15 @@ import numpy as np
 import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
+
+def G_logistic_ns(G, D, opt, training_set, minibatch_size):
+    _ = opt
+    latents = tf.random_normal([minibatch_size] + G.input_shapes[0][1:])
+    labels = training_set.get_random_labels_tf(minibatch_size)
+    fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
+    loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+    return loss, None
 
 def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type):
     assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
