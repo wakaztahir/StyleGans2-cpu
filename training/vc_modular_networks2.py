@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 17:26:44 AEST
+# --- Last Modified: Wed 29 Apr 2020 17:29:42 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -213,6 +213,7 @@ def build_C_spfgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_i
             att_w = att_w_cs_starts * att_w_cs_ends # [b, n_latents, 1, 1, x_wh]
             att_sp = att_h * att_w # [b, n_latents, 1, x_wh, x_wh]
             atts = att_channel * att_sp # [b, n_latents, att_dim, h, w]
+        print('in spfgroup 1, x.shape:', x.get_shape().as_list())
 
         with tf.variable_scope('Att_apply'):
             C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
@@ -221,7 +222,7 @@ def build_C_spfgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_i
                 with tf.variable_scope('style_mod-' + str(i)):
                     x_styled = style_mod(x_norm, C_global_latents[:, i:i+1])
                     x = x * (1 - atts[:, i]) + x_styled * atts[:, i]
-        print('in spfgroup, x.shape:', x.get_shape().as_list())
+        print('in spfgroup 2, x.shape:', x.get_shape().as_list())
         if return_atts:
             with tf.variable_scope('Reshape_output'):
                 att_sp = tf.reshape(att_sp, [-1, x_wh, x_wh, 1])
