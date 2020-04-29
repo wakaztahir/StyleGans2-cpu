@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 16:27:42 AEST
+# --- Last Modified: Wed 29 Apr 2020 22:59:42 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -371,6 +371,32 @@ def vc2_head(
     with tf.variable_scope('Output'):
         with tf.variable_scope('Dense_VC'):
             x = apply_bias_act(dense_layer(x, fmaps=(D_global_size + (dlatent_size - D_global_size))))
+
+    # Output.
+    assert x.dtype == tf.as_dtype(dtype)
+    return x
+
+#----------------------------------------------------------------------------
+# Empty VC Head network.
+
+
+def vc2_empty(
+        fake1,  # First input: generated image from z [minibatch, channel, height, width].
+        fake2,  # Second input: hidden features from z + delta(z) [minibatch, channel, height, width].
+        num_channels=3,  # Number of input color channels. Overridden based on dataset.
+        resolution=1024,  # Input resolution. Overridden based on dataset.
+        dtype='float32',  # Data type to use for activations and outputs.
+        **_kwargs):  # Ignore unrecognized keyword args.
+
+    resolution_log2 = int(np.log2(resolution))
+    assert resolution == 2**resolution_log2 and resolution >= 4
+
+    fake1.set_shape([None, num_channels, resolution, resolution])
+    fake2.set_shape([None, num_channels, resolution, resolution])
+    fake1 = tf.cast(fake1, dtype)
+    fake2 = tf.cast(fake2, dtype)
+
+    x = tf.zeros([fake1.shape[0], 1], dtype=fake1.dtype)
 
     # Output.
     assert x.dtype == tf.as_dtype(dtype)

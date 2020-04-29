@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 28 Apr 2020 22:36:49 AEST
+# --- Last Modified: Wed 29 Apr 2020 22:48:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,7 +37,7 @@ def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_l
 
 def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
                      D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4,
-                     random_eps=False, delta_type='onedim'):
+                     random_eps=False, delta_type='onedim', no_recognizer=False):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -87,12 +87,13 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
         fake_scores_out = D.get_output_for(fake1_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     
-    regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
-    I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type)
-    # I_loss = calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
-    I_loss = autosummary('Loss/I_loss', I_loss)
+    if no_recognizer:
+        regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
+        I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type)
+        # I_loss = calc_vc_loss(delta_target, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+        I_loss = autosummary('Loss/I_loss', I_loss)
 
-    G_loss += I_loss
+        G_loss += I_loss
 
     return G_loss, None
 
