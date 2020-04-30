@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 23:27:31 AEST
+# --- Last Modified: Thu 30 Apr 2020 15:28:22 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,7 +37,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         n_samples_per=10, module_list=None, model_type='vc_gan2', 
         epsilon_loss=3, random_eps=False, latent_type='uniform', 
         delta_type='onedim', connect_mode='concat', batch_size=32, batch_per_gpu=16,
-        return_atts=False):
+        return_atts=False, random_seed=1000):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -108,14 +108,16 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc2_gan_noI':
-        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns')  # Options for generator loss.
+        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns',
+                          latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
 
     sched = EasyDict()  # Options for TrainingSchedule.
     grid = EasyDict(size='1080p', layout='random')  # Options for setup_snapshot_image_grid().
     sc = dnnlib.SubmitConfig()  # Options for dnnlib.submit_run().
-    tf_config = {'rnd.np_random_seed': 1000}  # Options for tflib.init_tf().
+    # tf_config = {'rnd.np_random_seed': 1000}  # Options for tflib.init_tf().
+    tf_config = {'rnd.np_random_seed': random_seed}  # Options for tflib.init_tf().
 
     train.data_dir = data_dir
     train.total_kimg = total_kimg
@@ -265,6 +267,8 @@ def main():
                         metavar='D_FMAP_BASE', default=9, type=int)
     parser.add_argument('--return_atts', help='If return attention maps.',
                         default=False, metavar='RETURN_ATTS', type=_str_to_bool)
+    parser.add_argument('--random_seed', help='TF random seed.',
+                        metavar='RANDOM_SEED', default=9, type=int)
 
     args = parser.parse_args()
 

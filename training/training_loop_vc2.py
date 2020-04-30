@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 23:35:19 AEST
+# --- Last Modified: Thu 30 Apr 2020 00:51:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -30,7 +30,7 @@ from metrics import metric_base
 from training.training_loop import process_reals, training_schedule
 from training.training_loop_dsp import get_grid_latents
 
-def save_atts(atts, filename, grid_size, resolution, drange, grid_fakes, n_samples_per):
+def save_atts(atts, filename, grid_size, drange, grid_fakes, n_samples_per):
     canvas = np.zeros([grid_fakes.shape[0], 1, grid_fakes.shape[2], grid_fakes.shape[3]])
     # atts: [b, n_latents, 1, res, res]
 
@@ -187,7 +187,6 @@ def training_loop_vc2(
         save_atts(atts,
                   filename=dnnlib.make_run_dir_path('fakes_atts_init.png'),
                   grid_size=grid_size,
-                  resolution=training_set.shape[1],
                   drange=drange_net,
                   grid_fakes=grid_fakes,
                   n_samples_per=n_samples_per)
@@ -473,7 +472,6 @@ def training_loop_vc2(
                     save_atts(atts,
                               filename=dnnlib.make_run_dir_path('fakes_atts%06d.png' % (cur_nimg // 1000)),
                               grid_size=grid_size,
-                              resolution=training_set.shape[1],
                               drange=drange_net,
                               grid_fakes=grid_fakes,
                               n_samples_per=n_samples_per)

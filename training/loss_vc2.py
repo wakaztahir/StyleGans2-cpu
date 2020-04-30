@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 23:28:12 AEST
+# --- Last Modified: Thu 30 Apr 2020 15:27:58 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -20,9 +20,17 @@ import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 
-def G_logistic_ns(G, D, opt, training_set, minibatch_size):
+def G_logistic_ns(G, D, opt, training_set, minibatch_size, latent_type='uniform'):
     _ = opt
-    latents = tf.random_normal([minibatch_size] + G.input_shapes[0][1:])
+    # latents = tf.random_normal([minibatch_size] + G.input_shapes[0][1:])
+    if latent_type == 'uniform':
+        latents = tf.random.uniform([minibatch_size, G.input_shapes[0][1]], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        latents = tf.random.normal([minibatch_size, G.input_shapes[0][1]])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size, G.input_shapes[0][1]])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
     labels = training_set.get_random_labels_tf(minibatch_size)
     fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)

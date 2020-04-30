@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 29 Apr 2020 22:59:42 AEST
+# --- Last Modified: Thu 30 Apr 2020 00:53:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -126,7 +126,7 @@ def G_synthesis_modular_vc2(
         label_size=0,  # Label dimensionality, 0 if no labels.
         module_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
         num_channels=1,  # Number of output color channels.
-        resolution=64,  # Output resolution.
+        resolution=128,  # Output resolution.
         fmap_base=16 <<
         10,  # Overall multiplier for the number of feature maps.
         fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
@@ -174,7 +174,7 @@ def G_synthesis_modular_vc2(
     subkwargs = EasyDict()
     subkwargs.update(dlatents_in=dlatents_in, act=act, dtype=dtype, resample_kernel=resample_kernel,
                      fused_modconv=fused_modconv, use_noise=use_noise, randomize_noise=randomize_noise,
-                     **kwargs)
+                     resolution=resolution, **kwargs)
 
     # Build modules by module_dict.
     start_idx = 0
