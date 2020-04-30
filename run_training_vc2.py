@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 30 Apr 2020 15:28:22 AEST
+# --- Last Modified: Fri 01 May 2020 01:20:20 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -86,7 +86,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=512)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan'
+        desc = 'vc2_gan_noI'
     else:
         raise ValueError('Not supported model tyle: ' + model_type)
 
