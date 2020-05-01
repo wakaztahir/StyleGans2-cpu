@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 04:08:32 AEST
+# --- Last Modified: Sat 02 May 2020 04:15:21 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -344,21 +344,22 @@ def I_modular_vc2(
     start_idx = 0
     x = images_in
     pred_outs_ls = []
+    len_key = len(key_ls) - 1
     for scope_idx, k in enumerate(key_ls):
         if k == 'Cout_spgroup':
             # e.g. {'C_spgroup': 2}
             x, pred_out = build_Cout_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+                                      scope_idx=scope_idx, fmaps=nf((len_key - scope_idx)//4), **subkwargs)
             pred_outs_ls.append(pred_out) # [b, n_latents]
             start_idx += size_ls[scope_idx]
         elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf(scope_idx//4), **subkwargs)
+                                 fmaps=nf((len_key - scope_idx)//4), **subkwargs)
         elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf(scope_idx//4), **subkwargs)
+                                 fmaps=nf((len_key - scope_idx)//4), **subkwargs)
         else:
             raise ValueError('Unsupported module type: ' + k)
     pred_outs = tf.concat(pred_outs_ls, axis=1)
