@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 04:03:26 AEST
+# --- Last Modified: Sat 02 May 2020 04:06:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -185,7 +185,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     kwargs.update(G_args=G, D_args=D, I_args=I, I_info_args=I_info, G_opt_args=G_opt, D_opt_args=D_opt,
                   G_loss_args=G_loss, D_loss_args=D_loss,
                   use_info_gan=(model_type == 'info_gan'),
-                  use_vc_head=(model_type == 'vc2_gan'),
+                  use_vc_head=(model_type == 'vc2_gan' or model_type == 'vc2_gan_own_I'),
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
     for i, key in enumerate(key_ls):
