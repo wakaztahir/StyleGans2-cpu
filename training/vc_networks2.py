@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 30 Apr 2020 23:29:50 AEST
+# --- Last Modified: Sat 02 May 2020 03:37:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,6 +42,7 @@ from training.vc_modular_networks2 import build_res_conv_layer, build_C_fgroup_l
 from training.vc_modular_networks2 import build_C_spfgroup_layers, build_C_spgroup_layers
 from training.vc_modular_networks2 import build_C_spgroup_softmax_layers
 from training.vc_modular_networks2 import build_C_spgroup_stn_layers
+from training.vc_modular_networks2 import build_Cout_spgroup_layers
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -276,14 +277,93 @@ def G_synthesis_modular_vc2(
     images_out = y
     assert images_out.dtype == tf.as_dtype(dtype)
 
-    print('atts:', atts)
-
     if return_atts:
         with tf.variable_scope('ConcatAtts'):
             atts_out = tf.concat(atts, axis=1)
             return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
     else:
         return tf.identity(images_out, name='images_out')
+
+
+def I_modular_vc2(
+        fake1,  # First input: generated image from z [minibatch, channel, height, width].
+        fake2,  # Second input: hidden features from z + delta(z) [minibatch, channel, height, width].
+        atts_in,  # Attention maps from G of fake1.
+        module_I_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
+        num_channels=3,  # Number of input color channels. Overridden based on dataset.
+        resolution=128,  # Input resolution. Overridden based on dataset.
+        dlatent_size=10,
+        D_global_size=0,
+        fmap_base=16 <<
+        10,  # Overall multiplier for the number of feature maps.
+        fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
+        fmap_min=1,  # Minimum number of feature maps in any layer.
+        fmap_max=512,  # Maximum number of feature maps in any layer.
+        nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        dtype='float32',  # Data type to use for activations and outputs.
+        resample_kernel=[
+            1, 3, 3, 1
+        ],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        connect_mode='concat',  # How fake1 and fake2 connected.
+        **kwargs):  # Ignore unrecognized keyword args.
+    '''
+    Modularized variation-consistent network2.
+    '''
+
+    def nf(stage):
+        return np.clip(int(fmap_base / (2.0**(stage * fmap_decay))), fmap_min, fmap_max)
+
+    act = nonlinearity
+    images_out = None
+
+    # Note that module_I_list may include modules not containing latents,
+    # e.g. Conv layers (size in this case means number of conv layers).
+    key_ls, size_ls, count_dlatent_size = split_module_names(module_I_list)
+    print('In key_ls:', key_ls)
+    print('In size_ls:', size_ls)
+    print('In count_dlatent_size:', count_dlatent_size)
+
+    # Primary inputs.
+    fake1.set_shape([None, num_channels, resolution, resolution])
+    fake2.set_shape([None, num_channels, resolution, resolution])
+    atts_in.set_shape([None, count_dlatent_size, 1, resolution, resolution])
+    fake1 = tf.cast(fake1, dtype)
+    fake2 = tf.cast(fake2, dtype)
+    atts_in = tf.cast(atts_in, dtype)
+
+    if connect_mode == 'diff':
+        images_in = fake1 - fake2
+    elif connect_mode == 'concat':
+        images_in = tf.concat([fake1, fake2], axis=1)
+
+    subkwargs = EasyDict()
+    subkwargs.update(atts_in=atts_in, act=act, dtype=dtype, resample_kernel=resample_kernel,
+                     resolution=resolution, **kwargs)
+
+    # Build modules by module_dict.
+    start_idx = 0
+    x = images_in
+    pred_outs_ls = []
+    for scope_idx, k in enumerate(key_ls):
+        if k == 'C_spgroup':
+            # e.g. {'C_spgroup': 2}
+            x, pred_out = build_Cout_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+            pred_outs_ls.append(pred_out) # [b, n_latents]
+            start_idx += size_ls[scope_idx]
+        elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
+            # e.g. {'Conv-up': 2}, {'Conv-id': 1}
+            x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
+                                 fmaps=nf(scope_idx//4), **subkwargs)
+        elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
+            # e.g. {'Conv-up': 2}, {'Conv-id': 1}
+            x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
+                                 fmaps=nf(scope_idx//4), **subkwargs)
+        else:
+            raise ValueError('Unsupported module type: ' + k)
+    pred_outs = tf.concat(pred_outs_ls, axis=1)
+
+    return tf.identity(pred_outs, name='pred_outs')
 
 
 #----------------------------------------------------------------------------

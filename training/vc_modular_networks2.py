@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 30 Apr 2020 23:47:09 AEST
+# --- Last Modified: Sat 02 May 2020 03:38:18 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,8 @@ from stn.stn import spatial_transformer_network as transformer
 
 LATENT_MODULES = [
     'D_global', 'C_nocond_global', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat',
-    'C_fgroup', 'C_spfgroup', 'C_spgroup', 'C_spgroup_sm', 'C_spgroup_stn'
+    'C_fgroup', 'C_spfgroup', 'C_spgroup', 'C_spgroup_sm', 'C_spgroup_stn',
+    'C_spgroup'
 ]
 
 #----------------------------------------------------------------------------
@@ -312,6 +313,33 @@ def build_C_spfgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_i
         else:
             return x
 
+def build_Cout_spgroup_layers(x, name, n_latents, start_idx, scope_idx, atts_in,
+                          act, fmaps=128, resolution=128, **kwargs):
+    '''
+    Build continuous latent out layers with learned group spatial attention.
+    Support square images only.
+    '''
+    # atts_in: [b, all_n_latents, 1, resolution, resolution]
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        with tf.variable_scope('Att_spatial'):
+            x_wh = x.shape[2]
+            atts = atts_in[:, start_idx:start_idx + n_latents] # [b, n_latents, 1, resolution, resolution]
+            atts = tf.reshape(atts, [-1, n_latents, resolution, resolution, 1])
+            atts = tf.image.resize(atts, size=(x_wh, x_wh))
+            atts = tf.reshape(atts, [-1, n_latents, 1, x_wh, x_wh])
+            x_out_ls = []
+            for i in range(n_latents):
+                x_tmp = x * atts[:, i]
+                x_tmp_2 = tf.reduce_mean(x_tmp, axis=[2, 3]) # [b, in_dim]
+                with tf.variable_scope('OutDense-'+str(i)):
+                    with tf.variable_scope('Conv0'):
+                        x_tmp_2 = apply_bias_act(dense_layer(x_tmp_2, fmaps=fmaps), act=act) # [b, fmaps]
+                    with tf.variable_scope('Conv1'):
+                        x_out_tmp = dense_layer(x_tmp_2, fmaps=1) # [b, 1]
+                        x_out_ls.append(x_out_tmp)
+            pred_out = tf.concat(x_out_ls, axis=1) # [b, n_latents]
+            return x, pred_out
+
 def build_SB_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in, n_content,
                     act, resample_kernel, fused_modconv, fmaps=128, **kwargs):
     '''
@@ -474,8 +502,10 @@ def build_res_conv_layer(x, name, n_layers, scope_idx, act, resample_kernel, fma
     x_ori = x
     for i in range(n_layers):
         with tf.variable_scope(name + '-' + str(scope_idx) + '-' + str(i)):
-            x = apply_bias_act(conv2d_layer(x, fmaps=fmaps, kernel=3, up=(sample_type == 'up'),
-                                            down=(sample_type == 'down'), resample_kernel=resample_kernel), act=act)
+            x = apply_bias_act(conv2d_layer(x, fmaps=fmaps, kernel=3,
+                                            up=(sample_type == 'up'),
+                                            down=(sample_type == 'down'),
+                                            resample_kernel=resample_kernel), act=act)
         if sample_type == 'up':
             with tf.variable_scope('Upsampling' + '-' + str(scope_idx) + '-' + str(i)):
                 x_ori = naive_upsample_2d(x_ori)
