@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 04:08:16 AEST
+# --- Last Modified: Sat 02 May 2020 04:11:09 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -324,7 +324,7 @@ def build_Cout_spgroup_layers(x, name, n_latents, start_idx, scope_idx, atts_in,
         with tf.variable_scope('Att_spatial'):
             x_wh = x.shape[2]
             atts = atts_in[:, start_idx:start_idx + n_latents] # [b, n_latents, 1, resolution, resolution]
-            atts = tf.reshape(atts, [-1, n_latents, resolution, resolution, 1])
+            atts = tf.reshape(atts, [-1, resolution, resolution, 1])
             atts = tf.image.resize(atts, size=(x_wh, x_wh))
             atts = tf.reshape(atts, [-1, n_latents, 1, x_wh, x_wh])
             x_out_ls = []
