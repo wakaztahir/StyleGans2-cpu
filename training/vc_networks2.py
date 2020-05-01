@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 03:37:04 AEST
+# --- Last Modified: Sat 02 May 2020 04:08:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -345,7 +345,7 @@ def I_modular_vc2(
     x = images_in
     pred_outs_ls = []
     for scope_idx, k in enumerate(key_ls):
-        if k == 'C_spgroup':
+        if k == 'Cout_spgroup':
             # e.g. {'C_spgroup': 2}
             x, pred_out = build_Cout_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                       scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
