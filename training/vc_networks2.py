@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 04:15:21 AEST
+# --- Last Modified: Sat 02 May 2020 05:16:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -327,6 +327,7 @@ def I_modular_vc2(
     fake1.set_shape([None, num_channels, resolution, resolution])
     fake2.set_shape([None, num_channels, resolution, resolution])
     atts_in.set_shape([None, count_dlatent_size, 1, resolution, resolution])
+    atts_in = atts_in[:, ::-1]
     fake1 = tf.cast(fake1, dtype)
     fake2 = tf.cast(fake2, dtype)
     atts_in = tf.cast(atts_in, dtype)
