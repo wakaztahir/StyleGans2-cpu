@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 03:49:54 AEST
+# --- Last Modified: Sat 02 May 2020 04:03:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -48,7 +48,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     for i, key in enumerate(key_ls):
         if key.startswith('D_global') or key.startswith('D_nocond_global'):
             D_global_size += size_ls[i]
-    if module_I_list is not None:
+    if not(module_I_list is None):
+        D_global_I_size = 0
         module_I_list = _str_to_list(module_I_list)
         key_I_ls, size_I_ls, count_dlatent_I_size = split_module_names(module_I_list)
         for i, key in enumerate(key_I_ls):
