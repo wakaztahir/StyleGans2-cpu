@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 04:06:55 AEST
+# --- Last Modified: Sun 03 May 2020 04:33:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,7 +37,9 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         n_samples_per=10, module_list=None, model_type='vc_gan2',
         epsilon_loss=3, random_eps=False, latent_type='uniform',
         delta_type='onedim', connect_mode='concat', batch_size=32, batch_per_gpu=16,
-        return_atts=False, random_seed=1000, module_I_list=None):
+
+        return_atts=False, random_seed=1000, module_I_list=None,
+        fmap_min=16, fmap_max=512):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -58,54 +60,54 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     if model_type == 'info_gan':
         G = EasyDict(func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, use_noise=True)  # Options for generator network.
         I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
                      dlatent_size=count_dlatent_size,
-                     D_global_size=D_global_size, fmap_max=512)
+                     D_global_size=D_global_size, fmap_max=fmap_max)
         D = EasyDict(func_name='training.info_gan_networks.D_info_gan_stylegan2',
-            fmap_max=512)  # Options for discriminator network.
+            fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'info_gan_net'
     elif model_type == 'vc2_gan':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.vc2_head',
-                     dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=512,
+                     dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=fmap_max,
                      connect_mode=connect_mode)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_max=512)  # Options for discriminator network.
+            fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan'
     elif model_type == 'vc2_gan_own_I':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.I_modular_vc2',
-                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=512,
+                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=fmap_max,
                      connect_mode=connect_mode, module_I_list=module_I_list)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_max=512)  # Options for discriminator network.
+            fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan'
     elif model_type == 'vc2_gan_noI':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=16, fmap_max=512, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
         I = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_max=512)  # Options for discriminator network.
+            fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan_noI'
     else:
@@ -299,6 +301,10 @@ def main():
                         metavar='RANDOM_SEED', default=9, type=int)
     parser.add_argument('--module_I_list', help='Module list for I modular network.',
                         default=None, metavar='MODULE_I_LIST', type=str)
+    parser.add_argument('--fmap_min', help='FMAP min.',
+                        metavar='FMAP_MIN', default=16, type=int)
+    parser.add_argument('--fmap_max', help='FMAP max.',
+                        metavar='FMAP_MAX', default=512, type=int)
 
     args = parser.parse_args()
 
