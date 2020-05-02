@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 05:16:03 AEST
+# --- Last Modified: Sun 03 May 2020 02:30:58 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,6 +42,7 @@ from training.vc_modular_networks2 import build_res_conv_layer, build_C_fgroup_l
 from training.vc_modular_networks2 import build_C_spfgroup_layers, build_C_spgroup_layers
 from training.vc_modular_networks2 import build_C_spgroup_softmax_layers
 from training.vc_modular_networks2 import build_C_spgroup_stn_layers
+from training.vc_modular_networks2 import build_C_spgroup_lcond_layers
 from training.vc_modular_networks2 import build_Cout_spgroup_layers
 from stn.stn import spatial_transformer_network as transformer
 
@@ -236,6 +237,16 @@ def G_synthesis_modular_vc2(
                 atts.append(atts_tmp)
             else:
                 x = build_C_spgroup_stn_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k == 'C_spgroup_lc':
+            # e.g. {'C_spgroup': 2}
+            if return_atts:
+                x, atts_tmp = build_C_spgroup_lcond_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = build_C_spgroup_lcond_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                           scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spfgroup':

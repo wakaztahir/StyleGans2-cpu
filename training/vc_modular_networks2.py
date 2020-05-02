@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 04:11:09 AEST
+# --- Last Modified: Sun 03 May 2020 02:25:05 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -33,7 +33,7 @@ from stn.stn import spatial_transformer_network as transformer
 LATENT_MODULES = [
     'D_global', 'C_nocond_global', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat',
     'C_fgroup', 'C_spfgroup', 'C_spgroup', 'C_spgroup_sm', 'C_spgroup_stn',
-    'Cout_spgroup'
+    'C_spgroup_lc', 'Cout_spgroup'
 ]
 
 #----------------------------------------------------------------------------
@@ -165,6 +165,55 @@ def build_C_spgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in
 
         with tf.variable_scope('Att_apply'):
             C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
+            x_norm = instance_norm(x)
+            for i in range(n_latents):
+                with tf.variable_scope('style_mod-' + str(i)):
+                    x_styled = style_mod(x_norm, C_global_latents[:, i:i+1])
+                    x = x * (1 - atts[:, i]) + x_styled * atts[:, i]
+        if return_atts:
+            with tf.variable_scope('Reshape_output'):
+                atts = tf.reshape(atts, [-1, x_wh, x_wh, 1])
+                atts = tf.image.resize(atts, size=(resolution, resolution))
+                atts = tf.reshape(atts, [-1, n_latents, 1, resolution, resolution])
+            return x, atts
+        else:
+            return x
+
+def build_C_spgroup_lcond_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
+                          act, fused_modconv, fmaps=128, return_atts=False, resolution=128, **kwargs):
+    '''
+    Build continuous latent layers with learned group spatial attention.
+    Support square images only.
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        with tf.variable_scope('Att_spatial'):
+            x_mean = tf.reduce_mean(x, axis=[2, 3]) # [b, in_dim]
+            x_wh = x.shape[2]
+            C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
+
+            atts_ls = []
+            for i in range(n_latents):
+                with tf.variable_scope('lcond-' + str(i)):
+                    x_mean_styled = style_mod(x_mean, C_global_latents[:, i:i+1])
+
+                    att_wh = dense_layer(x_mean_styled, fmaps=4 * x_wh)
+                    att_wh = tf.reshape(att_wh, [-1, 4, x_wh]) # [b, 4, x_wh]
+                    att_wh_sm = tf.nn.softmax(att_wh, axis=-1)
+                    att_wh_cs = tf.cumsum(att_wh_sm, axis=-1)
+                    att_h_cs_start, att_h_cs_end, att_w_cs_start, att_w_cs_end = tf.split(att_wh_cs, 4, axis=1)
+                    att_h_cs_end = 1 - att_h_cs_end # [b, 1, x_wh]
+                    att_w_cs_end = 1 - att_w_cs_end # [b, 1, x_wh]
+                    att_h_cs_start = tf.reshape(att_h_cs_start, [-1, 1, 1, x_wh, 1])
+                    att_h_cs_end = tf.reshape(att_h_cs_end, [-1, 1, 1, x_wh, 1])
+                    att_h = att_h_cs_start * att_h_cs_end # [b, 1, 1, x_wh, 1]
+                    att_w_cs_start = tf.reshape(att_w_cs_start, [-1, 1, 1, 1, x_wh])
+                    att_w_cs_end = tf.reshape(att_w_cs_end, [-1, 1, 1, 1, x_wh])
+                    att_w = att_w_cs_start * att_w_cs_end # [b, 1, 1, 1, x_wh]
+                    att = att_h * att_w # [b, 1, 1, x_wh, x_wh]
+                    atts_ls.append(att)
+            atts = tf.concat(atts_ls, axis=1)
+
+        with tf.variable_scope('Att_apply'):
             x_norm = instance_norm(x)
             for i in range(n_latents):
                 with tf.variable_scope('style_mod-' + str(i)):
