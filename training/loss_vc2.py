@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 02 May 2020 03:44:08 AEST
+# --- Last Modified: Sun 03 May 2020 04:54:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -95,12 +95,20 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
         latents = tf.concat([discrete_latents, latents], axis=1)
         delta_latents = tf.concat([tf.zeros([minibatch_size, D_global_size]), delta_latents], axis=1)
 
-    labels = training_set.get_random_labels_tf(minibatch_size)
-    if own_I:
-        fake1_out, atts = G.get_output_for(latents, labels, is_training=True, return_atts=True)
-    else:
-        fake1_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
-    fake2_out = G.get_output_for(delta_latents, labels, is_training=True, return_atts=False)
+    # labels = training_set.get_random_labels_tf(minibatch_size)
+
+    # if own_I:
+        # fake1_out, atts = G.get_output_for(latents, labels, is_training=True, return_atts=True)
+    # else:
+        # fake1_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    # fake2_out = G.get_output_for(delta_latents, labels, is_training=True, return_atts=False)
+
+    labels = training_set.get_random_labels_tf(2*minibatch_size)
+    latents_all = tf.concat([latents, delta_latents], axis=0)
+    fake_all_out, atts_all = G.get_output_for(latents_all, labels, is_training=True, return_atts=True)
+    fake1_out, fake2_out = tf.split(fake_all_out, 2, axis=0)
+    atts = atts_all[:minibatch_size]
+
     if I_info is not None:
         fake_scores_out, hidden = D.get_output_for(fake1_out, labels, is_training=True)
     else:
