@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 17:12:34 AEST
+# --- Last Modified: Sun 03 May 2020 17:14:23 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,8 +37,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         n_samples_per=10, module_list=None, model_type='vc_gan2',
         epsilon_loss=3, random_eps=False, latent_type='uniform',
         delta_type='onedim', connect_mode='concat', batch_size=32, batch_per_gpu=16,
-
-        return_atts=False, random_seed=1000, module_I_list=None,
+        return_atts=False, random_seed=1000,
+        module_I_list=None, module_D_list=None,
         fmap_min=16, fmap_max=512):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
