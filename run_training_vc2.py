@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 17:34:35 AEST
+# --- Last Modified: Sun 03 May 2020 18:02:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -74,9 +74,10 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             module_list=module_list, use_noise=True, G_nf_scale=G_nf_scale)  # Options for generator network.
         I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
                      dlatent_size=count_dlatent_size,
-                     D_global_size=D_global_size, fmap_max=fmap_max)
+                     D_global_size=D_global_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max)
         D = EasyDict(func_name='training.info_gan_networks.D_info_gan_stylegan2',
-            fmap_max=fmap_max)  # Options for discriminator network.
+            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'info_gan_net'
     elif model_type == 'vc2_gan':
@@ -89,10 +90,11 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             G_nf_scale=G_nf_scale
         )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.vc2_head',
-                     dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=fmap_max,
+                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max,
                      connect_mode=connect_mode)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_max=fmap_max)  # Options for discriminator network.
+            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan'
     elif model_type == 'vc2_gan_own_I':
@@ -105,11 +107,12 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             G_nf_scale=G_nf_scale
         )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.I_modular_vc2',
-                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=fmap_max,
+                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max,
                      connect_mode=connect_mode, module_I_list=module_I_list,
                      I_nf_scale=I_nf_scale)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_max=fmap_max)  # Options for discriminator network.
+            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan_ownI'
     elif model_type == 'vc2_gan_own_ID':
@@ -122,11 +125,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             G_nf_scale=G_nf_scale
         )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.I_modular_vc2',
-                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=fmap_max,
+                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max,
                      connect_mode=connect_mode, module_I_list=module_I_list,
                      I_nf_scale=I_nf_scale)
         D = EasyDict(func_name='training.vc_networks2.D_modular_vc2',
-                     dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size, fmap_max=fmap_max,
+                     dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max,
                      connect_mode=connect_mode, module_D_list=module_D_list,
                      D_nf_scale=D_nf_scale)
         I_info = EasyDict()
@@ -142,7 +147,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         )  # Options for generator network.
         I = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_max=fmap_max)  # Options for discriminator network.
+            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan_noI'
     else:
