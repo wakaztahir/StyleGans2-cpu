@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 04:33:15 AEST
+# --- Last Modified: Sun 03 May 2020 15:57:29 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -57,6 +57,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         for i, key in enumerate(key_I_ls):
             if key.startswith('D_global') or key.startswith('D_nocond_global'):
                 D_global_I_size += size_I_ls[i]
+    if not(module_D_list is None):
+        D_global_D_size = 0
+        module_D_list = _str_to_list(module_D_list)
+        key_D_ls, size_D_ls, count_dlatent_D_size = split_module_names(module_D_list)
+        for i, key in enumerate(key_D_ls):
+            if key.startswith('D_global') or key.startswith('D_nocond_global'):
+                D_global_D_size += size_D_ls[i]
     if model_type == 'info_gan':
         G = EasyDict(func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -97,7 +104,22 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan'
+        desc = 'vc2_gan_ownI'
+    elif model_type == 'vc2_gan_own_ID':
+        G = EasyDict(
+            func_name='training.vc_networks2.G_main_vc2',
+            synthesis_func='G_synthesis_modular_vc2',
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+            module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
+        I = EasyDict(func_name='training.vc_networks2.I_modular_vc2',
+                     dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=fmap_max,
+                     connect_mode=connect_mode, module_I_list=module_I_list)
+        D = EasyDict(func_name='training.vc_networks2.D_modular_vc2',
+                     dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size, fmap_max=fmap_max,
+                     connect_mode=connect_mode, module_D_list=module_D_list)
+        I_info = EasyDict()
+        desc = 'vc2_gan_ownID'
     elif model_type == 'vc2_gan_noI':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
@@ -130,7 +152,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_own_I':
+    elif model_type == 'vc2_gan_own_I' or model_type == 'vc2_gan_own_ID':
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
@@ -187,7 +209,9 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     kwargs.update(G_args=G, D_args=D, I_args=I, I_info_args=I_info, G_opt_args=G_opt, D_opt_args=D_opt,
                   G_loss_args=G_loss, D_loss_args=D_loss,
                   use_info_gan=(model_type == 'info_gan'),
-                  use_vc_head=(model_type == 'vc2_gan' or model_type == 'vc2_gan_own_I'),
+                  use_vc_head=(model_type == 'vc2_gan' or 
+                               model_type == 'vc2_gan_own_I' or
+                               model_type == 'vc2_gan_own_ID'),
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
     for i, key in enumerate(key_ls):
@@ -259,7 +283,8 @@ def main():
         '--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)',
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
-                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI', 'vc2_gan_own_I'])
+                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
+                                                                 'vc2_gan_own_I', 'vc2_gan_own_D'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',

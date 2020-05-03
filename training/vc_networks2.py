@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 02:30:58 AEST
+# --- Last Modified: Sun 03 May 2020 16:33:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -516,3 +516,71 @@ def vc2_empty(
     # Output.
     assert x.dtype == tf.as_dtype(dtype)
     return x
+
+
+def D_modular_vc2(
+        images_in,  # First input: Images [minibatch, channel, height, width].
+        labels_in,  # Second input: Labels [minibatch, label_size].
+        module_D_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
+        num_channels=3,  # Number of input color channels. Overridden based on dataset.
+        resolution=1024,  # Input resolution. Overridden based on dataset.
+        label_size=0,  # Dimensionality of the labels, 0 if no labels. Overridden based on dataset.
+        fmap_base=16 << 10,  # Overall multiplier for the number of feature maps.
+        fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
+        fmap_min= 1,  # Minimum number of feature maps in any layer.
+        fmap_max=512,  # Maximum number of feature maps in any layer.
+        nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        dtype='float32',  # Data type to use for activations and outputs.
+        resample_kernel=[1,3,3,1],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        **kwargs):
+    '''
+    Modularized variation-consistent network2 of D.
+    '''
+
+    def nf(stage):
+        return np.clip(int(fmap_base / (2.0**(stage * fmap_decay))), fmap_min, fmap_max)
+
+    act = nonlinearity
+
+    # Note that module_D_list may include modules not containing latents,
+    # e.g. Conv layers (size in this case means number of conv layers).
+    key_ls, size_ls, count_dlatent_size = split_module_names(module_D_list)
+    print('In key_ls:', key_ls)
+    print('In size_ls:', size_ls)
+    print('In count_dlatent_size:', count_dlatent_size)
+
+    # Primary inputs.
+    images_in.set_shape([None, num_channels, resolution, resolution])
+    labels_in.set_shape([None, label_size])
+    images_in = tf.cast(images_in, dtype)
+    labels_in = tf.cast(labels_in, dtype)
+
+    subkwargs = EasyDict()
+    subkwargs.update(act=act, dtype=dtype, resample_kernel=resample_kernel,
+                     resolution=resolution, **kwargs)
+
+    # Build modules by module_dict.
+    x = images_in
+    len_key = len(key_ls) - 1
+    for scope_idx, k in enumerate(key_ls):
+        if k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
+            # e.g. {'Conv-up': 2}, {'Conv-id': 1}
+            x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
+                                     fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+        elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
+            # e.g. {'Conv-up': 2}, {'Conv-id': 1}
+            x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
+                                 fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+        else:
+            raise ValueError('Unsupported module type: ' + k)
+
+    with tf.variable_scope('Output'):
+        x = apply_bias_act(dense_layer(x, fmaps=max(labels_in.shape[1], 1)))
+        if labels_in.shape[1] > 0:
+            x = tf.reduce_sum(x * labels_in, axis=1, keepdims=True)
+    scores_out = x
+
+    # Output.
+    assert scores_out.dtype == tf.as_dtype(dtype)
+    scores_out = tf.identity(scores_out, name='scores_out')
+    return scores_out
