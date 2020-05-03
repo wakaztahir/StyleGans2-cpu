@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 17:27:11 AEST
+# --- Last Modified: Sun 03 May 2020 17:49:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -145,7 +145,7 @@ def G_synthesis_modular_vc2(
         use_noise=False,  # If noise is used in this dataset.
         randomize_noise=True,  # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
         return_atts=False,  # If return atts.
-        D_nf_scale=4,
+        G_nf_scale=4,
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized variation-consistent network2.
