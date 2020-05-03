@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 17:49:51 AEST
+# --- Last Modified: Sun 03 May 2020 18:08:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -539,6 +539,7 @@ def D_modular_vc2(
     '''
     Modularized variation-consistent network2 of D.
     '''
+    print('In D_modular_vc2, fmap_min=', fmap_min)
 
     def nf(stage):
         return np.clip(int(fmap_base / (2.0**(stage * fmap_decay))), fmap_min, fmap_max)
