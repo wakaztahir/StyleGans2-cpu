@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 15:57:29 AEST
+# --- Last Modified: Sun 03 May 2020 17:12:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -284,7 +284,7 @@ def main():
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
                         type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
-                                                                 'vc2_gan_own_I', 'vc2_gan_own_D'])
+                                                                 'vc2_gan_own_I', 'vc2_gan_own_ID'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
@@ -326,6 +326,8 @@ def main():
                         metavar='RANDOM_SEED', default=9, type=int)
     parser.add_argument('--module_I_list', help='Module list for I modular network.',
                         default=None, metavar='MODULE_I_LIST', type=str)
+    parser.add_argument('--module_D_list', help='Module list for D modular network.',
+                        default=None, metavar='MODULE_D_LIST', type=str)
     parser.add_argument('--fmap_min', help='FMAP min.',
                         metavar='FMAP_MIN', default=16, type=int)
     parser.add_argument('--fmap_max', help='FMAP max.',
