@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 16:33:30 AEST
+# --- Last Modified: Sun 03 May 2020 17:27:11 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -145,6 +145,7 @@ def G_synthesis_modular_vc2(
         use_noise=False,  # If noise is used in this dataset.
         randomize_noise=True,  # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
         return_atts=False,  # If return atts.
+        D_nf_scale=4,
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized variation-consistent network2.
@@ -188,99 +189,99 @@ def G_synthesis_modular_vc2(
         if k == 'Const':
             # e.g. {'Const': 3}
             x = build_Const_layers(init_dlatents_in=x, name=k, n_feats=size_ls[scope_idx],
-                               scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+                               scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
         elif k == 'D_global':
             # e.g. {'D_global': 3}
             x = build_D_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                               scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+                               scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_global':
             # e.g. {'C_global': 2}
             x = build_C_global_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                      scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+                                      scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_fgroup':
             # e.g. {'C_fgroup': 2}
             if return_atts:
                 x, atts_tmp = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=True, **subkwargs)
                 atts.append(atts_tmp)
             else:
                 x = build_C_fgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spgroup':
             # e.g. {'C_spgroup': 2}
             if return_atts:
                 x, atts_tmp = build_C_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=True, **subkwargs)
                 atts.append(atts_tmp)
             else:
                 x = build_C_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spgroup_sm':
             # e.g. {'C_spgroup': 2}
             if return_atts:
                 x, atts_tmp = build_C_spgroup_softmax_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=True, **subkwargs)
                 atts.append(atts_tmp)
             else:
                 x = build_C_spgroup_softmax_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spgroup_stn':
             # e.g. {'C_spgroup': 2}
             if return_atts:
                 x, atts_tmp = build_C_spgroup_stn_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=True, **subkwargs)
                 atts.append(atts_tmp)
             else:
                 x = build_C_spgroup_stn_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spgroup_lc':
             # e.g. {'C_spgroup': 2}
             if return_atts:
                 x, atts_tmp = build_C_spgroup_lcond_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=True, **subkwargs)
                 atts.append(atts_tmp)
             else:
                 x = build_C_spgroup_lcond_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spfgroup':
             # e.g. {'C_spfgroup': 2}
             if return_atts:
                 x, atts_tmp = build_C_spfgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=True, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=True, **subkwargs)
                 atts.append(atts_tmp)
             else:
                 x = build_C_spfgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                          scope_idx=scope_idx, fmaps=nf(scope_idx//4), return_atts=False, **subkwargs)
+                                          scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_local_heat':
             # e.g. {'C_local_heat': 4}
             x = build_local_heat_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                        scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+                                        scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'C_local_hfeat':
             # e.g. {'C_local_hfeat_size': 4}
             x = build_local_hfeat_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                         scope_idx=scope_idx, fmaps=nf(scope_idx//4), **subkwargs)
+                                         scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
             start_idx += size_ls[scope_idx]
         elif k == 'Noise':
             # e.g. {'Noise': 1}
             x = build_noise_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                  fmaps=nf(scope_idx//4), **subkwargs)
+                                  fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
         elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf(scope_idx//4), **subkwargs)
+                                 fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
         elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf(scope_idx//4), **subkwargs)
+                                 fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
         else:
             raise ValueError('Unsupported module type: ' + k)
 
@@ -316,6 +317,7 @@ def I_modular_vc2(
             1, 3, 3, 1
         ],  # Low-pass filter to apply when resampling activations. None = no filtering.
         connect_mode='concat',  # How fake1 and fake2 connected.
+        I_nf_scale=4,
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized variation-consistent network2.
@@ -361,17 +363,17 @@ def I_modular_vc2(
         if k == 'Cout_spgroup':
             # e.g. {'C_spgroup': 2}
             x, pred_out = build_Cout_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
-                                      scope_idx=scope_idx, fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+                                      scope_idx=scope_idx, fmaps=nf((len_key - scope_idx)//I_nf_scale), **subkwargs)
             pred_outs_ls.append(pred_out) # [b, n_latents]
             start_idx += size_ls[scope_idx]
         elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+                                 fmaps=nf((len_key - scope_idx)//I_nf_scale), **subkwargs)
         elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+                                 fmaps=nf((len_key - scope_idx)//I_nf_scale), **subkwargs)
         else:
             raise ValueError('Unsupported module type: ' + k)
     pred_outs = tf.concat(pred_outs_ls, axis=1)
@@ -532,6 +534,7 @@ def D_modular_vc2(
         nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
         dtype='float32',  # Data type to use for activations and outputs.
         resample_kernel=[1,3,3,1],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        D_nf_scale=4,
         **kwargs):
     '''
     Modularized variation-consistent network2 of D.
@@ -566,11 +569,11 @@ def D_modular_vc2(
         if k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                     fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+                                     fmaps=nf((len_key - scope_idx)//D_nf_scale), **subkwargs)
         elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf((len_key - scope_idx)//4), **subkwargs)
+                                 fmaps=nf((len_key - scope_idx)//D_nf_scale), **subkwargs)
         else:
             raise ValueError('Unsupported module type: ' + k)
 

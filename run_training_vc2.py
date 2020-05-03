@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 17:14:23 AEST
+# --- Last Modified: Sun 03 May 2020 17:34:35 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,7 +39,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         delta_type='onedim', connect_mode='concat', batch_size=32, batch_per_gpu=16,
         return_atts=False, random_seed=1000,
         module_I_list=None, module_D_list=None,
-        fmap_min=16, fmap_max=512):
+        fmap_min=16, fmap_max=512,
+        G_nf_scale=4, I_nf_scale=4, D_nf_scale=4):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -64,12 +65,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         for i, key in enumerate(key_D_ls):
             if key.startswith('D_global') or key.startswith('D_nocond_global'):
                 D_global_D_size += size_D_ls[i]
+
     if model_type == 'info_gan':
         G = EasyDict(func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
             fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True)  # Options for generator network.
+            module_list=module_list, use_noise=True, G_nf_scale=G_nf_scale)  # Options for generator network.
         I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
                      dlatent_size=count_dlatent_size,
                      D_global_size=D_global_size, fmap_max=fmap_max)
@@ -83,7 +85,9 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             synthesis_func='G_synthesis_modular_vc2',
             fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
+            module_list=module_list, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.vc2_head',
                      dlatent_size=count_dlatent_size, D_global_size=D_global_size, fmap_max=fmap_max,
                      connect_mode=connect_mode)
@@ -97,10 +101,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             synthesis_func='G_synthesis_modular_vc2',
             fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
+            module_list=module_list, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.I_modular_vc2',
                      dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=fmap_max,
-                     connect_mode=connect_mode, module_I_list=module_I_list)
+                     connect_mode=connect_mode, module_I_list=module_I_list,
+                     I_nf_scale=I_nf_scale)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
@@ -111,13 +118,17 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             synthesis_func='G_synthesis_modular_vc2',
             fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
+            module_list=module_list, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.I_modular_vc2',
                      dlatent_size=count_dlatent_I_size, D_global_size=D_global_I_size, fmap_max=fmap_max,
-                     connect_mode=connect_mode, module_I_list=module_I_list)
+                     connect_mode=connect_mode, module_I_list=module_I_list,
+                     I_nf_scale=I_nf_scale)
         D = EasyDict(func_name='training.vc_networks2.D_modular_vc2',
                      dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size, fmap_max=fmap_max,
-                     connect_mode=connect_mode, module_D_list=module_D_list)
+                     connect_mode=connect_mode, module_D_list=module_D_list,
+                     D_nf_scale=D_nf_scale)
         I_info = EasyDict()
         desc = 'vc2_gan_ownID'
     elif model_type == 'vc2_gan_noI':
@@ -126,7 +137,9 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             synthesis_func='G_synthesis_modular_vc2',
             fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts)  # Options for generator network.
+            module_list=module_list, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
         I = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_max=fmap_max)  # Options for discriminator network.
@@ -332,6 +345,12 @@ def main():
                         metavar='FMAP_MIN', default=16, type=int)
     parser.add_argument('--fmap_max', help='FMAP max.',
                         metavar='FMAP_MAX', default=512, type=int)
+    parser.add_argument('--G_nf_scale', help='N feature map scale for G.',
+                        metavar='G_NF_SCALE', default=4, type=int)
+    parser.add_argument('--I_nf_scale', help='N feature map scale for I.',
+                        metavar='I_NF_SCALE', default=4, type=int)
+    parser.add_argument('--D_nf_scale', help='N feature map scale for D.',
+                        metavar='D_NF_SCALE', default=4, type=int)
 
     args = parser.parse_args()
 
