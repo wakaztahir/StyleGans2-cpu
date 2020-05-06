@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 18:02:03 AEST
+# --- Last Modified: Wed 06 May 2020 02:45:59 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -80,6 +80,23 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'info_gan_net'
+    elif model_type == 'vc2_info_gan':
+        G = EasyDict(
+            func_name='training.vc_networks2.G_main_vc2',
+            synthesis_func='G_synthesis_modular_vc2',
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
+            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+            module_list=module_list, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
+        D = EasyDict(func_name='training.vc_networks2.D_info_modular_vc2',
+                     dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max,
+                     connect_mode=connect_mode, module_D_list=module_D_list,
+                     D_nf_scale=D_nf_scale)
+        I = EasyDict()
+        I_info = EasyDict()
+        desc = 'vc2_info_gan_net'
     elif model_type == 'vc2_gan':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
@@ -163,6 +180,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss.D_logistic_r1_info_gan',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
+    elif model_type == 'vc2_info_gan':
+        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan',
+            D_global_size=D_global_size, C_lambda=C_lambda,
+            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
+            delta_type=delta_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan',
+            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc2_gan':
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
@@ -227,9 +251,10 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     kwargs.update(G_args=G, D_args=D, I_args=I, I_info_args=I_info, G_opt_args=G_opt, D_opt_args=D_opt,
                   G_loss_args=G_loss, D_loss_args=D_loss,
                   use_info_gan=(model_type == 'info_gan'),
-                  use_vc_head=(model_type == 'vc2_gan' or 
+                  use_vc_head=(model_type == 'vc2_gan' or
                                model_type == 'vc2_gan_own_I' or
                                model_type == 'vc2_gan_own_ID'),
+                  use_vc2_info_gan=(model_type == 'vc2_info_gan'),
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
     for i, key in enumerate(key_ls):
@@ -302,7 +327,8 @@ def main():
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
                         type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
-                                                                 'vc2_gan_own_I', 'vc2_gan_own_ID'])
+                                                                 'vc2_gan_own_I', 'vc2_gan_own_ID',
+                                                                 'vc2_info_gan'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',

@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 30 Apr 2020 00:51:41 AEST
+# --- Last Modified: Wed 06 May 2020 01:50:40 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -64,6 +64,7 @@ def training_loop_vc2(
         I_info_args={},  # Options for infogan-head/vcgan-head network.
         G_opt_args={},  # Options for generator optimizer.
         D_opt_args={},  # Options for discriminator optimizer.
+        # G2_opt_args={},  # Options for generator2 optimizer.
         G_loss_args={},  # Options for generator loss.
         D_loss_args={},  # Options for discriminator loss.
         dataset_args={},  # Options for dataset.load_dataset().
@@ -73,12 +74,14 @@ def training_loop_vc2(
         tf_config={},  # Options for tflib.init_tf().
         use_info_gan=False,  # Whether to use info-gan.
         use_vc_head=False,  # Whether to use vc-head.
+        use_vc2_info_gan=False,  # Whether to use vc2 infogan.
         data_dir=None,  # Directory to load datasets from.
         G_smoothing_kimg=10.0,  # Half-life of the running average of generator weights.
         minibatch_repeats=4,  # Number of minibatches to run before adjusting training parameters.
         lazy_regularization=True,  # Perform regularization as a separate training step?
         G_reg_interval=4,  # How often the perform regularization for G? Ignored if lazy_regularization=False.
         D_reg_interval=16,  # How often the perform regularization for D? Ignored if lazy_regularization=False.
+        # G2_reg_interval=4,  # How often the perform regularization for G? Ignored if lazy_regularization=False.
         reset_opt_for_new_lod=True,  # Reset optimizer internal state (e.g. Adam moments) when new layers are introduced?
         total_kimg=25000,  # Total length of the training, measured in thousands of real images.
         mirror_augment=False,  # Enable mirror augment?
@@ -234,6 +237,8 @@ def training_loop_vc2(
     D_opt = tflib.Optimizer(name='TrainD', **D_opt_args)
     G_reg_opt = tflib.Optimizer(name='RegG', share=G_opt, **G_opt_args)
     D_reg_opt = tflib.Optimizer(name='RegD', share=D_opt, **D_opt_args)
+    if use_vc2_info_gan:
+        G2_opt = tflib.Optimizer(name='TrainG2', share=G_opt, **G_opt_args)
 
     # Build training graph for each GPU.
     data_fetch_ops = []
@@ -303,6 +308,14 @@ def training_loop_vc2(
                         reals=reals_read,
                         labels=labels_read,
                         **D_loss_args)
+                if use_vc2_info_gan:
+                    with tf.name_scope('G2_loss'):
+                        G2_loss, _ = dnnlib.util.call_func_by_name(
+                            G=G_gpu, D=D_gpu, opt=G2_opt,
+                            training_set=training_set,
+                            minibatch_size=minibatch_gpu_in,
+                            is_G2_loss=True,
+                            **G_loss_args)
 
             # Register gradients.
             if not lazy_regularization:
@@ -325,6 +338,16 @@ def training_loop_vc2(
                                          GI_gpu_trainables)
                 D_opt.register_gradients(tf.reduce_mean(D_loss),
                                          D_gpu.trainables)
+            elif use_vc2_info_gan:
+                GD_gpu_trainables = collections.OrderedDict(
+                    list(G_gpu.trainables.items()) +
+                    list(D_gpu.trainables.items()))
+                G_opt.register_gradients(tf.reduce_mean(G_loss),
+                                         G_gpu.trainables)
+                G2_opt.register_gradients(tf.reduce_mean(G2_loss),
+                                          GD_gpu_trainables)
+                D_opt.register_gradients(tf.reduce_mean(D_loss),
+                                         D_gpu.trainables)
             else:
                 G_opt.register_gradients(tf.reduce_mean(G_loss),
                                          G_gpu.trainables)
@@ -338,6 +361,8 @@ def training_loop_vc2(
     G_reg_op = G_reg_opt.apply_updates(allow_no_op=True)
     D_reg_op = D_reg_opt.apply_updates(allow_no_op=True)
     Gs_update_op = Gs.setup_as_moving_average_of(G, beta=Gs_beta)
+    if use_vc2_info_gan:
+        G2_train_op = G2_opt.apply_updates()
 
     # Finalize graph.
     with tf.device('/gpu:0'):
@@ -409,6 +434,8 @@ def training_loop_vc2(
                 tflib.run([D_train_op, Gs_update_op], feed_dict)
                 if run_D_reg:
                     tflib.run(D_reg_op, feed_dict)
+                if use_vc2_info_gan:
+                    tflib.run(G2_train_op, feed_dict)
 
             # Slow path with gradient accumulation.
             else:
@@ -424,6 +451,9 @@ def training_loop_vc2(
                 if run_D_reg:
                     for _round in rounds:
                         tflib.run(D_reg_op, feed_dict)
+                if use_vc2_info_gan:
+                    for _round in rounds:
+                        tflib.run(G2_train_op, feed_dict)
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)

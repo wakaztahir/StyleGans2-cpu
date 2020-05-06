@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 04:54:55 AEST
+# --- Last Modified: Wed 06 May 2020 02:45:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -127,6 +127,49 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
 
     return G_loss, None
 
+def calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda):
+    assert pred_outs.shape.as_list()[1] == (D_global_size + C_global_size)
+    # Continuous latents loss
+    G2_loss_C = tf.reduce_sum((pred_outs[:] - clatents) ** 2, axis=1)
+    G2_loss = C_lambda * G2_loss_C
+    return G2_loss
+
+def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
+                     D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4,
+                     random_eps=False, delta_type='onedim', own_I=False, is_G2_loss=False):
+    _ = opt
+    discrete_latents = None
+    C_global_size = G.input_shapes[0][1]-D_global_size
+    if D_global_size > 0:
+        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents = tf.one_hot(discrete_latents, D_global_size)
+
+    if latent_type == 'uniform':
+        clatents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        clatents = tf.random.normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        clatents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+
+    if D_global_size > 0:
+        latents = tf.concat([discrete_latents, clatents], axis=1)
+    else:
+        latents = clatents
+
+    labels = training_set.get_random_labels_tf(2*minibatch_size)
+    fake_out, atts = G.get_output_for(latents, labels, is_training=True, return_atts=True)
+
+    fake_scores_out, pred_outs = D.get_output_for(fake_out, labels, atts, is_training=True)
+    if is_G2_loss:
+        G2_loss = calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda)
+        G2_loss = autosummary('Loss/G2_loss', G2_loss)
+        return G2_loss, None
+    else:
+        G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+        return G_loss, None
+
 def D_logistic_r1_vc2(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0):
     _ = opt, training_set
     discrete_latents = None
@@ -148,6 +191,39 @@ def D_logistic_r1_vc2(G, D, opt, training_set, minibatch_size, reals, labels, ga
     fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
     real_scores_out = D.get_output_for(reals, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
+    real_scores_out = autosummary('Loss/scores/real', real_scores_out)
+    fake_scores_out = autosummary('Loss/scores/fake', fake_scores_out)
+    loss = tf.nn.softplus(fake_scores_out) # -log(1-sigmoid(fake_scores_out))
+    loss += tf.nn.softplus(-real_scores_out) # -log(sigmoid(real_scores_out)) # pylint: disable=invalid-unary-operand-type
+
+    with tf.name_scope('GradientPenalty'):
+        real_grads = tf.gradients(tf.reduce_sum(real_scores_out), [reals])[0]
+        gradient_penalty = tf.reduce_sum(tf.square(real_grads), axis=[1,2,3])
+        gradient_penalty = autosummary('Loss/gradient_penalty', gradient_penalty)
+        reg = gradient_penalty * (gamma * 0.5)
+    return loss, reg
+
+def D_logistic_r1_vc2_info_gan(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform', D_global_size=0):
+    _ = opt, training_set
+    discrete_latents = None
+    if D_global_size > 0:
+        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents = tf.one_hot(discrete_latents, D_global_size)
+
+    if latent_type == 'uniform':
+        latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        latents = tf.random_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+    if D_global_size > 0:
+        latents = tf.concat([discrete_latents, latents], axis=1)
+
+    fake_images_out, atts = G.get_output_for(latents, labels, is_training=True)
+    real_scores_out = D.get_output_for(reals, labels, atts, is_training=True, return_preds=False)
+    fake_scores_out = D.get_output_for(fake_images_out, labels, atts, is_training=True, return_preds=False)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)
     fake_scores_out = autosummary('Loss/scores/fake', fake_scores_out)
     loss = tf.nn.softplus(fake_scores_out) # -log(1-sigmoid(fake_scores_out))
