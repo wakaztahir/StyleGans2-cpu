@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 06 May 2020 02:44:42 AEST
+# --- Last Modified: Fri 08 May 2020 01:47:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,6 +44,7 @@ from training.vc_modular_networks2 import build_C_spgroup_softmax_layers
 from training.vc_modular_networks2 import build_C_spgroup_stn_layers
 from training.vc_modular_networks2 import build_C_spgroup_lcond_layers
 from training.vc_modular_networks2 import build_Cout_spgroup_layers
+from training.vc_modular_networks2 import build_Cout_genatts_spgroup_layers
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -605,6 +606,8 @@ def D_info_modular_vc2(
         resample_kernel=[1,3,3,1],  # Low-pass filter to apply when resampling activations. None = no filtering.
         D_nf_scale=4,
         return_preds=True,
+        gen_atts_in_D=False,
+        no_atts_in_D=False,
         **kwargs):
     '''
     Modularized variation-consistent network2 of D.
@@ -632,7 +635,7 @@ def D_info_modular_vc2(
     atts_in = tf.cast(atts_in, dtype)
 
     subkwargs = EasyDict()
-    subkwargs.update(atts_in=atts_in, act=act, dtype=dtype, resample_kernel=resample_kernel,
+    subkwargs.update(act=act, dtype=dtype, resample_kernel=resample_kernel,
                      resolution=resolution, **kwargs)
 
     # Build modules by module_dict.
@@ -640,13 +643,20 @@ def D_info_modular_vc2(
     start_idx = 0
     len_key = len(key_ls) - 1
     pred_outs_ls = []
+    gen_atts_ls = []
     for scope_idx, k in enumerate(key_ls):
         if k == 'Cout_spgroup':
             # e.g. {'Cout_spgroup': 2}
-            x, pred_out = build_Cout_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+            x, pred_out = build_Cout_spgroup_layers(x, atts_in=atts_in, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                       scope_idx=scope_idx, fmaps=nf((len_key - scope_idx)//D_nf_scale), **subkwargs)
             pred_outs_ls.append(pred_out) # [b, n_latents]
             start_idx += size_ls[scope_idx]
+        elif k == 'Cout_genatts_spgroup':
+            # e.g. {'C_spgroup': 2}
+            x, pred_out, atts_tmp = build_Cout_genatts_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx],
+                                      scope_idx=scope_idx, fmaps=nf(scope_idx//D_nf_scale), **subkwargs)
+            gen_atts_ls.append(atts_tmp)
+            pred_outs_ls.append(pred_out) # [b, n_latents]
         elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
@@ -657,7 +667,10 @@ def D_info_modular_vc2(
                                  fmaps=nf((len_key - scope_idx)//D_nf_scale), **subkwargs)
         else:
             raise ValueError('Unsupported module type: ' + k)
-    pred_outs = tf.concat(pred_outs_ls, axis=1)
+    if pred_outs_ls:
+        pred_outs = tf.concat(pred_outs_ls, axis=1)
+    if gen_atts_ls:
+        gen_atts = tf.concat(gen_atts_ls, axis=1)
 
     with tf.variable_scope('Output'):
         x = apply_bias_act(dense_layer(x, fmaps=max(labels_in.shape[1], 1)))
@@ -671,6 +684,10 @@ def D_info_modular_vc2(
 
     if return_preds:
         pred_outs = tf.identity(pred_outs, name='pred_outs')
-        return scores_out, pred_outs
+        if gen_atts_in_D:
+            gen_atts = tf.identity(gen_atts, name='gen_atts')
+            return scores_out, pred_outs, gen_atts
+        else:
+            return scores_out, pred_outs
     else:
         return scores_out

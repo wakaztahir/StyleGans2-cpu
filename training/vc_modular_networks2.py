@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 03 May 2020 02:25:05 AEST
+# --- Last Modified: Fri 08 May 2020 02:37:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -33,7 +33,7 @@ from stn.stn import spatial_transformer_network as transformer
 LATENT_MODULES = [
     'D_global', 'C_nocond_global', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat',
     'C_fgroup', 'C_spfgroup', 'C_spgroup', 'C_spgroup_sm', 'C_spgroup_stn',
-    'C_spgroup_lc', 'Cout_spgroup'
+    'C_spgroup_lc', 'Cout_spgroup', 'Cout_genatts_spgroup'
 ]
 
 #----------------------------------------------------------------------------
@@ -388,6 +388,51 @@ def build_Cout_spgroup_layers(x, name, n_latents, start_idx, scope_idx, atts_in,
                         x_out_ls.append(x_out_tmp)
             pred_out = tf.concat(x_out_ls, axis=1) # [b, n_latents]
             return x, pred_out
+
+def build_Cout_genatts_spgroup_layers(x, name, n_latents, scope_idx,
+                          act, fmaps=128, resolution=128, **kwargs):
+    '''
+    Build continuous latent out layers with generating group spatial attention.
+    Support square images only.
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        with tf.variable_scope('Att_spatial_gen'):
+            x_mean = tf.reduce_mean(x, axis=[2, 3]) # [b, in_dim]
+            x_wh = x.shape[2]
+            atts_wh = dense_layer(x_mean, fmaps=n_latents * 4 * x_wh)
+            atts_wh = tf.reshape(atts_wh, [-1, n_latents, 4, x_wh]) # [b, n_latents, 4, x_wh]
+            att_wh_sm = tf.nn.softmax(atts_wh, axis=-1)
+            att_wh_cs = tf.cumsum(att_wh_sm, axis=-1)
+            att_h_cs_starts, att_h_cs_ends, att_w_cs_starts, att_w_cs_ends = tf.split(att_wh_cs, 4, axis=2)
+            att_h_cs_ends = 1 - att_h_cs_ends # [b, n_latents, 1, x_wh]
+            att_w_cs_ends = 1 - att_w_cs_ends # [b, n_latents, 1, x_wh]
+            att_h_cs_starts = tf.reshape(att_h_cs_starts, [-1, n_latents, 1, x_wh, 1])
+            att_h_cs_ends = tf.reshape(att_h_cs_ends, [-1, n_latents, 1, x_wh, 1])
+            att_h = att_h_cs_starts * att_h_cs_ends # [b, n_latents, 1, x_wh, 1]
+            att_w_cs_starts = tf.reshape(att_w_cs_starts, [-1, n_latents, 1, 1, x_wh])
+            att_w_cs_ends = tf.reshape(att_w_cs_ends, [-1, n_latents, 1, 1, x_wh])
+            att_w = att_w_cs_starts * att_w_cs_ends # [b, n_latents, 1, 1, x_wh]
+            atts = att_h * att_w # [b, n_latents, 1, x_wh, x_wh]
+
+        with tf.variable_scope('Latent_pred'):
+            x_out_ls = []
+            for i in range(n_latents):
+                x_tmp = x * atts[:, i]
+                x_tmp_2 = tf.reduce_mean(x_tmp, axis=[2, 3]) # [b, in_dim]
+                with tf.variable_scope('OutDense-'+str(i)):
+                    with tf.variable_scope('Conv0'):
+                        x_tmp_2 = apply_bias_act(dense_layer(x_tmp_2, fmaps=fmaps), act=act) # [b, fmaps]
+                    with tf.variable_scope('Conv1'):
+                        x_out_tmp = dense_layer(x_tmp_2, fmaps=1) # [b, 1]
+                        x_out_ls.append(x_out_tmp)
+            pred_out = tf.concat(x_out_ls, axis=1) # [b, n_latents]
+
+        with tf.variable_scope('Reshape_output'):
+            atts = tf.reshape(atts, [-1, x_wh, x_wh, 1])
+            atts = tf.image.resize(atts, size=(resolution, resolution))
+            atts = tf.reshape(atts, [-1, n_latents, 1, resolution, resolution])
+        return x, pred_out, atts
+
 
 def build_SB_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in, n_content,
                     act, resample_kernel, fused_modconv, fmaps=128, **kwargs):

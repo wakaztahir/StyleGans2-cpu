@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 06 May 2020 02:45:59 AEST
+# --- Last Modified: Fri 08 May 2020 02:35:35 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,7 +40,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         return_atts=False, random_seed=1000,
         module_I_list=None, module_D_list=None,
         fmap_min=16, fmap_max=512,
-        G_nf_scale=4, I_nf_scale=4, D_nf_scale=4):
+        G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
+        gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -93,6 +94,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size,
                      fmap_min=fmap_min, fmap_max=fmap_max,
                      connect_mode=connect_mode, module_D_list=module_D_list,
+                     gen_atts_in_D=gen_atts_in_D,
+                     no_atts_in_D=no_atts_in_D,
                      D_nf_scale=D_nf_scale)
         I = EasyDict()
         I_info = EasyDict()
@@ -184,7 +187,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
-            delta_type=delta_type)  # Options for generator loss.
+            delta_type=delta_type, outlier_detector=outlier_detector,
+            gen_atts_in_D=gen_atts_in_D, att_lambda=att_lambda)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc2_gan':
@@ -382,6 +386,14 @@ def main():
                         metavar='I_NF_SCALE', default=4, type=int)
     parser.add_argument('--D_nf_scale', help='N feature map scale for D.',
                         metavar='D_NF_SCALE', default=4, type=int)
+    parser.add_argument('--outlier_detector', help='If use outlier detector instead of regressor.',
+                        default=False, metavar='OUTLIER_DETECTOR', type=_str_to_bool)
+    parser.add_argument('--gen_atts_in_D', help='If generate atts in D of vc2_infogan.',
+                        default=False, metavar='GEN_ATTS_IN_D', type=_str_to_bool)
+    parser.add_argument('--no_atts_in_D', help='If not use atts in D of vc2_infogan.',
+                        default=False, metavar='NO_ATTS_IN_D', type=_str_to_bool)
+    parser.add_argument('--att_lambda', help='ATT lambda of gen_atts in D for vc2_infogan loss.',
+                        metavar='ATT_LAMBDA', default=0, type=float)
 
     args = parser.parse_args()
 

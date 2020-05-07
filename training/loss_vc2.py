@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 06 May 2020 02:45:26 AEST
+# --- Last Modified: Fri 08 May 2020 02:21:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -117,6 +117,7 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
     
     if own_I:
         regress_out = I.get_output_for(fake1_out, fake2_out, atts, is_training=True)
+        regress_out = regress_out[:, ::-1]
     else:
         regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
     I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type)
@@ -134,9 +135,32 @@ def calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambd
     G2_loss = C_lambda * G2_loss_C
     return G2_loss
 
-def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
-                     D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4,
-                     random_eps=False, delta_type='onedim', own_I=False, is_G2_loss=False):
+def calc_outlier_loss(outlier, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda):
+    assert pred_outs.shape.as_list()[1] == (D_global_size + C_global_size)
+    # Continuous latents loss
+    G2_loss_C = tf.nn.softmax_cross_entropy_with_logits_v2(outlier, pred_outs, axis=1, name='outlier_loss')
+    G2_loss = C_lambda * G2_loss_C
+    return G2_loss
+
+def calc_regress_and_att_loss(clatents, pred_outs, atts, gen_atts, D_global_size, C_global_size,
+                              D_lambda, C_lambda, att_lambda):
+    assert pred_outs.shape.as_list()[1] == (D_global_size + C_global_size)
+    # Continuous latents loss
+    G2_loss_C_pred = tf.reduce_sum((pred_outs - clatents) ** 2, axis=1)
+    G2_loss_pred = C_lambda * G2_loss_C_pred
+    # Continuous gen_atts loss
+    G2_loss_C_atts = tf.reduce_sum((gen_atts - atts) ** 2, axis=[1,2,3,4])
+    G2_loss_atts = att_lambda * G2_loss_C_atts
+
+    G2_loss = G2_loss_pred + G2_loss_atts
+
+    return G2_loss
+
+def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=None,
+                               latent_type='uniform', D_global_size=0, D_lambda=0,
+                               C_lambda=1, epsilon=0.4, random_eps=False, delta_type='onedim',
+                               own_I=False, is_G2_loss=False, outlier_detector=False,
+                               gen_atts_in_D=False, att_lambda=0):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -153,6 +177,16 @@ def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=N
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
+    print('Outlier_detector=', outlier_detector)
+    if is_G2_loss:
+        if outlier_detector:
+            outlier = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+            outlier = tf.cast(tf.one_hot(outlier, C_global_size), clatents.dtype)
+            outlier_clatents = tf.random.normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+            outlier_clatents = outlier_clatents/3. + 2*outlier_clatents/tf.math.abs(outlier_clatents)
+            outlier = outlier > 0
+            clatents = tf.where(outlier, outlier_clatents, clatents)
+
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, clatents], axis=1)
     else:
@@ -161,9 +195,28 @@ def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=N
     labels = training_set.get_random_labels_tf(2*minibatch_size)
     fake_out, atts = G.get_output_for(latents, labels, is_training=True, return_atts=True)
 
-    fake_scores_out, pred_outs = D.get_output_for(fake_out, labels, atts, is_training=True)
     if is_G2_loss:
-        G2_loss = calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda)
+        if gen_atts_in_D:
+            fake_scores_out, pred_outs, gen_atts = D.get_output_for(fake_out, labels, atts, is_training=True,
+                                                                    gen_atts_in_D=True)
+            pred_outs = pred_outs[:, ::-1]
+            gen_atts = gen_atts[:, ::-1]
+        else:
+            fake_scores_out, pred_outs = D.get_output_for(fake_out, labels, atts, is_training=True)
+            pred_outs = pred_outs[:, ::-1]
+    else:
+        fake_scores_out = D.get_output_for(fake_out, labels, atts, is_training=True, return_preds=False)
+
+    if is_G2_loss:
+        if not outlier_detector:
+            if gen_atts_in_D:
+                G2_loss = calc_regress_and_att_loss(clatents, pred_outs, atts, gen_atts,
+                                                    D_global_size, C_global_size,
+                                                    D_lambda, C_lambda, att_lambda) 
+            else:
+                G2_loss = calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda)
+        else:
+            G2_loss = calc_outlier_loss(outlier, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda)
         G2_loss = autosummary('Loss/G2_loss', G2_loss)
         return G2_loss, None
     else:
