@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 08 May 2020 02:21:30 AEST
+# --- Last Modified: Fri 08 May 2020 03:06:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -148,9 +148,11 @@ def calc_regress_and_att_loss(clatents, pred_outs, atts, gen_atts, D_global_size
     # Continuous latents loss
     G2_loss_C_pred = tf.reduce_sum((pred_outs - clatents) ** 2, axis=1)
     G2_loss_pred = C_lambda * G2_loss_C_pred
+    G2_loss_pred = autosummary('Loss/G2_loss_pred', G2_loss_pred)
     # Continuous gen_atts loss
     G2_loss_C_atts = tf.reduce_sum((gen_atts - atts) ** 2, axis=[1,2,3,4])
     G2_loss_atts = att_lambda * G2_loss_C_atts
+    G2_loss_atts = autosummary('Loss/G2_loss_atts', G2_loss_atts)
 
     G2_loss = G2_loss_pred + G2_loss_atts
 
