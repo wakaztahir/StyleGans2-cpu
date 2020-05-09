@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 09 May 2020 04:56:16 AEST
+# --- Last Modified: Sat 09 May 2020 18:03:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -329,7 +329,8 @@ def att_modulated_conv2d_layer(x, y, fmaps, kernel, up=False, resample_kernel=No
         # print('kernel:', kernel)
         # print('fmaps:', fmaps)
         # print('x.shape:', x.get_shape().as_list())
-        x = apply_bias_act(conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel), act=act)
+        # x = apply_bias_act(conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel), act=act)
+        x = conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel)
     with tf.variable_scope('Reshape_output'):
         # print('atts.shape:', atts.get_shape().as_list())
         atts = tf.reshape(atts, [-1, x_wh, x_wh, 1])
@@ -396,8 +397,8 @@ def G_synthesis_stylegan2_vc2(
             noise = tf.cast(noise_inputs[layer_idx], x.dtype)
         noise_strength = tf.get_variable('noise_strength', shape=[], initializer=tf.initializers.zeros())
         x += noise * tf.cast(noise_strength, x.dtype)
-        # return apply_bias_act(x, act=act)
-        return x
+        return apply_bias_act(x, act=act)
+        # return x
 
     # Building blocks for main layers.
     def block(x, res): # res = 3..resolution_log2

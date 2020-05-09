@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 09 May 2020 01:08:38 AEST
+# --- Last Modified: Sat 09 May 2020 15:47:29 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -139,6 +139,20 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan_style2'
+    elif model_type == 'vc2_gan_style2_noI':
+        G = EasyDict(
+            func_name='training.vc_networks2.G_main_vc2',
+            synthesis_func='G_synthesis_stylegan2_vc2',
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
+            latent_size=dlatent_size, architecture=arch,
+            dlatent_size=count_dlatent_size, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
+        I = EasyDict()
+        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
+            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
+        I_info = EasyDict()
+        desc = 'vc2_gan_style2'
     elif model_type == 'vc2_gan_own_I':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
@@ -227,7 +241,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             delta_type=delta_type, own_I=True)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_noI':
+    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_gan_style2_noI':
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns',
                           latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
@@ -358,7 +372,8 @@ def main():
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
                         type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
                                                                  'vc2_gan_own_I', 'vc2_gan_own_ID',
-                                                                 'vc2_info_gan', 'vc2_gan_style2'])
+                                                                 'vc2_info_gan', 'vc2_gan_style2',
+                                                                 'vc2_gan_style2_noI'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
