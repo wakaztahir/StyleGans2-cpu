@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 09 May 2020 18:03:03 AEST
+# --- Last Modified: Sat 09 May 2020 18:32:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -330,7 +330,10 @@ def att_modulated_conv2d_layer(x, y, fmaps, kernel, up=False, resample_kernel=No
         # print('fmaps:', fmaps)
         # print('x.shape:', x.get_shape().as_list())
         # x = apply_bias_act(conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel), act=act)
-        x = conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel)
+        with tf.variable_scope('Conv0'):
+            x = apply_bias_act(conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel), act=act)
+        with tf.variable_scope('Conv1'):
+            x = conv2d_layer(x, fmaps, kernel, resample_kernel=resample_kernel)
     with tf.variable_scope('Reshape_output'):
         # print('atts.shape:', atts.get_shape().as_list())
         atts = tf.reshape(atts, [-1, x_wh, x_wh, 1])
