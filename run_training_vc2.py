@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 08 May 2020 02:35:35 AEST
+# --- Last Modified: Sat 09 May 2020 01:08:38 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -41,17 +41,22 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         module_I_list=None, module_D_list=None,
         fmap_min=16, fmap_max=512,
         G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
-        gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0):
+        gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
+        dlatent_size=24, arch='resnet'):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
 
     D_global_size = 0
-    module_list = _str_to_list(module_list)
-    key_ls, size_ls, count_dlatent_size = split_module_names(module_list)
-    for i, key in enumerate(key_ls):
-        if key.startswith('D_global') or key.startswith('D_nocond_global'):
-            D_global_size += size_ls[i]
+    if not(module_list is None):
+        module_list = _str_to_list(module_list)
+        key_ls, size_ls, count_dlatent_size = split_module_names(module_list)
+        for i, key in enumerate(key_ls):
+            if key.startswith('D_global') or key.startswith('D_nocond_global'):
+                D_global_size += size_ls[i]
+    else:
+        count_dlatent_size = dlatent_size
+
     if not(module_I_list is None):
         D_global_I_size = 0
         module_I_list = _str_to_list(module_I_list)
@@ -117,6 +122,23 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan'
+    elif model_type == 'vc2_gan_style2':
+        G = EasyDict(
+            func_name='training.vc_networks2.G_main_vc2',
+            synthesis_func='G_synthesis_stylegan2_vc2',
+            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
+            latent_size=dlatent_size, architecture=arch,
+            dlatent_size=count_dlatent_size, use_noise=True, return_atts=return_atts,
+            G_nf_scale=G_nf_scale
+        )  # Options for generator network.
+        I = EasyDict(func_name='training.vc_networks2.vc2_head',
+                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
+                     fmap_min=fmap_min, fmap_max=fmap_max,
+                     connect_mode=connect_mode)
+        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
+            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
+        I_info = EasyDict()
+        desc = 'vc2_gan_style2'
     elif model_type == 'vc2_gan_own_I':
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
@@ -191,7 +213,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             gen_atts_in_D=gen_atts_in_D, att_lambda=att_lambda)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan':
+    elif model_type == 'vc2_gan' or model_type == 'vc2_gan_style2':
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
@@ -244,7 +266,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     D.fmap_base = 2 << D_fmap_base
 
     # Config E: Set gamma to 100 and override G & D architecture.
-    D_loss.gamma = 100
+    # D_loss.gamma = 100
 
     if gamma is not None:
         D_loss.gamma = gamma
@@ -257,14 +279,18 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                   use_info_gan=(model_type == 'info_gan'),
                   use_vc_head=(model_type == 'vc2_gan' or
                                model_type == 'vc2_gan_own_I' or
-                               model_type == 'vc2_gan_own_ID'),
+                               model_type == 'vc2_gan_own_ID' or
+                               model_type=='vc2_gan_style2'),
                   use_vc2_info_gan=(model_type == 'vc2_info_gan'),
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
-    for i, key in enumerate(key_ls):
-        m_name = key.split('-')[0]
-        if (m_name in LATENT_MODULES) and (not m_name == 'D_global'):
-            n_continuous += size_ls[i]
+    if not(module_list is None):
+        for i, key in enumerate(key_ls):
+            m_name = key.split('-')[0]
+            if (m_name in LATENT_MODULES) and (not m_name == 'D_global'):
+                n_continuous += size_ls[i]
+    else:
+        n_continuous = dlatent_size
 
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid, metric_arg_list=metrics,
                   tf_config=tf_config, resume_pkl=resume_pkl, n_discrete=D_global_size,
@@ -332,7 +358,7 @@ def main():
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
                         type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
                                                                  'vc2_gan_own_I', 'vc2_gan_own_ID',
-                                                                 'vc2_info_gan'])
+                                                                 'vc2_info_gan', 'vc2_gan_style2'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
@@ -394,6 +420,10 @@ def main():
                         default=False, metavar='NO_ATTS_IN_D', type=_str_to_bool)
     parser.add_argument('--att_lambda', help='ATT lambda of gen_atts in D for vc2_infogan loss.',
                         metavar='ATT_LAMBDA', default=0, type=float)
+    parser.add_argument('--dlatent_size', help='Latent size. Used for vc2_gan_style2.',
+                        metavar='DLATENT_SIZE', default=24, type=int)
+    parser.add_argument('--arch', help='Architecture for vc2_gan_style2.',
+                        metavar='ARCH', default='resnet', type=str)
 
     args = parser.parse_args()
 

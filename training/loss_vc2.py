@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 08 May 2020 03:06:30 AEST
+# --- Last Modified: Sat 09 May 2020 13:27:50 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -41,12 +41,17 @@ def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_l
     assert regress_out.shape.as_list()[1] == (D_global_size + C_global_size)
     # Continuous latents loss
     if delta_type == 'onedim':
-        prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
-        I_loss_C = C_delta_latents * tf.log(prob_C + 1e-12)
-        I_loss = C_lambda * I_loss_C
+        # prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
+        # I_loss_C = C_delta_latents * tf.log(prob_C + 1e-12)
+        # I_loss = C_lambda * I_loss_C
 
-        I_loss_C = tf.reduce_sum(I_loss_C, axis=1)
-        I_loss = - I_loss_C
+        # I_loss_C = tf.reduce_sum(I_loss_C, axis=1)
+        # I_loss = - I_loss_C
+
+        # Continuous latents loss
+        I_loss_C = tf.nn.softmax_cross_entropy_with_logits_v2(C_delta_latents,
+                                                              regress_out, axis=1, name='delta_regress_loss')
+        I_loss = C_lambda * I_loss_C
     elif delta_type == 'fulldim':
         I_loss_C = tf.reduce_sum((tf.nn.sigmoid(regress_out[:, D_global_size:]) - C_delta_latents) ** 2, axis=1)
         I_loss = C_lambda * I_loss_C
@@ -117,7 +122,7 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
     
     if own_I:
         regress_out = I.get_output_for(fake1_out, fake2_out, atts, is_training=True)
-        regress_out = regress_out[:, ::-1]
+        # regress_out = regress_out[:, ::-1]
     else:
         regress_out = I.get_output_for(fake1_out, fake2_out, is_training=True)
     I_loss = calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type)
@@ -149,8 +154,10 @@ def calc_regress_and_att_loss(clatents, pred_outs, atts, gen_atts, D_global_size
     G2_loss_C_pred = tf.reduce_sum((pred_outs - clatents) ** 2, axis=1)
     G2_loss_pred = C_lambda * G2_loss_C_pred
     G2_loss_pred = autosummary('Loss/G2_loss_pred', G2_loss_pred)
+
     # Continuous gen_atts loss
-    G2_loss_C_atts = tf.reduce_sum((gen_atts - atts) ** 2, axis=[1,2,3,4])
+    G2_loss_C_atts = tf.reduce_mean((gen_atts - atts) ** 2, axis=[2,3,4])
+    G2_loss_C_atts = tf.reduce_sum(G2_loss_C_atts, axis=1)
     G2_loss_atts = att_lambda * G2_loss_C_atts
     G2_loss_atts = autosummary('Loss/G2_loss_atts', G2_loss_atts)
 

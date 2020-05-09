@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 08 May 2020 01:47:44 AEST
+# --- Last Modified: Sat 09 May 2020 04:56:16 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,6 +45,7 @@ from training.vc_modular_networks2 import build_C_spgroup_stn_layers
 from training.vc_modular_networks2 import build_C_spgroup_lcond_layers
 from training.vc_modular_networks2 import build_Cout_spgroup_layers
 from training.vc_modular_networks2 import build_Cout_genatts_spgroup_layers
+from training.networks_stylegan import instance_norm, style_mod
 from stn.stn import spatial_transformer_network as transformer
 
 #----------------------------------------------------------------------------
@@ -293,6 +294,162 @@ def G_synthesis_modular_vc2(
     if return_atts:
         with tf.variable_scope('ConcatAtts'):
             atts_out = tf.concat(atts, axis=1)
+            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
+    else:
+        return tf.identity(images_out, name='images_out')
+
+def att_modulated_conv2d_layer(x, y, fmaps, kernel, up=False, resample_kernel=None, resolution=128, act='lrelu'):
+    with tf.variable_scope('Att_spatial'):
+        x_mean = tf.reduce_mean(x, axis=[2, 3]) # [b, in_dim]
+        x_wh = x.shape[2]
+        n_latents = y.shape[1]
+        atts_wh = dense_layer(x_mean, fmaps=n_latents * 4 * x_wh)
+        atts_wh = tf.reshape(atts_wh, [-1, n_latents, 4, x_wh]) # [b, n_latents, 4, x_wh]
+        att_wh_sm = tf.nn.softmax(atts_wh, axis=-1)
+        att_wh_cs = tf.cumsum(att_wh_sm, axis=-1)
+        att_h_cs_starts, att_h_cs_ends, att_w_cs_starts, att_w_cs_ends = tf.split(att_wh_cs, 4, axis=2)
+        att_h_cs_ends = 1 - att_h_cs_ends # [b, n_latents, 1, x_wh]
+        att_w_cs_ends = 1 - att_w_cs_ends # [b, n_latents, 1, x_wh]
+        att_h_cs_starts = tf.reshape(att_h_cs_starts, [-1, n_latents, 1, x_wh, 1])
+        att_h_cs_ends = tf.reshape(att_h_cs_ends, [-1, n_latents, 1, x_wh, 1])
+        att_h = att_h_cs_starts * att_h_cs_ends # [b, n_latents, 1, x_wh, 1]
+        att_w_cs_starts = tf.reshape(att_w_cs_starts, [-1, n_latents, 1, 1, x_wh])
+        att_w_cs_ends = tf.reshape(att_w_cs_ends, [-1, n_latents, 1, 1, x_wh])
+        att_w = att_w_cs_starts * att_w_cs_ends # [b, n_latents, 1, 1, x_wh]
+        atts = att_h * att_w # [b, n_latents, 1, x_wh, x_wh]
+
+    with tf.variable_scope('Att_apply'):
+        x_norm = instance_norm(x)
+        for i in range(n_latents):
+            with tf.variable_scope('style_mod-' + str(i)):
+                x_styled = style_mod(x_norm, y[:, i:i+1])
+                x = x * (1 - atts[:, i]) + x_styled * atts[:, i]
+
+    with tf.variable_scope('Conv_after_att'):
+        # print('kernel:', kernel)
+        # print('fmaps:', fmaps)
+        # print('x.shape:', x.get_shape().as_list())
+        x = apply_bias_act(conv2d_layer(x, fmaps, kernel, up=up, resample_kernel=resample_kernel), act=act)
+    with tf.variable_scope('Reshape_output'):
+        # print('atts.shape:', atts.get_shape().as_list())
+        atts = tf.reshape(atts, [-1, x_wh, x_wh, 1])
+        atts = tf.image.resize(atts, size=(resolution, resolution))
+        atts = tf.reshape(atts, [-1, n_latents, 1, resolution, resolution])
+    return x, atts
+
+#----------------------------------------------------------------------------
+# StyleGAN2 synthesis network (Figure 7).
+# Implements skip connections and residual nets (Figure 7), but no progressive growing.
+# Used in configs E-F (Table 1).
+
+def G_synthesis_stylegan2_vc2(
+    dlatents_in,                        # Input: Disentangled latents (W) [minibatch, num_layers, dlatent_size].
+    dlatent_size        = 30,          # Disentangled latent (W) dimensionality.
+    num_channels        = 3,            # Number of output color channels.
+    resolution          = 128,         # Output resolution.
+    fmap_base           = 16 << 10,     # Overall multiplier for the number of feature maps.
+    fmap_decay          = 1.0,          # log2 feature map reduction when doubling the resolution.
+    fmap_min            = 1,            # Minimum number of feature maps in any layer.
+    fmap_max            = 512,          # Maximum number of feature maps in any layer.
+    randomize_noise     = True,         # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
+    architecture        = 'skip',       # Architecture: 'orig', 'skip', 'resnet'.
+    nonlinearity        = 'lrelu',      # Activation function: 'relu', 'lrelu', etc.
+    dtype               = 'float32',    # Data type to use for activations and outputs.
+    resample_kernel     = [1,3,3,1],    # Low-pass filter to apply when resampling activations. None = no filtering.
+    fused_modconv       = True,         # Implement modulated_conv2d_layer() as a single fused op?
+    return_atts=False,
+    **_kwargs):                         # Ignore unrecognized keyword args.
+
+    resolution_log2 = int(np.log2(resolution))
+    assert resolution == 2**resolution_log2 and resolution >= 4
+    def nf(stage): return np.clip(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_min, fmap_max)
+    assert architecture in ['orig', 'skip', 'resnet']
+    act = nonlinearity
+    # num_layers = resolution_log2 * 2 - 2
+    num_layers = resolution_log2 * 2 - 3
+    images_out = None
+
+    # Primary inputs.
+    dlatents_in.set_shape([None, dlatent_size])
+    dlatents_in = tf.cast(dlatents_in, dtype)
+
+    with tf.variable_scope('dlatent_reshape'):
+        dlatents_in = tf.reshape(dlatents_in, [-1, num_layers, dlatent_size // num_layers])
+    atts_ls = []
+
+    # Noise inputs.
+    noise_inputs = []
+    # for layer_idx in range(num_layers - 1):
+    for layer_idx in range(num_layers):
+        res = (layer_idx + 5) // 2
+        shape = [1, 1, 2**res, 2**res]
+        noise_inputs.append(tf.get_variable('noise%d' % layer_idx, shape=shape, initializer=tf.initializers.random_normal(), trainable=False))
+
+    # Single convolution layer with all the bells and whistles.
+    def layer(x, layer_idx, fmaps, kernel, up=False):
+        x, atts_tmp = att_modulated_conv2d_layer(x, dlatents_in[:, layer_idx], fmaps=fmaps, kernel=kernel, up=up,
+                                                 resample_kernel=resample_kernel, resolution=resolution, act=act)
+        atts_ls.append(atts_tmp)
+        if randomize_noise:
+            noise = tf.random_normal([tf.shape(x)[0], 1, x.shape[2], x.shape[3]], dtype=x.dtype)
+        else:
+            noise = tf.cast(noise_inputs[layer_idx], x.dtype)
+        noise_strength = tf.get_variable('noise_strength', shape=[], initializer=tf.initializers.zeros())
+        x += noise * tf.cast(noise_strength, x.dtype)
+        # return apply_bias_act(x, act=act)
+        return x
+
+    # Building blocks for main layers.
+    def block(x, res): # res = 3..resolution_log2
+        t = x
+        with tf.variable_scope('Conv0_up'):
+            x = layer(x, layer_idx=res*2-5, fmaps=nf(res-1), kernel=3, up=True)
+        with tf.variable_scope('Conv1'):
+            x = layer(x, layer_idx=res*2-4, fmaps=nf(res-1), kernel=3)
+        if architecture == 'resnet':
+            with tf.variable_scope('Skip'):
+                t = conv2d_layer(t, fmaps=nf(res-1), kernel=1, up=True, resample_kernel=resample_kernel)
+                x = (x + t) * (1 / np.sqrt(2))
+        return x
+    def upsample(y):
+        with tf.variable_scope('Upsample'):
+            return upsample_2d(y, k=resample_kernel)
+    def torgb(x, y, res): # res = 2..resolution_log2
+        with tf.variable_scope('ToRGB'):
+            # tmp, atts_tmp = att_modulated_conv2d_layer(x, dlatents_in[:, res*2-3], fmaps=num_channels,
+                                                       # kernel=1, resolution=resolution)
+            # atts_ls.append(atts_tmp)
+            tmp = conv2d_layer(x, num_channels, kernel=1)
+            t = apply_bias_act(tmp)
+            # t = apply_bias_act(modulated_conv2d_layer(x, dlatents_in[:, res*2-3], fmaps=num_channels, kernel=1, demodulate=False, fused_modconv=fused_modconv))
+            return t if y is None else y + t
+
+    # Early layers.
+    y = None
+    with tf.variable_scope('4x4'):
+        with tf.variable_scope('Const'):
+            x = tf.get_variable('const', shape=[1, nf(1), 4, 4], initializer=tf.initializers.random_normal())
+            x = tf.tile(tf.cast(x, dtype), [tf.shape(dlatents_in)[0], 1, 1, 1])
+        with tf.variable_scope('Conv'):
+            x = layer(x, layer_idx=0, fmaps=nf(1), kernel=3)
+        if architecture == 'skip':
+            y = torgb(x, y, 2)
+
+    # Main layers.
+    for res in range(3, resolution_log2 + 1):
+        with tf.variable_scope('%dx%d' % (2**res, 2**res)):
+            x = block(x, res)
+            if architecture == 'skip':
+                y = upsample(y)
+            if architecture == 'skip' or res == resolution_log2:
+                y = torgb(x, y, res)
+    images_out = y
+
+    assert images_out.dtype == tf.as_dtype(dtype)
+
+    if return_atts:
+        with tf.variable_scope('ConcatAtts'):
+            atts_out = tf.concat(atts_ls, axis=1)
             return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
     else:
         return tf.identity(images_out, name='images_out')
