@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 10 May 2020 17:33:53 AEST
+# --- Last Modified: Sun 10 May 2020 19:21:18 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -166,17 +166,17 @@ def build_C_spgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in
         with tf.variable_scope('Att_apply'):
             C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
             x_norm = instance_norm(x)
-            x_norm = tf.tile(x_norm, [1, n_latents, 1, 1])
-            x_norm = tf.reshape(x_norm, [-1, x.shape[1], x.shape[2], x.shape[3]]) # [b*n_latents, c, h, w]
-            C_global_latents = tf.reshape(C_global_latents, [-1, 1])
-            x_styled = style_mod(x_norm, C_global_latents)
-            x_styled = tf.reshape(x_styled, [-1, n_latents, x_styled.shape[1],
-                                             x_styled.shape[2], x_styled.shape[3]])
+            # x_norm = tf.tile(x_norm, [1, n_latents, 1, 1])
+            # x_norm = tf.reshape(x_norm, [-1, x.shape[1], x.shape[2], x.shape[3]]) # [b*n_latents, c, h, w]
+            # C_global_latents = tf.reshape(C_global_latents, [-1, 1])
+            # x_styled = style_mod(x_norm, C_global_latents)
+            # x_styled = tf.reshape(x_styled, [-1, n_latents, x_styled.shape[1],
+                                             # x_styled.shape[2], x_styled.shape[3]])
             for i in range(n_latents):
                 with tf.variable_scope('style_mod-' + str(i)):
-                    # x_styled = style_mod(x_norm, C_global_latents[:, i:i+1])
-                    # x = x * (1 - atts[:, i]) + x_styled * atts[:, i]
-                    x = x * (1 - atts[:, i]) + x_styled[:, i] * atts[:, i]
+                    x_styled = style_mod(x_norm, C_global_latents[:, i:i+1])
+                    x = x * (1 - atts[:, i]) + x_styled * atts[:, i]
+                    # x = x * (1 - atts[:, i]) + x_styled[:, i] * atts[:, i]
 
         if return_atts:
             with tf.variable_scope('Reshape_output'):
