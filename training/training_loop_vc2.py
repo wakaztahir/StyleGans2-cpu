@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 06 May 2020 01:50:40 AEST
+# --- Last Modified: Sun 10 May 2020 22:41:02 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -100,6 +100,7 @@ def training_loop_vc2(
         n_discrete=3,  # Number of discrete latents in model.
         n_continuous=4,  # Number of continuous latents in model.
         return_atts=False,  # If return attention maps.
+        opt_reset_ls=None,  # Reset lr list for gradual latents.
         n_samples_per=10):  # Number of samples for each line in traversal.
 
     # Initialize dnnlib and TensorFlow.
@@ -407,6 +408,10 @@ def training_loop_vc2(
                     sched.lod) != np.ceil(prev_lod):
                 G_opt.reset_optimizer_state()
                 D_opt.reset_optimizer_state()
+        # if opt_reset_ls is not None:
+            # if cur_nimg in opt_reset_ls:
+                # G_opt.reset_optimizer_state()
+                # D_opt.reset_optimizer_state()
         prev_lod = sched.lod
 
         # Run training ops.
