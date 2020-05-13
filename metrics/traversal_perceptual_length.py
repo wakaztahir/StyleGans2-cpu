@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Wed 13 May 2020 02:15:02 AEST
+# --- Last Modified: Wed 13 May 2020 21:50:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -43,6 +43,7 @@ class TPL(metric_base.MetricBase):
         eval_dim_phs = []
         lat_start_alpha_phs = []
         lat_end_alpha_phs = []
+        lerps_expr = []
         for gpu_idx in range(num_gpus):
             with tf.device('/gpu:%d' % gpu_idx):
                 Gs_clone = Gs.clone()
@@ -57,6 +58,7 @@ class TPL(metric_base.MetricBase):
                 lat_end_alpha_phs.append(lat_end_alpha)
                 eval_dim_mask = tf.tile(tf.one_hot(eval_dim, n_continuous)[tf.newaxis, :] > 0, [self.minibatch_per_gpu, 1])
                 lerp_t = tf.linspace(lat_start_alpha, lat_end_alpha, self.minibatch_per_gpu) # [b]
+                lerps_expr.append(lerp_t)
 
                 lat_t0 = tf.zeros([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
                 lat_t0_min2 = lat_t0 - 2
@@ -103,6 +105,7 @@ class TPL(metric_base.MetricBase):
         n_segs_per_dim = (self.n_samples_per_dim - 1) // ((self.minibatch_per_gpu - 1) * num_gpus)
         self.n_samples_per_dim = n_segs_per_dim * ((self.minibatch_per_gpu - 1) * num_gpus) + 1
         alphas = np.linspace(0., 1., num=(n_segs_per_dim * num_gpus)+1)
+        print('alphas:', alphas)
         for i in range(n_continuous):
             self._report_progress(i, n_continuous)
             dim_distances = []
@@ -112,13 +115,17 @@ class TPL(metric_base.MetricBase):
                     fd.update({eval_dim_phs[k_gpu]:i,
                                lat_start_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu],
                                lat_end_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu+1]})
+                distance_expr_out, lerps_expr_out = tflib.run([distance_expr, lerps_expr], feed_dict=fd)
                 dim_distances += tflib.run(distance_expr, feed_dict=fd)
+                print(lerps_expr_out)
             dim_distances = np.concatenate(dim_distances, axis=0)
-            print('dim_distances.shape:', dim_distances.shape)
+            # print('dim_distances.shape:', dim_distances.shape)
             all_distances.append(dim_distances)
             sum_distances.append(np.sum(dim_distances))
+        # pdb.set_trace()
         print('sum_distances for each dim:', sum_distances)
-        self._report_result(np.mean(sum_distances))
+        active_distances = np.extract(np.array(sum_distances) > 0.1, sum_distances)
+        self._report_result(np.mean(active_distances))
         # pdb.set_trace()
 
 #----------------------------------------------------------------------------
