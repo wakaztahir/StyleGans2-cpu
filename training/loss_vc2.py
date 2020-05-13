@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 12 May 2020 16:35:06 AEST
+# --- Last Modified: Wed 13 May 2020 15:49:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -370,7 +370,7 @@ def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size, I_in
     labels = training_set.get_random_labels_tf(minibatch_size)
     fake_out, atts = G.get_output_for(latents, labels, is_training=True, return_atts=True)
 
-    fake_scores_out = D.get_output_for(fake_out, labels, is_training=True, return_preds=False)
+    fake_scores_out = D.get_output_for(fake_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
 
     regress_out = I.get_output_for(fake_out, is_training=True)
@@ -466,8 +466,6 @@ def D_logistic_r1_vc2_info_gan2(G, D, opt, training_set, minibatch_size, reals, 
         latents = tf.concat([discrete_latents, latents], axis=1)
 
     fake_images_out, atts = G.get_output_for(latents, labels, is_training=True)
-    # real_scores_out = D.get_output_for(reals, labels, atts, is_training=True, return_preds=False)
-    # fake_scores_out = D.get_output_for(fake_images_out, labels, atts, is_training=True, return_preds=False)
     real_scores_out = D.get_output_for(reals, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)
