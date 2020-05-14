@@ -20,7 +20,7 @@ metric_defaults = EasyDict([(args.name, args) for args in [
     EasyDict(name='ppl2_wend', func_name='metrics.perceptual_path_length.PPL',     num_samples=50000, epsilon=1e-4, space='w', sampling='end', crop=False, minibatch_per_gpu=4, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
     EasyDict(name='ls',        func_name='metrics.linear_separability.LS',         num_samples=200000, num_keep=100000, attrib_indices=range(40), minibatch_per_gpu=4),
     EasyDict(name='pr50k3',    func_name='metrics.precision_recall.PR',            num_images=50000, nhood_size=3, minibatch_per_gpu=8, row_batch_size=10000, col_batch_size=10000),
-    EasyDict(name='tpl',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=25, minibatch_per_gpu=13, crop=False, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
+    EasyDict(name='tpl',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=25, crop=False, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
 ]])
 
 #----------------------------------------------------------------------------
