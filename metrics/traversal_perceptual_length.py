@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Fri 15 May 2020 01:38:30 AEST
+# --- Last Modified: Fri 15 May 2020 03:47:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -91,6 +91,8 @@ class TPL(metric_base.MetricBase):
                 images = (images + 1) * (255 / 2)
 
                 # Evaluate perceptual distance.
+                if images.get_shape().as_list()[1] == 1:
+                    images = tf.tile(images, [1, 3, 1, 1])
                 img_e0 = images[:-1]
                 img_e1 = images[1:]
                 distance_measure = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
