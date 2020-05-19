@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 19 May 2020 18:43:56 AEST
+# --- Last Modified: Wed 20 May 2020 04:36:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -52,6 +52,15 @@ def save_atts(atts, filename, grid_size, drange, grid_fakes, n_samples_per):
                          drange=drange,
                          grid_size=grid_size)
     return
+
+def add_outline(images, width=1):
+    num, img_w, img_h = images.shape[0], images.shape[-1], images.shape[-2]
+    for i in range(num):
+        images[i, :, 0:width, :] = 255
+        images[i, :, -width:, :] = 255
+        images[i, :, :, 0:width] = 255
+        images[i, :, :, -width:] = 255
+    return images
 
 #----------------------------------------------------------------------------
 # Main training script.
@@ -116,6 +125,7 @@ def training_loop_vc2(
                                         **dataset_args)
     grid_size, grid_reals, grid_labels = misc.setup_snapshot_image_grid(
         training_set, **grid_args)
+    grid_fakes = add_outline(grid_reals, width=1)
     misc.save_image_grid(grid_reals,
                          dnnlib.make_run_dir_path('reals.png'),
                          drange=training_set.dynamic_range,
@@ -200,6 +210,7 @@ def training_loop_vc2(
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
                             randomize_noise=False)
+    grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
@@ -516,6 +527,7 @@ def training_loop_vc2(
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
                                         randomize_noise=False)
+                grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
                                          'fakes%06d.png' % (cur_nimg // 1000)),
