@@ -8,7 +8,7 @@
 
 # --- File Name: run_projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Sat 23 May 2020 16:17:02 AEST
+# --- Last Modified: Sat 23 May 2020 16:22:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -102,6 +102,7 @@ def project_real_other_images(network_pkl, data_dir, num_snapshots, create_new_G
     for image_idx, img_path in enumerate(img_paths):
         print('Projecting image %d/%d ...' % (image_idx, num_images))
         images = np.array(Image.open(img_path).convert('RGB'))
+        images = np.transpose(images, (2, 0, 1))
         images = np.reshape(images, [1]+list(images.shape))
         images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
         project_image(proj, targets=images, I_net=I, png_prefix=dnnlib.make_run_dir_path('image%04d-' % image_idx), num_snapshots=num_snapshots)
