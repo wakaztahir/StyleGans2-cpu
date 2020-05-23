@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 19 May 2020 18:39:58 AEST
+# --- Last Modified: Sat 23 May 2020 03:58:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -547,8 +547,13 @@ def build_local_hfeat_layers(x, name, n_latents, start_idx, scope_idx,
 
 
 def build_noise_layer(x, name, n_layers, scope_idx, act, use_noise, randomize_noise,
-                      fmaps=128, **kwargs):
+                      noise_inputs=None, fmaps=128, **kwargs):
     for i in range(n_layers):
+        if noise_inputs is not None:
+            noise_inputs.append(tf.get_variable('noise%d' % len(noise_inputs),
+                                                shape=[1, 1] + x.get_shape().as_list()[2:],
+                                                initializer=tf.initializers.random_normal(),
+                                                trainable=False))
         with tf.variable_scope(name + '-' + str(scope_idx) + '-' + str(i)):
             x = conv2d_layer(x, fmaps=fmaps, kernel=3, up=False)
             if use_noise:
@@ -557,15 +562,18 @@ def build_noise_layer(x, name, n_layers, scope_idx, act, use_noise, randomize_no
                         [tf.shape(x)[0], 1, x.shape[2], x.shape[3]],
                         dtype=x.dtype)
                 else:
+                    # --- old_1
                     # noise = tf.get_variable(
                     # 'noise_variable-' + str(scope_idx) + '-' + str(i),
                     # shape=[1, 1, x.shape[2], x.shape[3]],
                     # initializer=tf.initializers.random_normal(),
                     # trainable=False)
-                    noise_np = np.random.normal(size=(1, 1, x.shape[2],
-                                                      x.shape[3]))
-                    noise = tf.constant(noise_np)
-                    noise = tf.cast(noise, x.dtype)
+                    # --- old_2
+                    # noise_np = np.random.normal(size=(1, 1, x.shape[2],
+                                                      # x.shape[3]))
+                    # noise = tf.constant(noise_np)
+                    # noise = tf.cast(noise, x.dtype)
+                    noise = tf.cast(noise_inputs[-1], x.dtype)
                 noise_strength = tf.get_variable(
                     'noise_strength-' + str(scope_idx) + '-' + str(i),
                     shape=[],

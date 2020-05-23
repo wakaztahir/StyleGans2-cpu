@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Fri 15 May 2020 03:47:56 AEST
+# --- Last Modified: Sat 23 May 2020 00:13:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -25,11 +25,12 @@ from training import misc
 #----------------------------------------------------------------------------
 
 class TPL(metric_base.MetricBase):
-    def __init__(self, n_samples_per_dim, crop, Gs_overrides, **kwargs):
+    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, **kwargs):
         super().__init__(**kwargs)
         self.crop = crop
         self.Gs_overrides = Gs_overrides
         self.n_samples_per_dim = n_samples_per_dim
+        self.n_traversals = n_traversals
 
     def _evaluate(self, Gs, Gs_kwargs, num_gpus):
         Gs_kwargs = dict(Gs_kwargs)
@@ -42,6 +43,7 @@ class TPL(metric_base.MetricBase):
         eval_dim_phs = []
         lat_start_alpha_phs = []
         lat_end_alpha_phs = []
+        lat_sample_phs = []
         lerps_expr = []
         for gpu_idx in range(num_gpus):
             with tf.device('/gpu:%d' % gpu_idx):
@@ -58,12 +60,16 @@ class TPL(metric_base.MetricBase):
                 eval_dim_mask = tf.tile(tf.one_hot(eval_dim, n_continuous)[tf.newaxis, :] > 0, [minibatch_per_gpu, 1])
                 lerp_t = tf.linspace(lat_start_alpha, lat_end_alpha, minibatch_per_gpu) # [b]
                 lerps_expr.append(lerp_t)
+                lat_sample = tf.placeholder(tf.float32, shape=Gs_clone.input_shape[1:])
+                lat_sample_phs.append(lat_sample)
 
-                lat_t0 = tf.zeros([minibatch_per_gpu] + Gs_clone.input_shape[1:])
+                # lat_t0 = tf.zeros([minibatch_per_gpu] + Gs_clone.input_shape[1:])
+                lat_t0 = tf.tile(lat_sample[tf.newaxis, :], [minibatch_per_gpu, 1])
                 lat_t0_min2 = lat_t0 - 2
                 lat_t0 = tf.where(eval_dim_mask, lat_t0_min2, lat_t0) # [b, n_continuous]
 
-                lat_t1 = tf.zeros([minibatch_per_gpu] + Gs_clone.input_shape[1:])
+                # lat_t1 = tf.zeros([minibatch_per_gpu] + Gs_clone.input_shape[1:])
+                lat_t1 = tf.tile(lat_sample[tf.newaxis, :], [minibatch_per_gpu, 1])
                 lat_t1_add2 = lat_t1 + 2
                 lat_t1 = tf.where(eval_dim_mask, lat_t1_add2, lat_t1) # [b, n_continuous]
                 lat_e = tflib.lerp(lat_t0, lat_t1, lerp_t[:, tf.newaxis]) # [b, n_continuous]
@@ -74,6 +80,7 @@ class TPL(metric_base.MetricBase):
                 # Synthesize images.
                 with tf.control_dependencies([var.initializer for var in noise_vars]): # use same noise inputs for the entire minibatch
                     images = Gs_clone.components.synthesis.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
+                    # print('images.shape:', images.get_shape().as_list())
                     images = tf.cast(images, tf.float32)
 
                 # Crop only the face region.
@@ -101,32 +108,50 @@ class TPL(metric_base.MetricBase):
                 distance_expr.append(distance_tmp)
 
         # Sampling loop
-        all_distances = []
-        sum_distances = []
         n_segs_per_dim = (self.n_samples_per_dim - 1) // ((minibatch_per_gpu - 1) * num_gpus)
         self.n_samples_per_dim = n_segs_per_dim * ((minibatch_per_gpu - 1) * num_gpus) + 1
         alphas = np.linspace(0., 1., num=(n_segs_per_dim * num_gpus)+1)
-        print('alphas:', alphas)
-        for i in range(n_continuous):
-            self._report_progress(i, n_continuous)
-            dim_distances = []
-            for j in range(n_segs_per_dim):
-                fd = {}
-                for k_gpu in range(num_gpus):
-                    fd.update({eval_dim_phs[k_gpu]:i,
-                               lat_start_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu],
-                               lat_end_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu+1]})
-                distance_expr_out, lerps_expr_out = tflib.run([distance_expr, lerps_expr], feed_dict=fd)
-                dim_distances += tflib.run(distance_expr, feed_dict=fd)
-                print(lerps_expr_out)
-            dim_distances = np.concatenate(dim_distances, axis=0)
-            # print('dim_distances.shape:', dim_distances.shape)
-            all_distances.append(dim_distances)
-            sum_distances.append(np.sum(dim_distances))
+        traversals_dim = []
+        for n in range(self.n_traversals):
+            lat_sample_np = np.random.normal(size=Gs_clone.input_shape[1:])
+            all_distances = []
+            sum_distances = []
+            for i in range(n_continuous):
+                self._report_progress(i, n_continuous)
+                dim_distances = []
+                for j in range(n_segs_per_dim):
+                    fd = {}
+                    for k_gpu in range(num_gpus):
+                        fd.update({eval_dim_phs[k_gpu]:i,
+                                   lat_start_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu],
+                                   lat_end_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu+1],
+                                   lat_sample_phs[k_gpu]:lat_sample_np})
+                    distance_expr_out, lerps_expr_out = tflib.run([distance_expr, lerps_expr], feed_dict=fd)
+                    dim_distances += tflib.run(distance_expr, feed_dict=fd)
+                    # print(lerps_expr_out)
+                dim_distances = np.concatenate(dim_distances, axis=0)
+                # print('dim_distances.shape:', dim_distances.shape)
+                all_distances.append(dim_distances)
+                sum_distances.append(np.sum(dim_distances))
+            traversals_dim.append(sum_distances)
+        traversals_dim = np.array(traversals_dim) # shape: (n_traversals, n_continuous)
+        avg_distance_per_dim = np.mean(traversals_dim, axis=0)
+        std_distance_per_dim = np.std(traversals_dim, axis=0)
         # pdb.set_trace()
-        print('sum_distances for each dim:', sum_distances)
-        active_distances = np.extract(np.array(sum_distances) > 0.1, sum_distances)
-        self._report_result(np.mean(active_distances))
+        active_mask = np.array(avg_distance_per_dim) > 0.1
+        active_distances = np.extract(active_mask, avg_distance_per_dim)
+        active_stds = np.extract(active_mask, std_distance_per_dim)
+        mean_distance = np.mean(active_distances)
+        mean_std = np.mean(active_stds)
+        norm_dis_std = np.sqrt(mean_distance*mean_distance + mean_std*mean_std)
+        print('avg distance per dim:', avg_distance_per_dim)
+        print('std distance per dim:', std_distance_per_dim)
+        print('mean_distance:', mean_distance)
+        print('mean_std:', mean_std)
+        print('norm_dis_std:', norm_dis_std)
+        self._report_result(mean_distance)
+        self._report_result(mean_std)
+        self._report_result(norm_dis_std)
         # pdb.set_trace()
 
 #----------------------------------------------------------------------------

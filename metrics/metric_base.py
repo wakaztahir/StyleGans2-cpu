@@ -59,7 +59,7 @@ class MetricBase:
         self._progress_sec = psec
 
     def run(self, network_pkl, run_dir=None, data_dir=None, dataset_args=None, mirror_augment=None, num_gpus=1, tf_config=None, log_results=True,
-            include_I=False, Gs_kwargs=dict(is_validation=True)):
+            include_I=False, Gs_kwargs=dict(is_validation=True, return_atts=False)):
         self._reset(network_pkl=network_pkl, run_dir=run_dir, data_dir=data_dir, dataset_args=dataset_args, mirror_augment=mirror_augment)
         time_begin = time.time()
         with tf.Graph().as_default(), tflib.create_session(tf_config).as_default(): # pylint: disable=not-context-manager

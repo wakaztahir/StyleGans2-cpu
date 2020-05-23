@@ -24,7 +24,7 @@ def run(network_pkl, metrics, dataset, data_dir, mirror_augment):
     dataset_args = dnnlib.EasyDict(tfrecord_dir=dataset, shuffle_mb=0)
     num_gpus = dnnlib.submit_config.num_gpus
     metric_group = metric_base.MetricGroup([metric_defaults[metric] for metric in metrics])
-    metric_group.run(network_pkl, data_dir=data_dir, dataset_args=dataset_args, mirror_augment=mirror_augment, num_gpus=num_gpus)
+    metric_group.run(network_pkl, data_dir=data_dir, dataset_args=dataset_args, mirror_augment=mirror_augment, num_gpus=num_gpus, include_I=True)
 
 #----------------------------------------------------------------------------
 

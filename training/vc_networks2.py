@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 11 May 2020 01:52:03 AEST
+# --- Last Modified: Sat 23 May 2020 03:06:05 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -187,6 +187,7 @@ def G_synthesis_modular_vc2(
     start_idx = 0
     x = dlatents_in
     atts = []
+    noise_inputs = []
     for scope_idx, k in enumerate(key_ls):
         if k == 'Const':
             # e.g. {'Const': 3}
@@ -277,7 +278,7 @@ def G_synthesis_modular_vc2(
         elif k == 'Noise':
             # e.g. {'Noise': 1}
             x = build_noise_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                  fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
+                                  fmaps=nf(scope_idx//G_nf_scale), noise_inputs=noise_inputs, **subkwargs)
         elif k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
