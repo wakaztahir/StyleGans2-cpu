@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 26 May 2020 02:00:21 AEST
+# --- Last Modified: Tue 26 May 2020 02:12:50 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -205,7 +205,7 @@ class ProjectorVC2:
         feed_dict = {self._lrate_in: learning_rate}
         _, dist_value, loss_value = tflib.run([self._opt_step, self._dist, self._loss], feed_dict)
         # print('passed')
-        # tflib.run(self._noise_normalize_op)
+        tflib.run(self._noise_normalize_op)
 
         # Print status.
         self._cur_step += 1
