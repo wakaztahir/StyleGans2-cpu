@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sat 23 May 2020 00:13:45 AEST
+# --- Last Modified: Mon 25 May 2020 21:35:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -32,7 +32,7 @@ class TPL(metric_base.MetricBase):
         self.n_samples_per_dim = n_samples_per_dim
         self.n_traversals = n_traversals
 
-    def _evaluate(self, Gs, Gs_kwargs, num_gpus):
+    def _evaluate(self, Gs, Gs_kwargs, num_gpus, **kwargs):
         Gs_kwargs = dict(Gs_kwargs)
         Gs_kwargs.update(self.Gs_overrides)
         minibatch_per_gpu = (self.n_samples_per_dim - 1) // num_gpus + 1
