@@ -23,7 +23,7 @@ class FID(metric_base.MetricBase):
         self.num_images = num_images
         self.minibatch_per_gpu = minibatch_per_gpu
 
-    def _evaluate(self, Gs, Gs_kwargs, num_gpus):
+    def _evaluate(self, Gs, Gs_kwargs, num_gpus, **kwargs):
         minibatch_size = num_gpus * self.minibatch_per_gpu
         inception = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/inception_v3_features.pkl')
         activations = np.empty([self.num_images, inception.output_shape[1]], dtype=np.float32)
