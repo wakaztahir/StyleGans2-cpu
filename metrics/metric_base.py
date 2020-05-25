@@ -65,10 +65,11 @@ class MetricBase:
         with tf.Graph().as_default(), tflib.create_session(tf_config).as_default(): # pylint: disable=not-context-manager
             self._report_progress(0, 1)
             if include_I:
-                _G, _D, _I, Gs = misc.load_pkl(self._network_pkl)
+                _G, _D, I, Gs = misc.load_pkl(self._network_pkl)
+                self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, I_net=I, num_gpus=num_gpus)
             else:
                 _G, _D, Gs = misc.load_pkl(self._network_pkl)
-            self._evaluate(Gs, Gs_kwargs=Gs_kwargs, num_gpus=num_gpus)
+                self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, num_gpus=num_gpus)
             self._report_progress(1, 1)
         self._eval_time = time.time() - time_begin # pylint: disable=attribute-defined-outside-init
 
@@ -95,7 +96,7 @@ class MetricBase:
         for res in self._results:
             tflib.autosummary.autosummary('Metrics/' + self.name + res.suffix, res.value)
 
-    def _evaluate(self, Gs, Gs_kwargs, num_gpus):
+    def _evaluate(self, Gs, Gs_kwargs, num_gpus, **kwargs):
         raise NotImplementedError # to be overridden by subclasses
 
     def _report_result(self, value, suffix='', fmt='%-10.4f'):

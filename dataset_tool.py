@@ -747,6 +747,10 @@ def create_subset_from_dsprites_npz(tfrecord_dir, dsprites_filename, shuffle,
 
             tfr.add_image(img)
         tfr.add_labels(labels_af[order])
+        with open(tfr.tfr_prefix + 'dsprites_subset_np.data', 'wb') as f:
+            np.save(f, np.reshape(images_af, [images_af.shape[0], 1,
+                                              images_af.shape[1],
+                                              images_af.shape[2]]))
 
 #----------------------------------------------------------------------------
 

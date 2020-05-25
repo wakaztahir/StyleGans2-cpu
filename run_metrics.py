@@ -58,16 +58,16 @@ def main():
     parser.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
     parser.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
     parser.add_argument('--metrics', help='Metrics to compute (default: %(default)s)', default='fid50k', type=lambda x: x.split(','))
-    parser.add_argument('--dataset', help='Training dataset', required=True)
-    parser.add_argument('--data-dir', help='Dataset root directory', required=True)
+    parser.add_argument('--dataset', help='Training dataset')
+    parser.add_argument('--data-dir', help='Dataset root directory')
     parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)', default=False, type=_str_to_bool, metavar='BOOL')
     parser.add_argument('--num-gpus', help='Number of GPUs to use', type=int, default=1, metavar='N')
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.data_dir):
-        print ('Error: dataset root directory does not exist.')
-        sys.exit(1)
+    # if not os.path.exists(args.data_dir):
+        # print ('Error: dataset root directory does not exist.')
+        # sys.exit(1)
 
     kwargs = vars(args)
     sc = dnnlib.SubmitConfig()
