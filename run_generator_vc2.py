@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 26 May 2020 04:15:43 AEST
+# --- Last Modified: Tue 26 May 2020 04:19:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -48,9 +48,9 @@ def generate_images(network_pkl, seeds, create_new_G, new_func_name):
         # tflib.set_vars({var: rnd.randn(*var.shape.as_list()) for var in noise_vars}) # [height, width]
         images, _ = Gs.run(z, None, **Gs_kwargs) # [minibatch, height, width, channel]
         images = misc.adjust_dynamic_range(images, [-1, 1], [0, 255])
-        np.clip(images, 0, 255, out=images)
-        images = np.transpose(images, [0, 2, 3, 1]).astype(np.uint8)
-        # images = tflib.convert_images_to_uint8(images, nchw_to_nhwc=True)
+        # np.clip(images, 0, 255, out=images)
+        images = np.transpose(images, [0, 2, 3, 1])
+        images = np.rint(images).clip(0, 255).astype(np.uint8)
         PIL.Image.fromarray(images[0], 'RGB').save(dnnlib.make_run_dir_path('seed%04d.png' % seed))
 
 #----------------------------------------------------------------------------
