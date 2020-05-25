@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 25 May 2020 04:55:30 AEST
+# --- Last Modified: Tue 26 May 2020 02:19:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -47,6 +47,9 @@ class FactorVAEMetric(metric_base.MetricBase):
             scores_dict["train_accuracy"] = 0.
             scores_dict["eval_accuracy"] = 0.
             scores_dict["num_active_dims"] = 0
+            self._report_result(0.)
+            self._report_result(0.)
+            self._report_result(0.)
             return scores_dict
 
         print("Generating training set.")
