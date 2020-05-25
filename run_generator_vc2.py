@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 26 May 2020 03:30:34 AEST
+# --- Last Modified: Tue 26 May 2020 03:33:46 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -182,8 +182,8 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     sc.run_desc = subcmd
 
     func_name_map = {
-        'generate-images': 'run_generator.generate_images',
-        'style-mixing-example': 'run_generator.style_mixing_example'
+        'generate-images': 'run_generator_vc2.generate_images',
+        'style-mixing-example': 'run_generator_vc2.style_mixing_example'
     }
     dnnlib.submit_run(sc, func_name_map[subcmd], **kwargs)
 
