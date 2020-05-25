@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 26 May 2020 03:35:35 AEST
+# --- Last Modified: Tue 26 May 2020 03:37:14 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,14 +40,13 @@ def generate_images(network_pkl, seeds, create_new_G, new_func_name):
     Gs_kwargs = dnnlib.EasyDict()
     Gs_kwargs.output_transform = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
     Gs_kwargs.randomize_noise = False
-    Gs_kwargs.return_atts = False
 
     for seed_idx, seed in enumerate(seeds):
         print('Generating image for seed %d (%d/%d) ...' % (seed, seed_idx, len(seeds)))
         rnd = np.random.RandomState(seed)
         z = rnd.randn(1, *Gs.input_shape[1:]) # [minibatch, component]
         tflib.set_vars({var: rnd.randn(*var.shape.as_list()) for var in noise_vars}) # [height, width]
-        images = Gs.run(z, None, **Gs_kwargs) # [minibatch, height, width, channel]
+        images, _ = Gs.run(z, None, **Gs_kwargs) # [minibatch, height, width, channel]
         PIL.Image.fromarray(images[0], 'RGB').save(dnnlib.make_run_dir_path('seed%04d.png' % seed))
 
 #----------------------------------------------------------------------------
