@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Sat 23 May 2020 15:33:35 AEST
+# --- Last Modified: Tue 26 May 2020 01:41:46 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -142,7 +142,7 @@ class ProjectorVC2:
         self._info('Setting up optimizer...')
         self._lrate_in = tf.placeholder(tf.float32, [], name='lrate_in')
         self._opt = dnnlib.tflib.Optimizer(learning_rate=self._lrate_in)
-        self._opt.register_gradients(self._loss, self._noise_vars)
+        self._opt.register_gradients(self._loss, [self._dlatents_var] + self._noise_vars)
         self._opt_step = self._opt.apply_updates()
 
     def run(self, target_images, I):

@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 14 May 2020 03:27:12 AEST
+# --- Last Modified: Tue 26 May 2020 01:27:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -141,6 +141,9 @@ def calc_vc_byvae_loss(latents, delta_latents, reg1_out, reg2_out, C_delta_laten
     reg2_out_hat = tf.where(var_mask, reg2_out, reg12_avg)
     I_loss1 = tf.reduce_sum(tf.math.squared_difference(latents, reg1_out_hat), axis=1)
     I_loss2 = tf.reduce_sum(tf.math.squared_difference(delta_latents, reg2_out_hat), axis=1)
+    # Constraint variance
+    I_loss3 = tf.reduce_mean(reg1_out_hat*reg1_out_hat) + tf.reduce_mean(reg2_out_hat*reg2_out_hat)
+    # I_loss = C_lambda * (0.5 * (I_loss1 + I_loss2) + I_loss3)
     I_loss = C_lambda * 0.5 * (I_loss1 + I_loss2)
     return I_loss
 
