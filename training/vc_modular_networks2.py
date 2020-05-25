@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 26 May 2020 04:35:41 AEST
+# --- Last Modified: Tue 26 May 2020 04:40:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -162,8 +162,8 @@ def build_C_spgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in
             att_w_cs_ends = tf.reshape(att_w_cs_ends, [-1, n_latents, n_subs, 1, 1, x_wh])
             att_w = att_w_cs_starts * att_w_cs_ends # [b, n_latents, n_subs, 1, 1, x_wh]
             atts = att_h * att_w # [b, n_latents, n_subs, 1, x_wh, x_wh]
-            # atts = tf.reduce_mean(atts, axis=2) # [b, n_latents, 1, x_wh, x_wh]
-            atts = tf.reduce_sum(atts, axis=2) # [b, n_latents, 1, x_wh, x_wh]
+            atts = tf.reduce_mean(atts, axis=2) # [b, n_latents, 1, x_wh, x_wh]
+            # atts = tf.reduce_sum(atts, axis=2) # [b, n_latents, 1, x_wh, x_wh]
 
         with tf.variable_scope('Att_apply'):
             C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
