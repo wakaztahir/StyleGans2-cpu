@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 26 May 2020 01:41:46 AEST
+# --- Last Modified: Tue 26 May 2020 01:46:19 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -125,18 +125,18 @@ class ProjectorVC2:
         self._loss = tf.reduce_sum(self._dist)
 
         # Noise regularization graph.
-        # self._info('Building noise regularization graph...')
-        # reg_loss = 0.0
-        # for v in self._noise_vars:
-            # sz = v.shape[2]
-            # while True:
-                # reg_loss += tf.reduce_mean(v * tf.roll(v, shift=1, axis=3))**2 + tf.reduce_mean(v * tf.roll(v, shift=1, axis=2))**2
-                # if sz <= 8:
-                    # break # Small enough already
-                # v = tf.reshape(v, [1, 1, sz//2, 2, sz//2, 2]) # Downscale
-                # v = tf.reduce_mean(v, axis=[3, 5])
-                # sz = sz // 2
-        # self._loss += reg_loss * self.regularize_noise_weight
+        self._info('Building noise regularization graph...')
+        reg_loss = 0.0
+        for v in self._noise_vars:
+            sz = v.shape[2]
+            while True:
+                reg_loss += tf.reduce_mean(v * tf.roll(v, shift=1, axis=3))**2 + tf.reduce_mean(v * tf.roll(v, shift=1, axis=2))**2
+                if sz <= 8:
+                    break # Small enough already
+                v = tf.reshape(v, [1, 1, sz//2, 2, sz//2, 2]) # Downscale
+                v = tf.reduce_mean(v, axis=[3, 5])
+                sz = sz // 2
+        self._loss += reg_loss * self.regularize_noise_weight
 
         # Optimizer.
         self._info('Setting up optimizer...')
@@ -205,7 +205,7 @@ class ProjectorVC2:
         feed_dict = {self._lrate_in: learning_rate}
         _, dist_value, loss_value = tflib.run([self._opt_step, self._dist, self._loss], feed_dict)
         # print('passed')
-        # tflib.run(self._noise_normalize_op)
+        tflib.run(self._noise_normalize_op)
 
         # Print status.
         self._cur_step += 1
