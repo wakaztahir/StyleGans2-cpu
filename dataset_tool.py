@@ -802,9 +802,7 @@ def create_subset_from_shape3d(tfrecord_dir, filename, shuffle,
             tfr.add_image(img)
         tfr.add_labels(labels_af[order])
         with open(tfr.tfr_prefix + 'shape3d_subset_np.data', 'wb') as f:
-            np.save(f, np.reshape(images_af, [images_af.shape[0], 3,
-                                              images_af.shape[1],
-                                              images_af.shape[2]]))
+            np.save(f, np.transpose(images_af, [0, 3, 1, 2]))
 
 #----------------------------------------------------------------------------
 
