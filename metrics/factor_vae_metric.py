@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Tue 26 May 2020 02:19:53 AEST
+# --- Last Modified: Tue 26 May 2020 18:27:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -21,15 +21,20 @@ import dnnlib.tflib as tflib
 from metrics import metric_base
 from metrics.perceptual_path_length import normalize, slerp
 from training import misc
-from disentanglement_data_helper import DisentangleDataHelper
+from disentanglement_data_helper import DspritesDataHelper, Shape3DDataHelper
 
 #----------------------------------------------------------------------------
 
 class FactorVAEMetric(metric_base.MetricBase):
-    def __init__(self, dataset_dir, use_latents, batch_size, num_train,
+    def __init__(self, dataset_dir, dataset_name, use_latents, batch_size, num_train,
                  num_eval, num_variance_estimate, **kwargs):
         super().__init__(**kwargs)
-        self.ground_truth_data = DisentangleDataHelper(dataset_dir, use_latents)
+        if dataset_name == 'Dsprites':
+            self.ground_truth_data = DspritesDataHelper(dataset_dir, use_latents)
+        elif dataset_name == '3DShapes':
+            self.ground_truth_data = Shape3DDataHelper(dataset_dir, use_latents)
+        else:
+            raise ValueError('Not recognized dataset:', dataset_name)
         self.batch_size = batch_size
         self.num_train = num_train
         self.num_eval = num_eval

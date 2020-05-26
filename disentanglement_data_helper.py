@@ -8,7 +8,7 @@
 
 # --- File Name: dsprites_data_helper.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 25 May 2020 04:36:26 AEST
+# --- Last Modified: Tue 26 May 2020 18:28:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,10 +26,8 @@ def str_to_intlist(v):
     return v_list
 
 class DisentangleDataHelper:
-    def __init__(self, dataset_dir, use_latents='[0,1,2,3,4]'):
-        self.full_factor_sizes = np.array([3, 6, 40, 32, 32])
-        self.use_latents = str_to_intlist(use_latents)
-        self.factor_sizes = self.full_factor_sizes[self.use_latents]
+    def __init__(self, dataset_dir, factor_sizes):
+        self.factor_sizes = factor_sizes
         self.factor_bases = np.prod(self.factor_sizes) // np.cumprod(self.factor_sizes)
         self.num_factors = len(self.factor_bases)
         print('factor_bases:', self.factor_bases)
@@ -87,3 +85,19 @@ class DisentangleDataHelper:
     def batch_latents_to_data_indices(self, latents):
         idxs = np.sum(self.factor_bases * latents, axis=1)
         return idxs
+
+
+class DspritesDataHelper(DisentangleDataHelper):
+    def __init__(self, dataset_dir, use_latents='[0,1,2,3,4]'):
+        self.full_factor_sizes = np.array([3, 6, 40, 32, 32])
+        self.use_latents = str_to_intlist(use_latents)
+        self.factor_sizes = self.full_factor_sizes[self.use_latents]
+        DisentangleDataHelper.__init__(self, dataset_dir, self.factor_sizes)
+
+
+class Shape3DDataHelper(DisentangleDataHelper):
+    def __init__(self, dataset_dir, use_latents='[0,1,2,3,4,5]'):
+        self.full_factor_sizes = np.array([10, 10, 10, 8, 4, 15])
+        self.use_latents = str_to_intlist(use_latents)
+        self.factor_sizes = self.full_factor_sizes[self.use_latents]
+        DisentangleDataHelper.__init__(self, dataset_dir, self.factor_sizes)

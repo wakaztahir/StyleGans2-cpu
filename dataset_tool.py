@@ -9,6 +9,7 @@
 import os
 import sys
 import glob
+import h5py
 import argparse
 import threading
 import six.moves.queue as Queue  # pylint: disable=import-error
@@ -753,6 +754,59 @@ def create_subset_from_dsprites_npz(tfrecord_dir, dsprites_filename, shuffle,
                                               images_af.shape[2]]))
 
 #----------------------------------------------------------------------------
+def create_subset_from_shape3d(tfrecord_dir, filename, shuffle,
+                                    latents_static='[5,5,5,4,2,8]',
+                                    use_latents='[0,1,2,3,4,5]'):
+    latents_static = str_to_intlist(latents_static)
+    use_latents = str_to_intlist(use_latents)
+    print('Loading images from "%s"' % filename)
+    dataset_zip = h5py.File(filename, 'r')
+    images = dataset_zip['images'][:]  # array shape [480000,64,64,3], uint8 in range(256)
+    labels = dataset_zip['labels']  # array shape [480000,6], float64
+    img = images[0]
+    resolution = img.shape[0]
+    channels = img.shape[2] if img.ndim == 3 else 1
+    if img.shape[1] != resolution:
+        error('Input images must have the same width and height')
+    if resolution != 2**int(np.floor(np.log2(resolution))):
+        error('Input image resolution must be a power-of-two')
+    if channels not in [1, 3]:
+        error('Input images must be stored as RGB or grayscale')
+    labels = labels[:, 1:]
+    full_factor_sizes = np.array([10, 10, 10, 8, 4, 15])
+    factor_bases = np.prod(full_factor_sizes) // np.cumprod(full_factor_sizes)
+    # [48000, 4800, 480, 60, 15, 1]
+
+    latents_cur = np.array(latents_static)
+    images_af = []
+    labels_af = []
+    print(use_latents)
+    for modified_values in np.ndindex(tuple(full_factor_sizes[use_latents])):
+        latents_cur[use_latents] = modified_values
+        img_idx = np.sum(factor_bases * latents_cur)
+        images_af.append(images[img_idx])
+        labels_af.append(labels[img_idx])
+    images_af = np.array(images_af)
+    labels_af = np.array(labels_af)
+
+    with TFRecordExporter(tfrecord_dir, images_af.shape[0]) as tfr:
+        order = tfr.choose_shuffled_order() if shuffle else np.arange(
+            images_af.shape[0])
+        for idx in range(order.size):
+            img = images_af[order[idx]]
+            if channels == 1:
+                img = img[np.newaxis, :, :]  # HW => CHW
+            else:
+                img = img.transpose([2, 0, 1])  # HWC => CHW
+
+            tfr.add_image(img)
+        tfr.add_labels(labels_af[order])
+        with open(tfr.tfr_prefix + 'shape3d_subset_np.data', 'wb') as f:
+            np.save(f, np.reshape(images_af, [images_af.shape[0], 1,
+                                              images_af.shape[1],
+                                              images_af.shape[2]]))
+
+#----------------------------------------------------------------------------
 
 
 def convert_to_shape(labels):
@@ -959,6 +1013,25 @@ def execute_cmdline(argv):
                    help='Dimensions used',
                    type=str,
                    default='[0,1,2,3,4]')
+
+    p = add_command(
+        'create_subset_from_shape3d', 'Create dataset from a shape3d with sub dimensions.',
+        'create_subset_from_shape3d datasets/mydataset shape3d')
+    p.add_argument('tfrecord_dir', help='New dataset directory to be created')
+    p.add_argument('filename',
+                   help='filename containing the images')
+    p.add_argument('--shuffle',
+                   help='Randomize image order (default: 0)',
+                   type=int,
+                   default=0)
+    p.add_argument('--latents_static',
+                   help='Basic latents to use',
+                   type=str,
+                   default='[5,5,5,4,2,8]')
+    p.add_argument('--use_latents',
+                   help='Dimensions used',
+                   type=str,
+                   default='[0,1,2,3,4,5]')
 
     # p = add_command(    'create_dsprites_shape_labels_from_tfr', 'Create shape labels from a dsprites_tfr_label.',
     # 'create_from_dsprites_npz datasets/mydataset dsprites_py3.npz')
