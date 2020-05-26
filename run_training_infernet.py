@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_infernet.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 26 May 2020 20:53:17 AEST
+# --- Last Modified: Wed 27 May 2020 01:32:07 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -30,10 +30,9 @@ from training.vc_modular_networks2 import split_module_names, LATENT_MODULES
 #----------------------------------------------------------------------------
 
 
-def run(result_dir, num_gpus, total_kimg, gamma,
+def run(result_dir, num_gpus, total_kimg,
         mirror_augment, metrics, resume_pkl,
-        G_pkl,
-        I_fmap_base=8, fmap_decay=0.15,
+        G_pkl, I_fmap_base=8, fmap_decay=0.15,
         n_samples_per=10, module_list=None,
         latent_type='uniform', batch_size=32, batch_per_gpu=16,
         random_seed=1000, fmap_min=16, fmap_max=512,
@@ -42,16 +41,15 @@ def run(result_dir, num_gpus, total_kimg, gamma,
     train = EasyDict(run_func_name='training.training_loop_infernet.training_loop_infernet'
                      )  # Options for training loop.
 
-    I = EasyDict(func_name='training.vc_networks2.Infer_Modular',
+    I = EasyDict(func_name='training.vc_networks2.infer_modular',
                  dlatent_size=dlatent_size, fmap_min=fmap_min, fmap_max=fmap_max)
     desc = 'inference_net'
 
     I_opt = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)  # Options for discriminator optimizer.
     loss = EasyDict(func_name='training.loss_inference.I_loss',
-        latent_type=latent_type)  # Options for generator loss.
+        latent_type=latent_type, dlatent_size=dlatent_size)  # Options for generator loss.
 
     sched = EasyDict()  # Options for TrainingSchedule.
-    grid = EasyDict(size='1080p', layout='random')  # Options for setup_snapshot_image_grid().
     sc = dnnlib.SubmitConfig()  # Options for dnnlib.submit_run().
     # tf_config = {'rnd.np_random_seed': 1000}  # Options for tflib.init_tf().
     tf_config = {'rnd.np_random_seed': random_seed}  # Options for tflib.init_tf().
@@ -75,7 +73,7 @@ def run(result_dir, num_gpus, total_kimg, gamma,
     kwargs = EasyDict(train)
     kwargs.update(I_args=I, I_opt_args=I_opt,
                   loss_args=loss)
-    kwargs.update(sched_args=sched, grid_args=grid, metric_arg_list=metrics,
+    kwargs.update(sched_args=sched, metric_arg_list=metrics,
                   tf_config=tf_config, resume_pkl=resume_pkl, G_pkl=G_pkl,
                   n_samples_per=n_samples_per)
     kwargs.submit_config = copy.deepcopy(sc)
@@ -133,9 +131,6 @@ def main():
     parser.add_argument('--total-kimg',
         help='Training length in thousands of images (default: %(default)s)',
         metavar='KIMG', default=25000, type=int)
-    parser.add_argument('--gamma',
-        help='R1 regularization weight (default is config dependent)',
-        default=None, type=float)
     parser.add_argument('--mirror-augment', help='Mirror augment (default: %(default)s)',
                         default=False, metavar='BOOL', type=_str_to_bool)
     parser.add_argument(
@@ -159,63 +154,24 @@ def main():
                         metavar='N_BATCH', default=32, type=int)
     parser.add_argument('--batch_per_gpu', help='N batch per gpu.',
                         metavar='N_BATCH_PER_GPU', default=16, type=int)
-    parser.add_argument('--D_lambda', help='Discrete lambda for INFO-GAN and VC-GAN.',
-                        metavar='D_LAMBDA', default=1, type=float)
-    parser.add_argument('--C_lambda', help='Continuous lambda for INFO-GAN and VC-GAN.',
-                        metavar='C_LAMBDA', default=1, type=float)
-    parser.add_argument('--cls_alpha', help='Classification hyper in VC-GAN.',
-                        metavar='CLS_ALPHA', default=0, type=float)
-    parser.add_argument('--epsilon_loss', help='Continuous lambda for INFO-GAN and VC-GAN.',
-                        metavar='EPSILON_LOSS', default=0.4, type=float)
     parser.add_argument('--latent_type', help='What type of latent priori to use.',
                         metavar='LATENT_TYPE', default='uniform', choices=['uniform', 'normal', 'trunc_normal'], type=str)
-    parser.add_argument('--random_eps',
-        help='If use random epsilon in vc_gan_with_vc_head loss.',
-        default=False, metavar='RANDOM_EPS', type=_str_to_bool)
-    parser.add_argument('--delta_type', help='What type of delta use.',
-                        metavar='DELTA_TYPE', default='onedim', choices=['onedim', 'fulldim'], type=str)
-    parser.add_argument('--connect_mode', help='How fake1 and fake2 connected.',
-                        default='concat', metavar='CONNECT_MODE', type=str)
     parser.add_argument('--fmap_decay', help='fmap decay for network building.',
                         metavar='FMAP_DECAY', default=0.15, type=float)
     parser.add_argument('--I_fmap_base', help='Fmap base for I.',
                         metavar='I_FMAP_BASE', default=8, type=int)
-    parser.add_argument('--G_fmap_base', help='Fmap base for G.',
-                        metavar='G_FMAP_BASE', default=8, type=int)
-    parser.add_argument('--D_fmap_base', help='Fmap base for D.',
-                        metavar='D_FMAP_BASE', default=9, type=int)
-    parser.add_argument('--return_atts', help='If return attention maps.',
-                        default=False, metavar='RETURN_ATTS', type=_str_to_bool)
     parser.add_argument('--random_seed', help='TF random seed.',
                         metavar='RANDOM_SEED', default=9, type=int)
-    parser.add_argument('--module_I_list', help='Module list for I modular network.',
-                        default=None, metavar='MODULE_I_LIST', type=str)
-    parser.add_argument('--module_D_list', help='Module list for D modular network.',
-                        default=None, metavar='MODULE_D_LIST', type=str)
     parser.add_argument('--fmap_min', help='FMAP min.',
                         metavar='FMAP_MIN', default=16, type=int)
     parser.add_argument('--fmap_max', help='FMAP max.',
                         metavar='FMAP_MAX', default=512, type=int)
-    parser.add_argument('--G_nf_scale', help='N feature map scale for G.',
-                        metavar='G_NF_SCALE', default=4, type=int)
     parser.add_argument('--I_nf_scale', help='N feature map scale for I.',
                         metavar='I_NF_SCALE', default=4, type=int)
-    parser.add_argument('--D_nf_scale', help='N feature map scale for D.',
-                        metavar='D_NF_SCALE', default=4, type=int)
-    parser.add_argument('--outlier_detector', help='If use outlier detector instead of regressor.',
-                        default=False, metavar='OUTLIER_DETECTOR', type=_str_to_bool)
-    parser.add_argument('--gen_atts_in_D', help='If generate atts in D of vc2_infogan.',
-                        default=False, metavar='GEN_ATTS_IN_D', type=_str_to_bool)
-    parser.add_argument('--no_atts_in_D', help='If not use atts in D of vc2_infogan.',
-                        default=False, metavar='NO_ATTS_IN_D', type=_str_to_bool)
-    parser.add_argument('--att_lambda', help='ATT lambda of gen_atts in D for vc2_infogan loss.',
-                        metavar='ATT_LAMBDA', default=0, type=float)
     parser.add_argument('--dlatent_size', help='Latent size. Used for vc2_gan_style2.',
                         metavar='DLATENT_SIZE', default=24, type=int)
     parser.add_argument('--arch', help='Architecture for vc2_gan_style2.',
                         metavar='ARCH', default='resnet', type=str)
-    parser.add_argument('--opt_reset_ls', help='Opt update step list.',
-                        default=None, metavar='OPT_RESET_LS', type=str)
 
     args = parser.parse_args()
 

@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_infernet.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 26 May 2020 20:59:11 AEST
+# --- Last Modified: Wed 27 May 2020 01:27:18 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -130,9 +130,9 @@ def training_loop_infernet(
                     minibatch_size=minibatch_gpu_in,
                     **loss_args)
 
-            # Register gradients.
             if reg is not None: loss += reg
 
+            # Register gradients.
             I_opt.register_gradients(tf.reduce_mean(loss), I_gpu.trainables)
 
     # Setup training ops.

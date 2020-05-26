@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 26 May 2020 20:14:12 AEST
+# --- Last Modified: Wed 27 May 2020 01:17:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -1068,9 +1068,9 @@ def D_info_modular_vc2(
     else:
         return scores_out
 
-def Infer_Modular(
+def infer_modular(
         images_in,  # First input: Images [minibatch, channel, height, width].
-        dlatent_size,  # Number of latents to map.
+        dlatent_size=10,  # Number of latents to map.
         module_I_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
         num_channels=3,  # Number of input color channels. Overridden based on dataset.
         resolution=1024,  # Input resolution. Overridden based on dataset.
