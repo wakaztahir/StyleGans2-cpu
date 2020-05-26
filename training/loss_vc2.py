@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 26 May 2020 02:44:13 AEST
+# --- Last Modified: Wed 27 May 2020 02:38:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -110,9 +110,13 @@ def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, l
 
     labels = training_set.get_random_labels_tf(2*minibatch_size)
     latents_all = tf.concat([latents, delta_latents], axis=0)
-    fake_all_out, atts_all = G.get_output_for(latents_all, labels, is_training=True, return_atts=True)
-    fake1_out, fake2_out = tf.split(fake_all_out, 2, axis=0)
-    atts = atts_all[:minibatch_size]
+    if own_I:
+        fake_all_out, atts_all = G.get_output_for(latents_all, labels, is_training=True, return_atts=True)
+        fake1_out, fake2_out = tf.split(fake_all_out, 2, axis=0)
+        atts = atts_all[:minibatch_size]
+    else:
+        fake_all_out = G.get_output_for(latents_all, labels, is_training=True)
+        fake1_out, fake2_out = tf.split(fake_all_out, 2, axis=0)
 
     if I_info is not None:
         fake_scores_out, hidden = D.get_output_for(fake1_out, labels, is_training=True)
