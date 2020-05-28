@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Tue 26 May 2020 18:58:37 AEST
+# --- Last Modified: Fri 29 May 2020 02:07:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -141,14 +141,17 @@ class TPL(metric_base.MetricBase):
         active_mask = np.array(avg_distance_per_dim) > 0.1
         active_distances = np.extract(active_mask, avg_distance_per_dim)
         active_stds = np.extract(active_mask, std_distance_per_dim)
+        sum_distance = np.sum(active_distances)
         mean_distance = np.sum(active_distances) / len(avg_distance_per_dim)
         mean_std = np.sum(active_stds) / len(avg_distance_per_dim)
         norm_dis_std = np.sqrt(mean_distance*mean_distance + mean_std*mean_std)
         print('avg distance per dim:', avg_distance_per_dim)
         print('std distance per dim:', std_distance_per_dim)
+        print('sum_distance:', sum_distance)
         print('mean_distance:', mean_distance)
         print('mean_std:', mean_std)
         print('norm_dis_std:', norm_dis_std)
+        self._report_result(sum_distance)
         self._report_result(mean_distance)
         self._report_result(mean_std)
         self._report_result(norm_dis_std)
