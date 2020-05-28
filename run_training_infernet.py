@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_infernet.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Wed 27 May 2020 01:32:07 AEST
+# --- Last Modified: Wed 27 May 2020 23:10:57 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,12 +37,15 @@ def run(result_dir, num_gpus, total_kimg,
         latent_type='uniform', batch_size=32, batch_per_gpu=16,
         random_seed=1000, fmap_min=16, fmap_max=512,
         dlatent_size=10, I_nf_scale=4, arch='resnet'):
-    # print('module_list:', module_list)
+    print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_infernet.training_loop_infernet'
                      )  # Options for training loop.
 
+    module_list = _str_to_list(module_list)
     I = EasyDict(func_name='training.vc_networks2.infer_modular',
-                 dlatent_size=dlatent_size, fmap_min=fmap_min, fmap_max=fmap_max)
+                 dlatent_size=dlatent_size, fmap_min=fmap_min,
+                 fmap_max=fmap_max, module_list=module_list,
+                 I_nf_scale=I_nf_scale)
     desc = 'inference_net'
 
     I_opt = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8)  # Options for discriminator optimizer.
@@ -56,7 +59,7 @@ def run(result_dir, num_gpus, total_kimg,
 
     train.total_kimg = total_kimg
     sched.lrate = 0.002
-    sched.tick_kimg = 4
+    sched.tick_kimg = 1
     sched.minibatch_size = batch_size
     sched.minibatch_gpu = batch_per_gpu
     metrics = [metric_defaults[x] for x in metrics]
@@ -124,8 +127,6 @@ def main():
         help='Root directory for run results (default: %(default)s)',
         default='results',
         metavar='DIR')
-    parser.add_argument('--data-dir', help='Dataset root directory', required=True)
-    parser.add_argument('--dataset', help='Training dataset', required=True)
     parser.add_argument('--num-gpus', help='Number of GPUs (default: %(default)s)',
                         default=1, type=int, metavar='N')
     parser.add_argument('--total-kimg',
@@ -136,12 +137,6 @@ def main():
     parser.add_argument(
         '--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)',
         default='None', type=_parse_comma_sep)
-    parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
-                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
-                                                                 'vc2_gan_own_I', 'vc2_gan_own_ID',
-                                                                 'vc2_info_gan', 'vc2_gan_style2',
-                                                                 'vc2_gan_style2_noI', 'vc2_gan_byvae',
-                                                                 'vc2_info_gan2'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--G_pkl', help='G to load.',

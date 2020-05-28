@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 27 May 2020 01:17:49 AEST
+# --- Last Modified: Wed 27 May 2020 22:35:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -1071,7 +1071,7 @@ def D_info_modular_vc2(
 def infer_modular(
         images_in,  # First input: Images [minibatch, channel, height, width].
         dlatent_size=10,  # Number of latents to map.
-        module_I_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
+        module_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
         num_channels=3,  # Number of input color channels. Overridden based on dataset.
         resolution=1024,  # Input resolution. Overridden based on dataset.
         label_size=0,  # Dimensionality of the labels, 0 if no labels. Overridden based on dataset.
@@ -1082,7 +1082,7 @@ def infer_modular(
         nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
         dtype='float32',  # Data type to use for activations and outputs.
         resample_kernel=[1,3,3,1],  # Low-pass filter to apply when resampling activations. None = no filtering.
-        D_nf_scale=4,
+        I_nf_scale=4,
         return_preds=True,
         gen_atts_in_D=False,
         no_atts_in_D=False,
@@ -1096,9 +1096,9 @@ def infer_modular(
 
     act = nonlinearity
 
-    # Note that module_I_list may include modules not containing latents,
+    # Note that module_list may include modules not containing latents,
     # e.g. Conv layers (size in this case means number of conv layers).
-    key_ls, size_ls, count_dlatent_size = split_module_names(module_I_list)
+    key_ls, size_ls, count_dlatent_size = split_module_names(module_list)
     print('In key_ls:', key_ls)
     print('In size_ls:', size_ls)
     print('In count_dlatent_size:', count_dlatent_size)
@@ -1119,11 +1119,11 @@ def infer_modular(
         if k == 'ResConv-id' or k == 'ResConv-up' or k == 'ResConv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_res_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                     fmaps=nf((len_key - scope_idx)//D_nf_scale), **subkwargs)
+                                     fmaps=nf((len_key - scope_idx)//I_nf_scale), **subkwargs)
         elif k == 'Conv-id' or k == 'Conv-up' or k == 'Conv-down':
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
-                                 fmaps=nf((len_key - scope_idx)//D_nf_scale), **subkwargs)
+                                 fmaps=nf((len_key - scope_idx)//I_nf_scale), **subkwargs)
         else:
             raise ValueError('Unsupported module type: ' + k)
 

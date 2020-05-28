@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_infernet.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Wed 27 May 2020 01:27:18 AEST
+# --- Last Modified: Wed 27 May 2020 23:11:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -58,7 +58,7 @@ def training_loop_infernet(
             -1, 1
         ],  # Dynamic range used when feeding image data to the networks.
         image_snapshot_ticks=50,  # How often to save image snapshots? None = only save 'reals.png' and 'fakes-init.png'.
-        network_snapshot_ticks=50,  # How often to save network snapshots? None = only save 'networks-final.pkl'.
+        network_snapshot_ticks=5,  # How often to save network snapshots? None = only save 'networks-final.pkl'.
         save_tf_graph=False,  # Include full TensorFlow computation graph in the tfevents file?
         save_weight_histograms=False,  # Include weight histograms in the tfevents file?
         G_pkl=None,  # The G to load.
@@ -75,11 +75,12 @@ def training_loop_infernet(
     # Construct or load networks.
     with tf.device('/gpu:0'):
         G, D, I, Gs = misc.load_pkl(G_pkl)
+        print('Gs.output_shapes:', Gs.output_shapes)
         if resume_pkl is None or resume_with_new_nets:
             print('Constructing networks...')
             I = tflib.Network('I',
-                              num_channels=Gs.output_shapes[1],
-                              resolution=Gs.output_shapes[2],
+                              num_channels=Gs.output_shapes[0][1],
+                              resolution=Gs.output_shapes[0][2],
                               **I_args)
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)
@@ -220,13 +221,13 @@ def training_loop_infernet(
             if network_snapshot_ticks is not None and (cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' % (cur_nimg // 1000))
                 misc.save_pkl((I, G), pkl)
-                metrics.run(pkl, run_dir=dnnlib.make_run_dir_path(), num_gpus=num_gpus, tf_config=tf_config)
+                metrics.run(pkl, run_dir=dnnlib.make_run_dir_path(), 
+                            num_gpus=num_gpus, tf_config=tf_config, train_infernet=True)
 
             # Update summaries and RunContext.
             metrics.update_autosummaries()
             tflib.autosummary.save_summaries(summary_log, cur_nimg)
-            dnnlib.RunContext.get().update('%.2f' % sched_args.lod,
-                                           cur_epoch=cur_nimg // 1000,
+            dnnlib.RunContext.get().update(cur_epoch=cur_nimg // 1000,
                                            max_epoch=total_kimg)
             maintenance_time = dnnlib.RunContext.get(
             ).get_last_update_interval() - tick_time
