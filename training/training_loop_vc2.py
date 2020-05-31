@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 28 May 2020 06:10:12 AEST
+# --- Last Modified: Sun 31 May 2020 16:23:07 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -195,7 +195,7 @@ def training_loop_vc2(
                             grid_labels,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
-                            randomize_noise=False,
+                            randomize_noise=True,
                             return_atts=True,
                             resolution=training_set.shape[1])
         save_atts(atts,
@@ -209,7 +209,7 @@ def training_loop_vc2(
                             grid_labels,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
-                            randomize_noise=False)
+                            randomize_noise=True)
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
@@ -512,7 +512,7 @@ def training_loop_vc2(
                                         grid_labels,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
-                                        randomize_noise=False,
+                                        randomize_noise=True,
                                         return_atts=True,
                                         resolution=training_set.shape[1])
                     save_atts(atts,
@@ -526,7 +526,7 @@ def training_loop_vc2(
                                         grid_labels,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
-                                        randomize_noise=False)
+                                        randomize_noise=True)
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
