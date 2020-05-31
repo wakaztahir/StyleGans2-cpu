@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 31 May 2020 16:14:01 AEST
+# --- Last Modified: Sun 31 May 2020 16:21:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -549,7 +549,7 @@ def build_local_hfeat_layers(x, name, n_latents, start_idx, scope_idx,
 
 def build_noise_layer(x, name, n_layers, scope_idx, act, use_noise, randomize_noise,
                       noise_inputs=None, fmaps=128, **kwargs):
-    print('noise_inputs:', noise_inputs)
+    print('in noise_inputs:', noise_inputs)
     for i in range(n_layers):
         if noise_inputs is not None:
             noise_inputs.append(tf.get_variable('noise%d' % len(noise_inputs),
