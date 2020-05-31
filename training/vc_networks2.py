@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 31 May 2020 16:15:41 AEST
+# --- Last Modified: Sun 31 May 2020 16:18:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -188,6 +188,7 @@ def G_synthesis_modular_vc2(
     x = dlatents_in
     atts = []
     noise_inputs = []
+    print('out 2 noise_inputs:', noise_inputs)
     for scope_idx, k in enumerate(key_ls):
         if k == 'Const':
             # e.g. {'Const': 3}
