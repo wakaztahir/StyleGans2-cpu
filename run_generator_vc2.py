@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Mon 01 Jun 2020 20:19:54 AEST
+# --- Last Modified: Mon 01 Jun 2020 20:32:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -85,7 +85,7 @@ def draw_imgs_and_text(semantics_frame_np, used_semantics_ls, img_h, img_w):
         draw.text((text_w, 50), semantic_name, fill=(255, 255, 255))
     return new_img
 
-def generate_gifs(network_pkl, seeds, exist_imgs_dir,
+def generate_gifs(network_pkl, exist_imgs_dir,
                   used_imgs_ls, used_semantics_ls, attr2idx_dict,
                   create_new_G, new_func_name, traversal_frames=20):
     '''
