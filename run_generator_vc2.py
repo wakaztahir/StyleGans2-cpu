@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 02 Jun 2020 01:11:00 AEST
+# --- Last Modified: Tue 02 Jun 2020 01:17:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -78,16 +78,16 @@ def draw_imgs_and_text(semantics_frame_np, used_semantics_ls, img_h, img_w):
     semantics_frame_np = np.transpose(semantics_frame_np, [1, 2, 0])
     semantics_frame_np = cv2.resize(semantics_frame_np, dsize=(w//4, h//4))
     semantics_frame_np = np.transpose(semantics_frame_np, [2, 0, 1])
-    semantics_frame_np = np.concatenate((np.zeros((3, 100, w), dtype=semantics_frame_np.dtype)-1,
+    semantics_frame_np = np.concatenate((np.zeros((3, 100, w//4), dtype=semantics_frame_np.dtype)-1,
                                          semantics_frame_np), axis=1)
     semantics_frame = single_image_to_out(semantics_frame_np)
     new_img = Image.fromarray(semantics_frame, 'RGB')
     draw = ImageDraw.Draw(new_img)
-    font = ImageFont.truetype("LiberationSans-Regular.ttf", 50)
+    font = ImageFont.truetype("LiberationSans-Regular.ttf", 20)
     for i, semantic_name in enumerate(used_semantics_ls):
-        text_w = 20 + img_w * i
-        test_h = 20
-        draw.text((text_w, 50), semantic_name, font=font, fill=(255, 255, 255))
+        text_w = 5 + (img_w // 4) * i
+        text_h = 5
+        draw.text((text_w, text_h), semantic_name, font=font, fill=(255, 255, 255))
     return new_img
 
 def generate_gifs(network_pkl, exist_imgs_dir,
