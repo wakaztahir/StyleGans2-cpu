@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 02 Jun 2020 02:25:43 AEST
+# --- Last Modified: Tue 02 Jun 2020 03:28:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -83,7 +83,7 @@ def draw_imgs_and_text(semantics_frame_np, used_semantics_ls, img_h, img_w):
     semantics_frame = single_image_to_out(semantics_frame_np)
     new_img = Image.fromarray(semantics_frame, 'RGB')
     draw = ImageDraw.Draw(new_img)
-    font = ImageFont.truetype("LiberationSans-Regular.ttf", 12)
+    font = ImageFont.truetype("LiberationSans-Regular.ttf", 14)
     for i, semantic_name in enumerate(used_semantics_ls):
         text_w = 5 + (img_w // 4) * i
         text_h = 70
