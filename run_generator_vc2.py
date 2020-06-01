@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Mon 01 Jun 2020 20:35:18 AEST
+# --- Last Modified: Mon 01 Jun 2020 20:39:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -74,8 +74,8 @@ def single_image_to_out(image):
 
 def draw_imgs_and_text(semantics_frame_np, used_semantics_ls, img_h, img_w):
     c, h, w = semantics_frame_np.shape
-    semantics_frame_np = np.concatenate((np.zeros(3, 100, w), semantics_frame_np),
-                                        axis=1)
+    semantics_frame_np = np.concatenate((np.zeros((3, 100, w), dtype=semantics_frame_np.dtype),
+                                         semantics_frame_np), axis=1)
     semantics_frame = single_image_to_out(semantics_frame_np)
     new_img = Image.fromarray(semantics_frame, 'RGB')
     draw = ImageDraw.Draw(new_img)
