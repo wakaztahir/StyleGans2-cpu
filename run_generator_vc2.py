@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 26 May 2020 04:19:03 AEST
+# --- Last Modified: Mon 01 Jun 2020 20:19:54 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,9 +22,14 @@ import dnnlib
 import dnnlib.tflib as tflib
 import re
 import sys
+import os
+import collections
 
 import pretrained_networks
 from training import misc
+from run_editing_vc2 import image_to_ready
+from run_editing_vc2 import image_to_out
+from PIL import Image, ImageDraw, ImageFont
 
 #----------------------------------------------------------------------------
 
@@ -52,6 +57,77 @@ def generate_images(network_pkl, seeds, create_new_G, new_func_name):
         images = np.transpose(images, [0, 2, 3, 1])
         images = np.rint(images).clip(0, 255).astype(np.uint8)
         PIL.Image.fromarray(images[0], 'RGB').save(dnnlib.make_run_dir_path('seed%04d.png' % seed))
+
+def expand_traversal(attr, attr_idx, traversal_frames):
+    '''
+    attr: [1, n_codes]
+    '''
+    attrs_trav = np.tile(attr, [traversal_frames]+[1]*(attr.ndim-1))
+    attrs_trav[:, attr_idx] = np.linspace(-2., 2., num=traversal_frames)
+    return attrs_trav
+
+def single_image_to_out(image):
+    image = misc.adjust_dynamic_range(image, [-1, 1], [0, 255])
+    image = np.transpose(image, [1, 2, 0])
+    image = np.rint(image).clip(0, 255).astype(np.uint8)
+    return image
+
+def draw_imgs_and_text(semantics_frame_np, used_semantics_ls, img_h, img_w):
+    c, h, w = semantics_frame_np.shape
+    semantics_frame_np = np.concatenate((np.zeros(3, 100, w), semantics_frame_np),
+                                        axis=1)
+    semantics_frame = single_image_to_out(semantics_frame_np)
+    new_img = Image.fromarray(semantics_frame, 'RGB')
+    draw = ImageDraw.Draw(new_img)
+    for i, semantic_name in enumerate(used_semantics_ls):
+        text_w = 20 + img_w * i
+        test_h = 50
+        draw.text((text_w, 50), semantic_name, fill=(255, 255, 255))
+    return new_img
+
+def generate_gifs(network_pkl, seeds, exist_imgs_dir,
+                  used_imgs_ls, used_semantics_ls, attr2idx_dict,
+                  create_new_G, new_func_name, traversal_frames=20):
+    '''
+    used_imgs_ls: ['img1.png', 'img2.png', ...]
+    used_semantics_ls: ['azimuth', 'haircolor', ...]
+    attr2idx_dict: {'azimuth': 10, 'haircolor': 17, 'smile': 6, ...}
+    '''
+    tflib.init_tf()
+    print('Loading networks from "%s"...' % network_pkl)
+    # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+    if create_new_G:
+        Gs = Gs.convert(new_func_name=new_func_name)
+    # noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
+
+    Gs_kwargs = dnnlib.EasyDict()
+    # Gs_kwargs.output_transform = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
+    Gs_kwargs.randomize_noise = True
+
+    ori_imgs = []
+    semantics_all_imgs_ls = []
+    for in_img_name in used_imgs_ls:
+        img_file = os.path.join(exist_imgs_dir, in_img_name)
+        image = image_to_ready(img_file)
+        attr_ori = I.run(image)
+        ori_img, _ = Gs.run(attr_ori, None, **Gs_kwargs)
+        _, c, img_h, img_w = ori_img.shape
+        ori_imgs.append(ori_img)
+        semantics_per_img_ls = []
+        for i in range(used_semantics_ls):
+            attr = attr_ori.copy()
+            attrs_trav = expand_traversal(attr, attr2idx_dict[used_semantics_ls[i]], traversal_frames) # [n_trav, n_codes]
+            imgs_trav, _ = Gs.run(attrs_trav, None, **Gs_kwargs) # [n_trav, c, h, w]
+            semantics_per_img_ls.append(imgs_trav)
+        semantics_per_img_np = np.concatenate(tuple(semantics_per_img_ls), axis=3) # [n_trav, c, h, w*n_used_attrs]
+        semantics_all_imgs_ls.append(semantics_per_img_np)
+    semantics_all_imgs_np = np.concatenate(tuple(semantics_all_imgs_ls), axis=2) # [n_trav, c, h*n_imgs, w*n_used_attrs]
+    imgs_to_save = [draw_imgs_and_text(semantics_all_imgs_np[i], used_semantics_ls, img_h, img_w) for i in range(len(semantics_all_imgs_np))]
+    imgs_to_save[0].save(dnnlib.make_run_dir_path('traversals.gif'), format='GIF',
+                         append_images=imgs_to_save[1:], save_all=True, duration=100, loop=0)
+
+
 
 #----------------------------------------------------------------------------
 
@@ -125,6 +201,20 @@ def _str_to_bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+def _str_to_list(v):
+    v_values = v.strip()[1:-1]
+    module_list = [x.strip() for x in v_values.split(',')]
+    return module_list
+
+def _str_to_attr2idx(v):
+    v_values = v.strip()[1:-1]
+    items = [x.strip() for x in v_values.split(',')]
+    attr2idx_dict = collections.OrderedDict()
+    for item in items:
+        k, idx = item.split(':')[0].strip(), int(item.split(':')[1].strip())
+        attr2idx_dict[k] = idx
+    return attr2idx_dict
+
 #----------------------------------------------------------------------------
 
 _examples = '''examples:
@@ -170,6 +260,17 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     parser_style_mixing_example.add_argument('--truncation-psi', type=float, help='Truncation psi (default: %(default)s)', default=0.5)
     parser_style_mixing_example.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
 
+    parser_generate_gifs = subparsers.add_parser('generate-gifs', help='Generate gifs')
+    parser_generate_gifs.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
+    parser_generate_gifs.add_argument('--exist_imgs_dir', help='Dir for used input images', default='inputs', metavar='EXIST')
+    parser_generate_gifs.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    parser_generate_gifs.add_argument('--used_imgs_ls', help='Image names to use', default='[img1.png, img2.png]', type=_str_to_list)
+    parser_generate_gifs.add_argument('--used_semantics_ls', help='Semantics to use', default='[azimuth, haircolor]', type=_str_to_list)
+    parser_generate_gifs.add_argument('--attr2idx_dict', help='Attr names to attr idx in latent codes',
+                                       default='{azimuth: 10, haircolor: 17, smile: 6}', type=_str_to_attr2idx)
+    parser_generate_gifs.add_argument('--create_new_G', help='If create a new G for projection.', default=False, type=_str_to_bool)
+    parser_generate_gifs.add_argument('--new_func_name', help='new G func name if create new G', default='training.vc_networks2.G_main_vc2')
+
     args = parser.parse_args()
     kwargs = vars(args)
     subcmd = kwargs.pop('command')
@@ -187,7 +288,8 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
 
     func_name_map = {
         'generate-images': 'run_generator_vc2.generate_images',
-        'style-mixing-example': 'run_generator_vc2.style_mixing_example'
+        'style-mixing-example': 'run_generator_vc2.style_mixing_example',
+        'generate-gifs': 'run_generator_vc2.generate_gifs'
     }
     dnnlib.submit_run(sc, func_name_map[subcmd], **kwargs)
 
