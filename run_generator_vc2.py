@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Mon 01 Jun 2020 20:32:55 AEST
+# --- Last Modified: Mon 01 Jun 2020 20:35:18 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -115,7 +115,7 @@ def generate_gifs(network_pkl, exist_imgs_dir,
         _, c, img_h, img_w = ori_img.shape
         ori_imgs.append(ori_img)
         semantics_per_img_ls = []
-        for i in range(used_semantics_ls):
+        for i in range(len(used_semantics_ls)):
             attr = attr_ori.copy()
             attrs_trav = expand_traversal(attr, attr2idx_dict[used_semantics_ls[i]], traversal_frames) # [n_trav, n_codes]
             imgs_trav, _ = Gs.run(attrs_trav, None, **Gs_kwargs) # [n_trav, c, h, w]
