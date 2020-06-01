@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Mon 01 Jun 2020 21:11:29 AEST
+# --- Last Modified: Tue 02 Jun 2020 01:11:00 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -24,6 +24,7 @@ import re
 import sys
 import os
 import collections
+import cv2
 
 import pretrained_networks
 from training import misc
@@ -74,6 +75,9 @@ def single_image_to_out(image):
 
 def draw_imgs_and_text(semantics_frame_np, used_semantics_ls, img_h, img_w):
     c, h, w = semantics_frame_np.shape
+    semantics_frame_np = np.transpose(semantics_frame_np, [1, 2, 0])
+    semantics_frame_np = cv2.resize(semantics_frame_np, dsize=(w//4, h//4))
+    semantics_frame_np = np.transpose(semantics_frame_np, [2, 0, 1])
     semantics_frame_np = np.concatenate((np.zeros((3, 100, w), dtype=semantics_frame_np.dtype)-1,
                                          semantics_frame_np), axis=1)
     semantics_frame = single_image_to_out(semantics_frame_np)
