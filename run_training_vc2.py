@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 10 May 2020 22:27:35 AEST
+# --- Last Modified: Thu 16 Jul 2020 15:00:16 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,7 +42,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         fmap_min=16, fmap_max=512,
         G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
         gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
-        dlatent_size=24, arch='resnet', opt_reset_ls=None):
+        dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -74,21 +74,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             if key.startswith('D_global') or key.startswith('D_nocond_global'):
                 D_global_D_size += size_D_ls[i]
 
-    if model_type == 'info_gan':
-        G = EasyDict(func_name='training.vc_networks2.G_main_vc2',
-            synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, G_nf_scale=G_nf_scale)  # Options for generator network.
-        I = EasyDict(func_name='training.info_gan_networks.info_gan_body',
-                     dlatent_size=count_dlatent_size,
-                     D_global_size=D_global_size,
-                     fmap_min=fmap_min, fmap_max=fmap_max)
-        D = EasyDict(func_name='training.info_gan_networks.D_info_gan_stylegan2',
-            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
-        I_info = EasyDict()
-        desc = 'info_gan_net'
-    elif model_type == 'vc2_info_gan':
+    if model_type == 'vc2_info_gan': # G1 and G2 version InfoGAN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -107,7 +93,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         I = EasyDict()
         I_info = EasyDict()
         desc = 'vc2_info_gan_net'
-    elif model_type == 'vc2_info_gan2':
+    elif model_type == 'vc2_info_gan2': # Independent branch version InfoGAN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -123,7 +109,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_info_gan2_net'
-    elif model_type == 'vc2_gan':
+    elif model_type == 'vc2_gan': # Standard VP-GAN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -140,7 +126,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan'
-    elif model_type == 'vc2_gan_byvae':
+    elif model_type == 'vc2_gan_byvae': # COMA-FAIN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -156,25 +142,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan'
-    elif model_type == 'vc2_gan_style2':
-        G = EasyDict(
-            func_name='training.vc_networks2.G_main_vc2',
-            synthesis_func='G_synthesis_stylegan2_vc2',
-            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
-            latent_size=dlatent_size, architecture=arch,
-            dlatent_size=count_dlatent_size, use_noise=True, return_atts=return_atts,
-            G_nf_scale=G_nf_scale
-        )  # Options for generator network.
-        I = EasyDict(func_name='training.vc_networks2.vc2_head',
-                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-                     fmap_min=fmap_min, fmap_max=fmap_max,
-                     connect_mode=connect_mode)
-        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
-        I_info = EasyDict()
-        desc = 'vc2_gan_style2'
-    elif model_type == 'vc2_gan_style2_noI':
+        desc = 'vc2_gan_byvae'
+    elif model_type == 'vc2_gan_style2_noI': # Just Style2-style GAN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_stylegan2_vc2',
@@ -187,8 +156,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan_style2'
-    elif model_type == 'vc2_gan_own_I':
+        desc = 'vc2_gan_style2_noI'
+    elif model_type == 'vc2_gan_own_I': # Standard VP-GAN with own I
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -205,8 +174,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan_ownI'
-    elif model_type == 'vc2_gan_own_ID':
+        desc = 'vc2_gan_own_I'
+    elif model_type == 'vc2_gan_own_ID': # Standard VP-GAN with own I
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -227,7 +196,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      D_nf_scale=D_nf_scale)
         I_info = EasyDict()
         desc = 'vc2_gan_ownID'
-    elif model_type == 'vc2_gan_noI':
+    elif model_type == 'vc2_gan_noI': # Just modular GAN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -248,13 +217,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      epsilon=1e-8)  # Options for generator optimizer.
     D_opt = EasyDict(beta1=0.0, beta2=0.99,
                      epsilon=1e-8)  # Options for discriminator optimizer.
-    if model_type == 'info_gan':
-        G_loss = EasyDict(func_name='training.loss.G_logistic_ns_info_gan',
-            D_global_size=D_global_size, D_lambda=D_lambda, C_lambda=C_lambda,
-            latent_type=latent_type)  # Options for generator loss.
-        D_loss = EasyDict(func_name='training.loss.D_logistic_r1_info_gan',
-            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_info_gan':
+    if model_type == 'vc2_info_gan': # G1 and G2 version InfoGAN
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
@@ -262,37 +225,34 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             gen_atts_in_D=gen_atts_in_D, att_lambda=att_lambda)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_info_gan2':
+    elif model_type == 'vc2_info_gan2': # Independent branch version InfoGAN
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan2',
             D_global_size=D_global_size, C_lambda=C_lambda,
-            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
-            delta_type=delta_type, outlier_detector=outlier_detector,
-            gen_atts_in_D=gen_atts_in_D, att_lambda=att_lambda,
-            opt_reset_ls=opt_reset_ls)  # Options for generator loss.
+            latent_type=latent_type, norm_ord=norm_ord)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan' or model_type == 'vc2_gan_style2':
+    elif model_type == 'vc2_gan': # Standard VP-GAN
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_byvae':
+    elif model_type == 'vc2_gan_byvae': # COMA-FAIN
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_byvae_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_own_I' or model_type == 'vc2_gan_own_ID':
+    elif model_type == 'vc2_gan_own_I' or model_type == 'vc2_gan_own_ID': # Standard VP-GAN with own I or D
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type, own_I=True)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_gan_style2_noI':
+    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_gan_style2_noI': # Just GANs (modular or StyleGAN2-style)
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns',
                           latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
@@ -341,13 +301,12 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     kwargs = EasyDict(train)
     kwargs.update(G_args=G, D_args=D, I_args=I, I_info_args=I_info, G_opt_args=G_opt, D_opt_args=D_opt,
                   G_loss_args=G_loss, D_loss_args=D_loss,
-                  use_info_gan=(model_type == 'info_gan' or model_type == 'vc2_info_gan2'),
+                  use_info_gan=(model_type == 'vc2_info_gan2'), # Independent branch version
                   use_vc_head=(model_type == 'vc2_gan' or
                                model_type == 'vc2_gan_own_I' or
                                model_type == 'vc2_gan_own_ID' or
-                               model_type=='vc2_gan_style2' or
                                model_type=='vc2_gan_byvae'),
-                  use_vc2_info_gan=(model_type == 'vc2_info_gan'),
+                  use_vc2_info_gan=(model_type == 'vc2_info_gan'), # G1 and G2 version
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
     if not(module_list is None):
@@ -427,9 +386,9 @@ def main():
         '--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)',
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
-                        type=str, metavar='MODEL_TYPE', choices=['info_gan', 'vc2_gan', 'vc2_gan_noI',
+                        type=str, metavar='MODEL_TYPE', choices=['vc2_gan', 'vc2_gan_noI',
                                                                  'vc2_gan_own_I', 'vc2_gan_own_ID',
-                                                                 'vc2_info_gan', 'vc2_gan_style2',
+                                                                 'vc2_info_gan',
                                                                  'vc2_gan_style2_noI', 'vc2_gan_byvae',
                                                                  'vc2_info_gan2'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
@@ -493,12 +452,14 @@ def main():
                         default=False, metavar='NO_ATTS_IN_D', type=_str_to_bool)
     parser.add_argument('--att_lambda', help='ATT lambda of gen_atts in D for vc2_infogan loss.',
                         metavar='ATT_LAMBDA', default=0, type=float)
-    parser.add_argument('--dlatent_size', help='Latent size. Used for vc2_gan_style2.',
+    parser.add_argument('--dlatent_size', help='Latent size. Used for vc2_gan_style2_noI.',
                         metavar='DLATENT_SIZE', default=24, type=int)
-    parser.add_argument('--arch', help='Architecture for vc2_gan_style2.',
+    parser.add_argument('--arch', help='Architecture for vc2_gan_style2_noI.',
                         metavar='ARCH', default='resnet', type=str)
     parser.add_argument('--opt_reset_ls', help='Opt update step list.',
                         default=None, metavar='OPT_RESET_LS', type=str)
+    parser.add_argument('--norm_ord', help='InfoGAN loss with p-norm.',
+                        metavar='NORM_ORD', default=2, type=int)
 
     args = parser.parse_args()
 

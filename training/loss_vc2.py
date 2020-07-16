@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 27 May 2020 02:38:44 AEST
+# --- Last Modified: Thu 16 Jul 2020 14:56:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -229,10 +229,11 @@ def G_logistic_byvae_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=N
 
     return G_loss, None
 
-def calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda):
+def calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, C_lambda, norm_ord=2):
     assert pred_outs.shape.as_list()[1] == (D_global_size + C_global_size)
     # Continuous latents loss
-    G2_loss_C = tf.reduce_sum((pred_outs[:] - clatents) ** 2, axis=1)
+    # G2_loss_C = tf.reduce_sum((pred_outs[:] - clatents) ** 2, axis=1)
+    G2_loss_C = tf.norm(pred_outs - clatents, ord=norm_ord, axis=1)
     G2_loss = C_lambda * G2_loss_C
     return G2_loss
 
@@ -345,11 +346,9 @@ def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=N
         G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
         return G_loss, None
 
-def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size, I_info=None,
+def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size,
                                latent_type='uniform', D_global_size=0, D_lambda=0,
-                               C_lambda=1, epsilon=0.4, random_eps=False, delta_type='onedim',
-                               own_I=False, is_G2_loss=False, outlier_detector=False,
-                               gen_atts_in_D=False, att_lambda=0, opt_reset_ls=None):
+                               C_lambda=1, norm_ord=2):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -379,7 +378,7 @@ def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size, I_in
 
     regress_out = I.get_output_for(fake_out, is_training=True)
     # I_loss = calc_regress_grow_loss(clatents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, opt_reset_ls)
-    I_loss = calc_regress_loss(clatents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda)
+    I_loss = calc_regress_loss(clatents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, norm_ord=norm_ord)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
     G_loss += I_loss
