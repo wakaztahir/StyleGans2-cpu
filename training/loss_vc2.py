@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 16 Jul 2020 14:56:39 AEST
+# --- Last Modified: Sat 18 Jul 2020 00:59:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -229,11 +229,24 @@ def G_logistic_byvae_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=N
 
     return G_loss, None
 
-def calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, C_lambda, norm_ord=2):
+def calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda,
+                      minibatch_size, norm_ord=2, n_dim_strict=0):
     assert pred_outs.shape.as_list()[1] == (D_global_size + C_global_size)
     # Continuous latents loss
     # G2_loss_C = tf.reduce_sum((pred_outs[:] - clatents) ** 2, axis=1)
-    G2_loss_C = tf.norm(pred_outs - clatents, ord=norm_ord, axis=1)
+
+    # Only n_dim_strict == full or 1 are supported now.
+    if n_dim_strict == 1:
+        # print('using n_dim_strict==1')
+        dropped_dim = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+        dropped_dim = tf.cast(tf.one_hot(dropped_dim, C_global_size), pred_outs.dtype)
+        # pred_outs = pred_outs * (1 - dropped_dim)
+        # clatents = clatents * (1 - clatents)
+    else:
+        dropped_dim = tf.ones([minibatch_size, C_global_size], dtype=pred_outs.dtype)
+    # G2_loss_C = tf.norm(pred_outs - clatents, ord=norm_ord, axis=1)
+    G2_loss_C = tf.norm(dropped_dim * (pred_outs - clatents) + 0.2 * (1 - dropped_dim) * (pred_outs - clatents),
+                        ord=norm_ord, axis=1)
     G2_loss = C_lambda * G2_loss_C
     return G2_loss
 
@@ -337,7 +350,7 @@ def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=N
                                                     D_global_size, C_global_size,
                                                     D_lambda, C_lambda, att_lambda) 
             else:
-                G2_loss = calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda)
+                G2_loss = calc_regress_loss(clatents, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda, minibatch_size)
         else:
             G2_loss = calc_outlier_loss(outlier, pred_outs, D_global_size, C_global_size, D_lambda, C_lambda)
         G2_loss = autosummary('Loss/G2_loss', G2_loss)
@@ -348,7 +361,7 @@ def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=N
 
 def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size,
                                latent_type='uniform', D_global_size=0, D_lambda=0,
-                               C_lambda=1, norm_ord=2):
+                               C_lambda=1, norm_ord=2, n_dim_strict=0):
     _ = opt
     discrete_latents = None
     C_global_size = G.input_shapes[0][1]-D_global_size
@@ -378,7 +391,8 @@ def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size,
 
     regress_out = I.get_output_for(fake_out, is_training=True)
     # I_loss = calc_regress_grow_loss(clatents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, opt_reset_ls)
-    I_loss = calc_regress_loss(clatents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, norm_ord=norm_ord)
+    I_loss = calc_regress_loss(clatents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda,
+                               minibatch_size, norm_ord=norm_ord, n_dim_strict=n_dim_strict)
     I_loss = autosummary('Loss/I_loss', I_loss)
 
     G_loss += I_loss
