@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 18 Jul 2020 00:50:17 AEST
+# --- Last Modified: Sat 18 Jul 2020 16:29:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,7 +42,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         fmap_min=16, fmap_max=512,
         G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
         gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
-        dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0):
+        dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
+        loose_rate=0.2):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -228,7 +229,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     elif model_type == 'vc2_info_gan2': # Independent branch version InfoGAN
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan2',
             D_global_size=D_global_size, C_lambda=C_lambda,
-            latent_type=latent_type, norm_ord=norm_ord, n_dim_strict=n_dim_strict)  # Options for generator loss.
+            latent_type=latent_type, norm_ord=norm_ord, n_dim_strict=n_dim_strict, loose_rate=loose_rate)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'vc2_gan': # Standard VP-GAN
@@ -462,6 +463,8 @@ def main():
                         metavar='NORM_ORD', default=2, type=float)
     parser.add_argument('--n_dim_strict', help='Number of dims to drop in InfoGAN.',
                         metavar='N_DIM_DROP', default=0, type=int)
+    parser.add_argument('--loose_rate', help='InfoGAN loss with loose_rate.',
+                        metavar='LOOSE_RATE', default=0.2, type=float)
 
     args = parser.parse_args()
 
