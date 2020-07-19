@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 19 Jul 2020 19:20:38 AEST
+# --- Last Modified: Sun 19 Jul 2020 19:42:06 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -229,6 +229,7 @@ def training_loop_vc2(
                               **sched_args)
     if traversal_grid:
         topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+        print('topk_dims_to_show:', topk_dims_to_show)
         grid_size, grid_latents, grid_labels = get_grid_latents(
             n_discrete, n_continuous, n_samples_per, G, grid_labels, topk_dims)
     else:
