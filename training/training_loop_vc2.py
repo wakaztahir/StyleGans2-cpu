@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 19 Jul 2020 19:42:06 AEST
+# --- Last Modified: Sun 19 Jul 2020 19:43:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -234,6 +234,7 @@ def training_loop_vc2(
             n_discrete, n_continuous, n_samples_per, G, grid_labels, topk_dims)
     else:
         grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
+    print('grid_size:', grid_size)
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
     # pdb.set_trace()
