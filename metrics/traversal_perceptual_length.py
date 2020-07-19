@@ -8,14 +8,17 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sun 31 May 2020 16:58:44 AEST
+# --- Last Modified: Sun 19 Jul 2020 18:13:17 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
 
+import os
 import numpy as np
 import pdb
+import time
 import tensorflow as tf
+import dnnlib
 import dnnlib.tflib as tflib
 
 from metrics import metric_base
@@ -157,5 +160,5 @@ class TPL(metric_base.MetricBase):
         self._report_result(mean_std)
         self._report_result(norm_dis_std)
         # pdb.set_trace()
-
+        return {'tpl_per_dim': avg_distance_per_dim}
 #----------------------------------------------------------------------------

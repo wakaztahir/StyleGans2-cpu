@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 18 Jul 2020 16:29:56 AEST
+# --- Last Modified: Sun 19 Jul 2020 18:31:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,7 +43,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
         gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
         dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
-        loose_rate=0.2):
+        loose_rate=0.2, topk_dims_to_show=20):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -320,7 +320,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
 
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid, metric_arg_list=metrics,
                   tf_config=tf_config, resume_pkl=resume_pkl, n_discrete=D_global_size,
-                  n_continuous=n_continuous, n_samples_per=n_samples_per)
+                  n_continuous=n_continuous, n_samples_per=n_samples_per,
+                  topk_dims_to_show=topk_dims_to_show)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -465,6 +466,8 @@ def main():
                         metavar='N_DIM_DROP', default=0, type=int)
     parser.add_argument('--loose_rate', help='InfoGAN loss with loose_rate.',
                         metavar='LOOSE_RATE', default=0.2, type=float)
+    parser.add_argument('--topk_dims_to_show', help='Number of top disentant dimensions to show in a snapshot.',
+                        metavar='TOPK_DIMS_TO_SHOW', default=20, type=int)
 
     args = parser.parse_args()
 

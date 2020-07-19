@@ -66,13 +66,13 @@ class MetricBase:
             self._report_progress(0, 1)
             if include_I:
                 _G, _D, I, Gs = misc.load_pkl(self._network_pkl)
-                self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, I_net=I, num_gpus=num_gpus)
+                outs = self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, I_net=I, num_gpus=num_gpus)
             elif train_infernet:
                 I, Gs = misc.load_pkl(self._network_pkl)
-                self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, I_net=I, num_gpus=num_gpus)
+                outs = self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, I_net=I, num_gpus=num_gpus)
             else:
                 _G, _D, Gs = misc.load_pkl(self._network_pkl)
-                self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, num_gpus=num_gpus)
+                outs = self._evaluate(Gs=Gs, Gs_kwargs=Gs_kwargs, num_gpus=num_gpus)
             self._report_progress(1, 1)
         self._eval_time = time.time() - time_begin # pylint: disable=attribute-defined-outside-init
 
@@ -83,6 +83,7 @@ class MetricBase:
                     print(self.get_result_str().strip())
             else:
                 print(self.get_result_str().strip())
+        return outs
 
     def get_result_str(self):
         network_name = os.path.splitext(os.path.basename(self._network_pkl))[0]
@@ -155,8 +156,12 @@ class MetricGroup:
         self.metrics = [dnnlib.util.call_func_by_name(**kwargs) for kwargs in metric_kwarg_list]
 
     def run(self, *args, **kwargs):
+        outs = {}
         for metric in self.metrics:
-            metric.run(*args, **kwargs)
+            outs_i = metric.run(*args, **kwargs)
+            if not (outs_i is None):
+                outs.update(outs_i)
+        return outs
 
     def get_result_str(self):
         return ' '.join(metric.get_result_str() for metric in self.metrics)
