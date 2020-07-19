@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 19 Jul 2020 19:43:49 AEST
+# --- Last Modified: Sun 19 Jul 2020 19:45:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -101,7 +101,7 @@ def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels, to
         grid_latents = np.reshape(grid_latents, [n_discrete * len(topk_dims) * n_samples_per, -1])
         grid_labels = np.tile(grid_labels[:1],
                               (n_discrete * len(topk_dims) * n_samples_per, 1))
-        grid_size = (n_samples_per, topk_dims * n_discrete)
+        grid_size = (n_samples_per, len(topk_dims) * n_discrete)
     # grid_labels = np.tile(grid_labels[:1],
                           # (n_discrete * n_continuous * n_samples_per, 1))
     return grid_size, grid_latents, grid_labels
