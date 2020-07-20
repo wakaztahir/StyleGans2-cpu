@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 19 Jul 2020 19:45:25 AEST
+# --- Last Modified: Mon 20 Jul 2020 23:03:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -246,6 +246,8 @@ def training_loop_vc2(
                             randomize_noise=True,
                             return_atts=True,
                             resolution=training_set.shape[1])
+        # atts: [b, n_latents, 1, res, res]
+        atts = atts[:, topk_dims]
         save_atts(atts,
                   filename=dnnlib.make_run_dir_path('fakes_atts_init.png'),
                   grid_size=grid_size,
@@ -584,6 +586,8 @@ def training_loop_vc2(
                                         randomize_noise=True,
                                         return_atts=True,
                                         resolution=training_set.shape[1])
+                    # atts: [b, n_latents, 1, res, res]
+                    atts = atts[:, topk_dims]
                     save_atts(atts,
                               filename=dnnlib.make_run_dir_path('fakes_atts%06d.png' % (cur_nimg // 1000)),
                               grid_size=grid_size,
