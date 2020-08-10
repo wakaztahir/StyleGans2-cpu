@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 31 May 2020 18:18:58 AEST
+# --- Last Modified: Mon 10 Aug 2020 12:19:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -96,7 +96,7 @@ def build_D_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     return x
 
 
-def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
+def build_C_global_layers_unparal(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                           act, fused_modconv, fmaps=128, **kwargs):
     '''
     Build continuous latent layers, e.g. C_global layers.
@@ -105,6 +105,19 @@ def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
         C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
         x = apply_bias_act(modulated_conv2d_layer(x, C_global_latents, fmaps=fmaps, kernel=3,
                                                   up=False, fused_modconv=fused_modconv), act=act)
+    return x
+
+def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
+                          act, fused_modconv, fmaps=128, **kwargs):
+    '''
+    Build continuous latent layers, e.g. C_global layers.
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
+        x = instance_norm(x)
+        for i in range(n_latents):
+            with tf.variable_scope('style_mod-' + str(i)):
+                x = style_mod(x, C_global_latents[:, i:i+1])
     return x
 
 def build_C_fgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
