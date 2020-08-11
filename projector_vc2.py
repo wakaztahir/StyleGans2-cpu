@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 18:03:17 AEST
+# --- Last Modified: Tue 11 Aug 2020 18:17:52 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,7 +44,7 @@ class ProjectorVC2:
         self.lr_rampup_length           = 0.05
         self.noise_ramp_length          = 0.75
         # self.regularize_noise_weight    = 1e5
-        self.regularize_noise_weight    = 1e11
+        self.regularize_noise_weight    = 1e12
         self.verbose                    = False
         self.clone_net                  = True
 
