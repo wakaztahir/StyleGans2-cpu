@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 17:36:59 AEST
+# --- Last Modified: Tue 11 Aug 2020 17:37:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,7 +34,8 @@ def initialize_uninitialized(sess):
 
 class ProjectorVC2:
     def __init__(self):
-        self.num_steps                  = 1000
+        # self.num_steps                  = 1000
+        self.num_steps                  = 2000
         self.dlatent_avg_samples        = 10000
         self.initial_learning_rate      = 0.1
         self.initial_noise_factor       = 0.05
