@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 10 Aug 2020 16:37:17 AEST
+# --- Last Modified: Tue 11 Aug 2020 12:23:43 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -118,7 +118,7 @@ def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
             with tf.variable_scope('style_mod-' + str(i)):
                 x = instance_norm(x)
                 x = style_mod(x, C_global_latents[:, i:i+1])
-                x = apply_bias_act(conv2d_layer(x, fmaps=x.shape[1], kernel=3), act=act)
+                x = apply_bias_act(conv2d_layer(x, fmaps=x.shape[1], kernel=1), act=act)
     return x
 
 def build_C_fgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
