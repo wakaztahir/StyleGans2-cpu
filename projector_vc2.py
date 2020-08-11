@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 18:17:52 AEST
+# --- Last Modified: Tue 11 Aug 2020 18:24:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,7 +44,7 @@ class ProjectorVC2:
         self.lr_rampup_length           = 0.05
         self.noise_ramp_length          = 0.75
         # self.regularize_noise_weight    = 1e5
-        self.regularize_noise_weight    = 1e12
+        self.regularize_noise_weight    = 1e8
         self.verbose                    = False
         self.clone_net                  = True
 
@@ -134,10 +134,10 @@ class ProjectorVC2:
             sz = v.shape[2]
             while True:
                 reg_loss += tf.reduce_mean(v * tf.roll(v, shift=1, axis=3))**2 + tf.reduce_mean(v * tf.roll(v, shift=1, axis=2))**2
-                if sz <= 8:
-                    break # Small enough already
-                # if sz <= 2:
+                # if sz <= 8:
                     # break # Small enough already
+                if sz <= 4:
+                    break # Small enough already
                 v = tf.reshape(v, [1, 1, sz//2, 2, sz//2, 2]) # Downscale
                 v = tf.reduce_mean(v, axis=[3, 5])
                 sz = sz // 2
