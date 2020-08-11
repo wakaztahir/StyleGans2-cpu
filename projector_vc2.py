@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 19:00:58 AEST
+# --- Last Modified: Tue 11 Aug 2020 19:10:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -198,7 +198,8 @@ class ProjectorVC2:
             self._info('Running...')
 
         # Hyperparameters.
-        t = self._cur_step / self.num_steps
+        # t = self._cur_step / self.num_steps
+        t = self._cur_step / 1000
         lr_ramp = min(1.0, (1.0 - t) / self.lr_rampdown_length)
         lr_ramp = 0.5 - 0.5 * np.cos(lr_ramp * np.pi)
         lr_ramp = lr_ramp * min(1.0, t / self.lr_rampup_length)
