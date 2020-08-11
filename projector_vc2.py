@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 16:59:39 AEST
+# --- Last Modified: Tue 11 Aug 2020 17:13:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -132,7 +132,9 @@ class ProjectorVC2:
             sz = v.shape[2]
             while True:
                 reg_loss += tf.reduce_mean(v * tf.roll(v, shift=1, axis=3))**2 + tf.reduce_mean(v * tf.roll(v, shift=1, axis=2))**2
-                if sz <= 8:
+                # if sz <= 8:
+                    # break # Small enough already
+                if sz <= 2:
                     break # Small enough already
                 v = tf.reshape(v, [1, 1, sz//2, 2, sz//2, 2]) # Downscale
                 v = tf.reduce_mean(v, axis=[3, 5])
