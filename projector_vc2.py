@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 23:54:17 AEST
+# --- Last Modified: Wed 12 Aug 2020 00:05:17 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -136,7 +136,7 @@ class ProjectorVC2:
                 reg_loss += tf.reduce_mean(v * tf.roll(v, shift=1, axis=3))**2 + tf.reduce_mean(v * tf.roll(v, shift=1, axis=2))**2
                 # if sz <= 8:
                     # break # Small enough already
-                if sz <= 16:
+                if sz <= 32:
                     break # Small enough already
                 v = tf.reshape(v, [1, 1, sz//2, 2, sz//2, 2]) # Downscale
                 v = tf.reduce_mean(v, axis=[3, 5])
@@ -147,8 +147,8 @@ class ProjectorVC2:
         self._info('Setting up optimizer...')
         self._lrate_in = tf.placeholder(tf.float32, [], name='lrate_in')
         self._opt = dnnlib.tflib.Optimizer(learning_rate=self._lrate_in)
-        # self._opt.register_gradients(self._loss, [self._dlatents_var] + self._noise_vars)
-        self._opt.register_gradients(self._loss, self._noise_vars)
+        self._opt.register_gradients(self._loss, [self._dlatents_var] + self._noise_vars)
+        # self._opt.register_gradients(self._loss, self._noise_vars)
         self._opt_step = self._opt.apply_updates()
 
     def run(self, target_images, I):
