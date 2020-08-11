@@ -8,7 +8,7 @@
 
 # --- File Name: show_real_data.py
 # --- Creation Date: 11-08-2020
-# --- Last Modified: Tue 11 Aug 2020 15:03:45 AEST
+# --- Last Modified: Tue 11 Aug 2020 15:05:07 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -17,12 +17,14 @@ Show some real data.
 
 import argparse
 import dnnlib
+import dnnlib.tflib as tflib
 from training import dataset
 from training import misc
 from dnnlib import EasyDict
 
 
 def show_real_data(data_dir, dataset_name, number):
+    tflib.init_tf()
     dataset_args = EasyDict(tfrecord_dir=dataset_name, max_label_size='full')
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir),
                                         verbose=True,
