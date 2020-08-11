@@ -8,7 +8,7 @@
 
 # --- File Name: projector_vc2.py
 # --- Creation Date: 23-05-2020
-# --- Last Modified: Tue 11 Aug 2020 18:55:27 AEST
+# --- Last Modified: Tue 11 Aug 2020 19:00:58 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -38,7 +38,7 @@ class ProjectorVC2:
         self.num_steps                  = 2000
         self.dlatent_avg_samples        = 10000
         # self.initial_learning_rate      = 0.1
-        self.initial_learning_rate      = 0.15
+        self.initial_learning_rate      = 0.3
         self.initial_noise_factor       = 0.05
         self.lr_rampdown_length         = 0.25
         self.lr_rampup_length           = 0.05
