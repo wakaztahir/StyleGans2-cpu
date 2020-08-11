@@ -8,7 +8,7 @@
 
 # --- File Name: show_real_data.py
 # --- Creation Date: 11-08-2020
-# --- Last Modified: Tue 11 Aug 2020 14:51:08 AEST
+# --- Last Modified: Tue 11 Aug 2020 15:03:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,8 +22,8 @@ from training import misc
 from dnnlib import EasyDict
 
 
-def show_real_data(data_dir, dataset, number):
-    dataset_args = EasyDict(tfrecord_dir=dataset, max_label_size='full')
+def show_real_data(data_dir, dataset_name, number):
+    dataset_args = EasyDict(tfrecord_dir=dataset_name, max_label_size='full')
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir),
                                         verbose=True,
                                         **dataset_args)
@@ -48,7 +48,9 @@ def main():
     parser.add_argument('--data-dir',
                         help='Dataset root directory',
                         required=True)
-    parser.add_argument('--dataset', help='Training dataset', required=True)
+    parser.add_argument('--dataset_name',
+                        help='Training dataset',
+                        required=True)
     parser.add_argument('--number',
                         help='Img number',
                         default=5,
