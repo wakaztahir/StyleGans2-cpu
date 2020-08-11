@@ -8,7 +8,7 @@
 
 # --- File Name: show_real_data.py
 # --- Creation Date: 11-08-2020
-# --- Last Modified: Tue 11 Aug 2020 15:05:07 AEST
+# --- Last Modified: Tue 11 Aug 2020 15:17:14 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -55,6 +55,7 @@ def main():
                         required=True)
     parser.add_argument('--number',
                         help='Img number',
+                        type=int,
                         default=5,
                         metavar='NUM')
     args = parser.parse_args()
