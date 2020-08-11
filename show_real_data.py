@@ -8,7 +8,7 @@
 
 # --- File Name: show_real_data.py
 # --- Creation Date: 11-08-2020
-# --- Last Modified: Tue 11 Aug 2020 15:17:14 AEST
+# --- Last Modified: Tue 11 Aug 2020 15:31:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -35,7 +35,7 @@ def show_real_data(data_dir, dataset_name, number):
         reals, _ = training_set.get_minibatch_np(gw * gh)
         misc.save_image_grid(reals,
                              dnnlib.make_run_dir_path('reals%04d.png' % (i)),
-                             drange=[0, 1],
+                             drange=training_set.dynamic_range,
                              grid_size=None)
 
 
