@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:19:40 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:27:55 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -125,7 +125,7 @@ def G_main_modular(
     # Pre-Conv layers.
     d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu)
     d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
-    d2_reshaped = tf.reshape(d2, shape=[-1, 4, 4, 64])
+    d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
 
     # Generator network.
     key_ls, size_ls, count_dlatent_size = split_module_names(module_G_list)
