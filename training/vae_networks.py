@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 01:52:39 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:15:19 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -56,7 +56,7 @@ def E_main_modular(
     assert not is_training or not is_validation
 
     # Primary inputs.
-    reals_in.set_shape([None]+[input_shape])
+    reals_in.set_shape([None]+input_shape)
     reals_in = tf.cast(reals_in, dtype)
 
     # Encoder network.
