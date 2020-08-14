@@ -6,13 +6,13 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: training_loop_vc2.py
-# --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 14 Aug 2020 22:40:38 AEST
+# --- File Name: training_loop_vae.py
+# --- Creation Date: 14-08-2020
+# --- Last Modified: Sat 15 Aug 2020 00:44:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Training loop file for variation consistency (V2) related networks.
+Training loop file for VAE related networks.
 Code borrowed from training_loop.py of NVIDIA.
 """
 
@@ -27,21 +27,53 @@ from dnnlib.tflib.autosummary import autosummary
 from training import dataset
 from training import misc
 from metrics import metric_base
-from training.training_loop import process_reals, training_schedule
-from training.utils import save_atts, add_outline, get_grid_latents
+from training.training_loop import process_reals
+from training.utils import add_outline, get_grid_latents
+
+#----------------------------------------------------------------------------
+# Evaluate time-varying training parameters.
+
+def training_schedule(
+    cur_nimg,
+    training_set,
+    minibatch_size_base     = 32,       # Global minibatch size.
+    minibatch_gpu_base      = 4,        # Number of samples processed at a time by one GPU.
+    G_lrate_base            = 0.002,    # Learning rate for the generator.
+    D_lrate_base            = 0.002,    # Learning rate for the discriminator.
+    lrate_rampup_kimg       = 0,        # Duration of learning rate ramp-up.
+    tick_kimg_base          = 4,        # Default interval of progress snapshots.
+    tick_kimg_dict          = {8:28, 16:24, 32:20, 64:16, 128:12, 256:8, 512:6, 1024:4}): # Resolution-specific overrides.
+
+    # Initialize result dict.
+    s = dnnlib.EasyDict()
+    s.kimg = cur_nimg / 1000.0
+
+    # Minibatch size.
+    s.minibatch_size = minibatch_size_base
+    s.minibatch_gpu = minibatch_gpu_base
+
+    # Learning rate.
+    s.G_lrate = G_lrate_base
+    s.D_lrate = D_lrate_base
+    if lrate_rampup_kimg > 0:
+        rampup = min(s.kimg / lrate_rampup_kimg, 1.0)
+        s.G_lrate *= rampup
+        s.D_lrate *= rampup
+
+    # Other parameters.
+    s.tick_kimg = tick_kimg_dict.get(s.resolution, tick_kimg_base)
+    return s
 
 #----------------------------------------------------------------------------
 # Main training script.
 
 
-def training_loop_vc2(
+def training_loop_vae(
         G_args={},  # Options for generator network.
+        E_args={},  # Options for encoder network.
         D_args={},  # Options for discriminator network.
-        I_args={},  # Options for infogan-head/vcgan-head network.
-        I_info_args={},  # Options for infogan-head/vcgan-head network.
         G_opt_args={},  # Options for generator optimizer.
         D_opt_args={},  # Options for discriminator optimizer.
-        # G2_opt_args={},  # Options for generator2 optimizer.
         G_loss_args={},  # Options for generator loss.
         D_loss_args={},  # Options for discriminator loss.
         dataset_args={},  # Options for dataset.load_dataset().
@@ -49,22 +81,11 @@ def training_loop_vc2(
         grid_args={},  # Options for train.setup_snapshot_image_grid().
         metric_arg_list=[],  # Options for MetricGroup.
         tf_config={},  # Options for tflib.init_tf().
-        use_info_gan=False,  # Whether to use info-gan.
-        use_vc_head=False,  # Whether to use vc-head.
-        use_vc2_info_gan=False,  # Whether to use vc2 infogan.
         data_dir=None,  # Directory to load datasets from.
-        G_smoothing_kimg=10.0,  # Half-life of the running average of generator weights.
         minibatch_repeats=4,  # Number of minibatches to run before adjusting training parameters.
-        lazy_regularization=True,  # Perform regularization as a separate training step?
-        G_reg_interval=4,  # How often the perform regularization for G? Ignored if lazy_regularization=False.
-        D_reg_interval=16,  # How often the perform regularization for D? Ignored if lazy_regularization=False.
-        # G2_reg_interval=4,  # How often the perform regularization for G? Ignored if lazy_regularization=False.
-        reset_opt_for_new_lod=True,  # Reset optimizer internal state (e.g. Adam moments) when new layers are introduced?
         total_kimg=25000,  # Total length of the training, measured in thousands of real images.
         mirror_augment=False,  # Enable mirror augment?
-        drange_net=[
-            -1, 1
-        ],  # Dynamic range used when feeding image data to the networks.
+        drange_net=[-1, 1],  # Dynamic range used when feeding image data to the networks.
         image_snapshot_ticks=50,  # How often to save image snapshots? None = only save 'reals.png' and 'fakes-init.png'.
         network_snapshot_ticks=50,  # How often to save network snapshots? None = only save 'networks-final.pkl'.
         save_tf_graph=False,  # Include full TensorFlow computation graph in the tfevents file?
@@ -74,10 +95,8 @@ def training_loop_vc2(
         resume_time=0.0,  # Assumed wallclock time at the beginning. Affects reporting.
         resume_with_new_nets=False,  # Construct new networks according to G_args and D_args before resuming training?
         traversal_grid=False,  # Used for disentangled representation learning.
-        n_discrete=3,  # Number of discrete latents in model.
+        n_discrete=0,  # Number of discrete latents in model.
         n_continuous=4,  # Number of continuous latents in model.
-        return_atts=False,  # If return attention maps.
-        opt_reset_ls=None,  # Reset lr list for gradual latents.
         topk_dims_to_show=20, # Number of top disentant dimensions to show in a snapshot.
         n_samples_per=10):  # Number of samples for each line in traversal.
 
@@ -85,8 +104,8 @@ def training_loop_vc2(
     tflib.init_tf(tf_config)
     num_gpus = dnnlib.submit_config.num_gpus
 
-    # If include I
-    include_I = use_info_gan or use_vc_head
+    # If use Discriminator.
+    use_D = D_args is not None
 
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir),
@@ -104,56 +123,49 @@ def training_loop_vc2(
     with tf.device('/gpu:0'):
         if resume_pkl is None or resume_with_new_nets:
             print('Constructing networks...')
-            print('G_args:', G_args)
+            E = tflib.Network('E',
+                              num_channels=training_set.shape[0],
+                              resolution=training_set.shape[1],
+                              label_size=training_set.label_size,
+                              **E_args)
             G = tflib.Network('G',
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
                               **G_args)
-            D = tflib.Network('D',
-                              num_channels=training_set.shape[0],
-                              resolution=training_set.shape[1],
-                              label_size=training_set.label_size,
-                              **D_args)
-            if include_I:
-                I = tflib.Network('I',
+            if use_D:
+                D = tflib.Network('D',
                                   num_channels=training_set.shape[0],
                                   resolution=training_set.shape[1],
                                   label_size=training_set.label_size,
-                                  **I_args)
-            
-            Gs = G.clone('Gs')
+                                  **D_args)
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)
-            if include_I:
-                rG, rD, rI, rGs = misc.load_pkl(resume_pkl)
+            if use_D:
+                rE, rG, rD = misc.load_pkl(resume_pkl)
             else:
-                rG, rD, rGs = misc.load_pkl(resume_pkl)
+                rE, rG = misc.load_pkl(resume_pkl)
             if resume_with_new_nets:
+                E.copy_vars_from(rE)
                 G.copy_vars_from(rG)
-                D.copy_vars_from(rD)
-                if include_I:
-                    I.copy_vars_from(rI)
-                Gs.copy_vars_from(rGs)
+                if use_D:
+                    D.copy_vars_from(rD)
             else:
+                E = rE
                 G = rG
-                D = rD
-                if include_I:
-                    I = rI
-                Gs = rGs
+                if use_D:
+                    D = rD
 
     # Print layers and generate initial image snapshot.
+    E.print_layers()
     G.print_layers()
-    D.print_layers()
-    if include_I:
-        I.print_layers()
-    # pdb.set_trace()
+    if use_D:
+        D.print_layers()
     sched = training_schedule(cur_nimg=total_kimg * 1000,
                               training_set=training_set,
                               **sched_args)
     if traversal_grid:
         topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
-        print('topk_dims_to_show:', topk_dims_to_show)
         grid_size, grid_latents, grid_labels = get_grid_latents(
             n_discrete, n_continuous, n_samples_per, G, grid_labels, topk_dims)
     else:
@@ -161,29 +173,11 @@ def training_loop_vc2(
     print('grid_size:', grid_size)
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
-    # pdb.set_trace()
-    if return_atts:
-        grid_fakes, atts = Gs.run(grid_latents,
-                            grid_labels,
-                            is_validation=True,
-                            minibatch_size=sched.minibatch_gpu,
-                            randomize_noise=True,
-                            return_atts=True,
-                            resolution=training_set.shape[1])
-        # atts: [b, n_latents, 1, res, res]
-        atts = atts[:, topk_dims]
-        save_atts(atts,
-                  filename=dnnlib.make_run_dir_path('fakes_atts_init.png'),
-                  grid_size=grid_size,
-                  drange=[0, 1],
-                  grid_fakes=grid_fakes,
-                  n_samples_per=n_samples_per)
-    else:
-        grid_fakes = Gs.run(grid_latents,
-                            grid_labels,
-                            is_validation=True,
-                            minibatch_size=sched.minibatch_gpu,
-                            randomize_noise=True)
+    grid_fakes = G.run(grid_latents,
+                       grid_labels,
+                       is_validation=True,
+                       minibatch_size=sched.minibatch_gpu,
+                       randomize_noise=True)
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
@@ -193,7 +187,6 @@ def training_loop_vc2(
     # Setup training inputs.
     print('Building TensorFlow graph...')
     with tf.name_scope('Inputs'), tf.device('/cpu:0'):
-        lod_in = tf.placeholder(tf.float32, name='lod_in', shape=[])
         lrate_in = tf.placeholder(tf.float32, name='lrate_in', shape=[])
         minibatch_size_in = tf.placeholder(tf.int32,
                                            name='minibatch_size_in',
@@ -203,28 +196,17 @@ def training_loop_vc2(
                                           shape=[])
         minibatch_multiplier = minibatch_size_in // (minibatch_gpu_in *
                                                      num_gpus)
-        Gs_beta = 0.5**tf.div(tf.cast(minibatch_size_in,
-                                      tf.float32), G_smoothing_kimg *
-                              1000.0) if G_smoothing_kimg > 0.0 else 0.0
 
     # Setup optimizers.
     G_opt_args = dict(G_opt_args)
-    D_opt_args = dict(D_opt_args)
-    for args, reg_interval in [(G_opt_args, G_reg_interval),
-                               (D_opt_args, D_reg_interval)]:
-        args['minibatch_multiplier'] = minibatch_multiplier
-        args['learning_rate'] = lrate_in
-        if lazy_regularization:
-            mb_ratio = reg_interval / (reg_interval + 1)
-            args['learning_rate'] *= mb_ratio
-            if 'beta1' in args: args['beta1'] **= mb_ratio
-            if 'beta2' in args: args['beta2'] **= mb_ratio
+    G_opt_args['minibatch_multiplier'] = minibatch_multiplier
+    G_opt_args['learning_rate'] = lrate_in
     G_opt = tflib.Optimizer(name='TrainG', **G_opt_args)
-    D_opt = tflib.Optimizer(name='TrainD', **D_opt_args)
-    G_reg_opt = tflib.Optimizer(name='RegG', share=G_opt, **G_opt_args)
-    D_reg_opt = tflib.Optimizer(name='RegD', share=D_opt, **D_opt_args)
-    if use_vc2_info_gan:
-        G2_opt = tflib.Optimizer(name='TrainG2', share=G_opt, **G_opt_args)
+    if use_D:
+        D_opt_args = dict(D_opt_args)
+        D_opt_args['minibatch_multiplier'] = minibatch_multiplier
+        D_opt_args['learning_rate'] = lrate_in
+        D_opt = tflib.Optimizer(name='TrainD', **D_opt_args)
 
     # Build training graph for each GPU.
     data_fetch_ops = []
@@ -232,21 +214,19 @@ def training_loop_vc2(
         with tf.name_scope('GPU%d' % gpu), tf.device('/gpu:%d' % gpu):
 
             # Create GPU-specific shadow copies of G and D.
+            E_gpu = E if gpu == 0 else E.clone(E.name + '_shadow')
             G_gpu = G if gpu == 0 else G.clone(G.name + '_shadow')
-            D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
-            if include_I:
-                I_gpu = I if gpu == 0 else I.clone(I.name + '_shadow')
+            if use_D:
+                D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
 
             # Fetch training data via temporary variables.
             with tf.name_scope('DataFetch'):
                 sched = training_schedule(cur_nimg=int(resume_kimg * 1000),
                                           training_set=training_set,
                                           **sched_args)
-                reals_var = tf.Variable(
-                    name='reals',
-                    trainable=False,
-                    initial_value=tf.zeros([sched.minibatch_gpu] +
-                                           training_set.shape))
+                reals_var = tf.Variable(name='reals', trainable=False,
+                                        initial_value=tf.zeros([sched.minibatch_gpu] +
+                                                               training_set.shape))
                 labels_var = tf.Variable(name='labels',
                                          trainable=False,
                                          initial_value=tf.zeros([
@@ -255,7 +235,7 @@ def training_loop_vc2(
                                          ]))
                 reals_write, labels_write = training_set.get_minibatch_tf()
                 reals_write, labels_write = process_reals(
-                    reals_write, labels_write, lod_in, mirror_augment,
+                    reals_write, labels_write, 0., mirror_augment,
                     training_set.dynamic_range, drange_net)
                 reals_write = tf.concat(
                     [reals_write, reals_var[minibatch_gpu_in:]], axis=0)
@@ -267,88 +247,42 @@ def training_loop_vc2(
                 labels_read = labels_var[:minibatch_gpu_in]
 
             # Evaluate loss functions.
-            lod_assign_ops = []
-            if 'lod' in G_gpu.vars:
-                lod_assign_ops += [tf.assign(G_gpu.vars['lod'], lod_in)]
-            if 'lod' in D_gpu.vars:
-                lod_assign_ops += [tf.assign(D_gpu.vars['lod'], lod_in)]
-            with tf.control_dependencies(lod_assign_ops):
+            if use_D:
                 with tf.name_scope('G_loss'):
-                    if include_I:
-                        G_loss, G_reg = dnnlib.util.call_func_by_name(
-                            G=G_gpu, D=D_gpu, I=I_gpu, opt=G_opt,
-                            training_set=training_set,
-                            minibatch_size=minibatch_gpu_in,
-                            **G_loss_args)
-                    else:
-                        G_loss, G_reg = dnnlib.util.call_func_by_name(
-                            G=G_gpu, D=D_gpu, opt=G_opt,
-                            training_set=training_set,
-                            minibatch_size=minibatch_gpu_in,
-                            **G_loss_args)
-                with tf.name_scope('D_loss'):
-                    D_loss, D_reg = dnnlib.util.call_func_by_name(
-                        G=G_gpu, D=D_gpu, opt=D_opt,
+                    G_loss = dnnlib.util.call_func_by_name(
+                        E=E_gpu, G=G_gpu, D=D_gpu, opt=G_opt,
                         training_set=training_set,
                         minibatch_size=minibatch_gpu_in,
-                        reals=reals_read,
-                        labels=labels_read,
-                        **D_loss_args)
-                if use_vc2_info_gan:
-                    with tf.name_scope('G2_loss'):
-                        G2_loss, _ = dnnlib.util.call_func_by_name(
-                            G=G_gpu, D=D_gpu, opt=G2_opt,
-                            training_set=training_set,
-                            minibatch_size=minibatch_gpu_in,
-                            is_G2_loss=True,
-                            **G_loss_args)
+                        reals=reals_read, **G_loss_args)
+                with tf.name_scope('D_loss'):
+                    D_loss = dnnlib.util.call_func_by_name(
+                        E=E_gpu, D=D_gpu, opt=D_opt,
+                        training_set=training_set,
+                        minibatch_size=minibatch_gpu_in,
+                        reals=reals_read, **D_loss_args)
+            else:
+                with tf.name_scope('G_loss'):
+                    G_loss = dnnlib.util.call_func_by_name(
+                        E=E_gpu, G=G_gpu, opt=G_opt,
+                        training_set=training_set,
+                        minibatch_size=minibatch_gpu_in,
+                        reals=reals_read, **G_loss_args)
 
             # Register gradients.
-            if not lazy_regularization:
-                if G_reg is not None: G_loss += G_reg
-                if D_reg is not None: D_loss += D_reg
-            else:
-                if G_reg is not None:
-                    G_reg_opt.register_gradients(
-                        tf.reduce_mean(G_reg * G_reg_interval),
-                        G_gpu.trainables)
-                if D_reg is not None:
-                    D_reg_opt.register_gradients(
-                        tf.reduce_mean(D_reg * D_reg_interval),
-                        D_gpu.trainables)
-            if include_I:
-                GI_gpu_trainables = collections.OrderedDict(
-                    list(G_gpu.trainables.items()) +
-                    list(I_gpu.trainables.items()))
-                G_opt.register_gradients(tf.reduce_mean(G_loss),
-                                         GI_gpu_trainables)
-                D_opt.register_gradients(tf.reduce_mean(D_loss),
-                                         D_gpu.trainables)
-            elif use_vc2_info_gan:
-                GD_gpu_trainables = collections.OrderedDict(
-                    list(G_gpu.trainables.items()) +
-                    list(D_gpu.trainables.items()))
-                G_opt.register_gradients(tf.reduce_mean(G_loss),
-                                         G_gpu.trainables)
-                G2_opt.register_gradients(tf.reduce_mean(G2_loss),
-                                          GD_gpu_trainables)
-                D_opt.register_gradients(tf.reduce_mean(D_loss),
-                                         D_gpu.trainables)
-            else:
-                G_opt.register_gradients(tf.reduce_mean(G_loss),
-                                         G_gpu.trainables)
+            EG_gpu_trainables = collections.OrderedDict(
+                    list(E_gpu.trainables.items()) +
+                    list(G_gpu.trainables.items()))
+            G_opt.register_gradients(tf.reduce_mean(G_loss),
+                                     EG_gpu_trainables)
+            if use_D:
                 D_opt.register_gradients(tf.reduce_mean(D_loss),
                                          D_gpu.trainables)
 
     # Setup training ops.
     data_fetch_op = tf.group(*data_fetch_ops)
     G_train_op = G_opt.apply_updates()
-    D_train_op = D_opt.apply_updates()
-    G_reg_op = G_reg_opt.apply_updates(allow_no_op=True)
-    D_reg_op = D_reg_opt.apply_updates(allow_no_op=True)
-    Gs_update_op = Gs.setup_as_moving_average_of(G, beta=Gs_beta)
-    if use_vc2_info_gan:
-        G2_train_op = G2_opt.apply_updates()
+    if use_D:
+        D_train_op = D_opt.apply_updates()
 
     # Finalize graph.
     with tf.device('/gpu:0'):
@@ -364,9 +298,8 @@ def training_loop_vc2(
         summary_log.add_graph(tf.get_default_graph())
     if save_weight_histograms:
         G.setup_weight_histograms()
-        D.setup_weight_histograms()
-        if include_I:
-            I.setup_weight_histograms()
+        if use_D:
+            D.setup_weight_histograms()
     metrics = metric_base.MetricGroup(metric_arg_list)
 
     print('Training for %d kimg...\n' % total_kimg)
@@ -388,20 +321,9 @@ def training_loop_vc2(
                                   **sched_args)
         assert sched.minibatch_size % (sched.minibatch_gpu * num_gpus) == 0
         training_set.configure(sched.minibatch_gpu, sched.lod)
-        if reset_opt_for_new_lod:
-            if np.floor(sched.lod) != np.floor(prev_lod) or np.ceil(
-                    sched.lod) != np.ceil(prev_lod):
-                G_opt.reset_optimizer_state()
-                D_opt.reset_optimizer_state()
-        # if opt_reset_ls is not None:
-            # if cur_nimg in opt_reset_ls:
-                # G_opt.reset_optimizer_state()
-                # D_opt.reset_optimizer_state()
-        prev_lod = sched.lod
 
         # Run training ops.
         feed_dict = {
-            lod_in: sched.lod,
             lrate_in: sched.G_lrate,
             minibatch_size_in: sched.minibatch_size,
             minibatch_gpu_in: sched.minibatch_gpu
@@ -409,41 +331,23 @@ def training_loop_vc2(
         for _repeat in range(minibatch_repeats):
             rounds = range(0, sched.minibatch_size,
                            sched.minibatch_gpu * num_gpus)
-            run_G_reg = (lazy_regularization
-                         and running_mb_counter % G_reg_interval == 0)
-            run_D_reg = (lazy_regularization
-                         and running_mb_counter % D_reg_interval == 0)
             cur_nimg += sched.minibatch_size
             running_mb_counter += 1
 
             # Fast path without gradient accumulation.
             if len(rounds) == 1:
-                tflib.run([G_train_op, data_fetch_op], feed_dict)
-                if run_G_reg:
-                    tflib.run(G_reg_op, feed_dict)
-                tflib.run([D_train_op, Gs_update_op], feed_dict)
-                if run_D_reg:
-                    tflib.run(D_reg_op, feed_dict)
-                if use_vc2_info_gan:
-                    tflib.run(G2_train_op, feed_dict)
+                tflib.run([data_fetch_op], feed_dict)
+                tflib.run([G_train_op], feed_dict)
+                if use_D:
+                    tflib.run([D_train_op], feed_dict)
 
             # Slow path with gradient accumulation.
             else:
                 for _round in rounds:
-                    tflib.run(G_train_op, feed_dict)
-                if run_G_reg:
-                    for _round in rounds:
-                        tflib.run(G_reg_op, feed_dict)
-                tflib.run(Gs_update_op, feed_dict)
-                for _round in rounds:
                     tflib.run(data_fetch_op, feed_dict)
+                    tflib.run(G_train_op, feed_dict)
+                for _round in rounds:
                     tflib.run(D_train_op, feed_dict)
-                if run_D_reg:
-                    for _round in rounds:
-                        tflib.run(D_reg_op, feed_dict)
-                if use_vc2_info_gan:
-                    for _round in rounds:
-                        tflib.run(G2_train_op, feed_dict)
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
@@ -457,10 +361,9 @@ def training_loop_vc2(
 
             # Report progress.
             print(
-                'tick %-5d kimg %-8.1f lod %-5.2f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f gpumem %.1f'
+                'tick %-5d kimg %-8.1f minibatch %-4d time %-12s sec/tick %-7.1f sec/kimg %-7.2f maintenance %-6.1f gpumem %.1f'
                 % (autosummary('Progress/tick', cur_tick),
                    autosummary('Progress/kimg', cur_nimg / 1000.0),
-                   autosummary('Progress/lod', sched.lod),
                    autosummary('Progress/minibatch', sched.minibatch_size),
                    dnnlib.util.format_time(
                        autosummary('Timing/total_sec', total_time)),
@@ -477,17 +380,17 @@ def training_loop_vc2(
                     cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' %
                                                (cur_nimg // 1000))
-                if include_I:
-                    misc.save_pkl((G, D, I, Gs), pkl)
+                if use_D:
+                    misc.save_pkl((E, G, D), pkl)
                 else:
-                    misc.save_pkl((G, D, Gs), pkl)
+                    misc.save_pkl((E, G), pkl)
                 met_outs = metrics.run(pkl,
                                        run_dir=dnnlib.make_run_dir_path(),
                                        data_dir=dnnlib.convert_path(data_dir),
                                        num_gpus=num_gpus,
                                        tf_config=tf_config,
-                                       include_I=include_I,
-                                       Gs_kwargs=dict(is_validation=True, return_atts=False))
+                                       is_vae=True, use_D=use_D,
+                                       Gs_kwargs=dict(is_validation=True))
                 if 'tpl_per_dim' in met_outs:
                     avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
                     topk_dims = np.argsort(avg_distance_per_dim)[::-1][:topk_dims_to_show] # shape: (20)
@@ -502,28 +405,11 @@ def training_loop_vc2(
                 else:
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
-                if return_atts:
-                    grid_fakes, atts = Gs.run(grid_latents,
-                                        grid_labels,
-                                        is_validation=True,
-                                        minibatch_size=sched.minibatch_gpu,
-                                        randomize_noise=True,
-                                        return_atts=True,
-                                        resolution=training_set.shape[1])
-                    # atts: [b, n_latents, 1, res, res]
-                    atts = atts[:, topk_dims]
-                    save_atts(atts,
-                              filename=dnnlib.make_run_dir_path('fakes_atts%06d.png' % (cur_nimg // 1000)),
-                              grid_size=grid_size,
-                              drange=[0, 1],
-                              grid_fakes=grid_fakes,
-                              n_samples_per=n_samples_per)
-                else:
-                    grid_fakes = Gs.run(grid_latents,
-                                        grid_labels,
-                                        is_validation=True,
-                                        minibatch_size=sched.minibatch_gpu,
-                                        randomize_noise=True)
+                grid_fakes = G.run(grid_latents,
+                                   grid_labels,
+                                   is_validation=True,
+                                   minibatch_size=sched.minibatch_gpu,
+                                   randomize_noise=True)
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
@@ -541,11 +427,11 @@ def training_loop_vc2(
             ).get_last_update_interval() - tick_time
 
     # Save final snapshot.
-    if include_I:
-        misc.save_pkl((G, D, I, Gs),
+    if use_D:
+        misc.save_pkl((E, G, D),
                       dnnlib.make_run_dir_path('network-final.pkl'))
     else:
-        misc.save_pkl((G, D, Gs),
+        misc.save_pkl((E, G),
                       dnnlib.make_run_dir_path('network-final.pkl'))
 
     # All done.

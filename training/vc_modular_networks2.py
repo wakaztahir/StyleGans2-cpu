@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 11 Aug 2020 12:23:43 AEST
+# --- Last Modified: Wed 12 Aug 2020 14:50:58 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -96,7 +96,7 @@ def build_D_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     return x
 
 
-def build_C_global_layers_unparal(x, name, n_latents, start_idx, scope_idx, dlatents_in,
+def build_C_global_layers_paral(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                           act, fused_modconv, fmaps=128, **kwargs):
     '''
     Build continuous latent layers, e.g. C_global layers.
