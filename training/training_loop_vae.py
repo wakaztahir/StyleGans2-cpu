@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:36:49 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:52:05 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -237,6 +237,7 @@ def training_loop_vae(
                                              training_set.label_size
                                          ]))
                 reals_write, labels_write = training_set.get_minibatch_tf()
+                print('labels_write.shape:', labels_write.shape)
                 reals_write, labels_write = process_reals(
                     reals_write, labels_write, 0., mirror_augment,
                     training_set.dynamic_range, drange_net)
