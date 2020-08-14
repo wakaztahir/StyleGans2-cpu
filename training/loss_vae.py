@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:37:05 AEST
+# --- Last Modified: Sat 15 Aug 2020 03:53:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,7 @@ def make_reconstruction_loss(true_images, reconstructed_images):
     """Wrapper that creates reconstruction loss."""
     with tf.variable_scope("reconstruction_loss"):
         per_sample_loss = tf.reduce_sum(tf.square(
-            true_images - tf.nn.sigmoid(reconstructed_images)), [1, 2, 3])
+            true_images - reconstructed_images), [1, 2, 3])
     return per_sample_loss
 
 

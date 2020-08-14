@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:32:31 AEST
+# --- Last Modified: Sat 15 Aug 2020 03:53:02 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -104,6 +104,7 @@ def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape):
             padding="same",
             data_format='channels_first',
         )
+        d6 = tf.nn.sigmoid(d6)
     return d6
 
 def build_standard_conv_G_128(d2_reshaped, name, scope_idx, output_shape):
