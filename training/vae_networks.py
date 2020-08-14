@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:15:19 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:19:40 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -41,6 +41,7 @@ def E_main_modular(
         fmap_max=512,
         fmap_decay=0.15,
         latent_size=10,
+        label_size=0,
         module_E_list=None,
         nf_scale=1,
         fmap_base=8,
@@ -58,6 +59,8 @@ def E_main_modular(
     # Primary inputs.
     reals_in.set_shape([None]+input_shape)
     reals_in = tf.cast(reals_in, dtype)
+    labels_in.set_shape([None, label_size])
+    labels_in = tf.cast(labels_in, dtype)
 
     # Encoder network.
     key_ls, size_ls, count_dlatent_size = split_module_names(module_E_list)
@@ -98,6 +101,7 @@ def G_main_modular(
         fmap_max=512,
         fmap_decay=0.15,
         latent_size=10,
+        label_size=0,
         module_G_list=None,
         nf_scale=1,
         fmap_base=8,
@@ -115,6 +119,8 @@ def G_main_modular(
     # Primary inputs.
     latents_in.set_shape([None]+[latent_size])
     latents_in = tf.cast(latents_in, dtype)
+    labels_in.set_shape([None, label_size])
+    labels_in = tf.cast(labels_in, dtype)
 
     # Pre-Conv layers.
     d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu)
