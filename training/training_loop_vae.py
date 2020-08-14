@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 03:00:33 AEST
+# --- Last Modified: Sat 15 Aug 2020 03:08:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -236,19 +236,14 @@ def training_loop_vae(
                                              sched.minibatch_gpu,
                                              training_set.label_size
                                          ]))
-                # reals_write, labels_write = training_set.get_minibatch_tf()
-                # reals_write, labels_write = process_reals(
-                    # reals_write, labels_write, 0., mirror_augment,
-                    # training_set.dynamic_range, drange_net)
-                reals_write, _ = training_set.get_minibatch_tf()
-                reals_write, _ = process_reals(
-                    reals_write, 0., 0., mirror_augment,
+                reals_write, labels_write = training_set.get_minibatch_tf()
+                reals_write, labels_write = process_reals(
+                    reals_write, labels_write, 0., mirror_augment,
                     training_set.dynamic_range, drange_net)
                 reals_write = tf.concat(
                     [reals_write, reals_var[minibatch_gpu_in:]], axis=0)
-                # labels_write = tf.concat(
-                    # [labels_write, labels_var[minibatch_gpu_in:]], axis=0)
-                labels_write = tf.zeros([sched.minibatch_gpu, training_set.label_size])
+                labels_write = tf.concat(
+                    [labels_write, labels_var[minibatch_gpu_in:]], axis=0)
                 data_fetch_ops += [tf.assign(reals_var, reals_write)]
                 data_fetch_ops += [tf.assign(labels_var, labels_write)]
                 reals_read = reals_var[:minibatch_gpu_in]
@@ -328,6 +323,7 @@ def training_loop_vae(
                                   training_set=training_set,
                                   **sched_args)
         assert sched.minibatch_size % (sched.minibatch_gpu * num_gpus) == 0
+        training_set.configure(sched.minibatch_gpu, 0)
 
         # Run training ops.
         feed_dict = {
