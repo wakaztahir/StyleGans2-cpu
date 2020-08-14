@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:13:45 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:23:38 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -61,7 +61,7 @@ def training_schedule(
         s.D_lrate *= rampup
 
     # Other parameters.
-    s.tick_kimg = tick_kimg_dict.get(s.resolution, tick_kimg_base)
+    s.tick_kimg = tick_kimg_dict.get(training_set.shape[1], tick_kimg_base)
     return s
 
 #----------------------------------------------------------------------------
