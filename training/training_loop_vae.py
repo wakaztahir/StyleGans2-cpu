@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:52:05 AEST
+# --- Last Modified: Sat 15 Aug 2020 03:00:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -236,15 +236,19 @@ def training_loop_vae(
                                              sched.minibatch_gpu,
                                              training_set.label_size
                                          ]))
-                reals_write, labels_write = training_set.get_minibatch_tf()
-                print('labels_write.shape:', labels_write.shape)
-                reals_write, labels_write = process_reals(
-                    reals_write, labels_write, 0., mirror_augment,
+                # reals_write, labels_write = training_set.get_minibatch_tf()
+                # reals_write, labels_write = process_reals(
+                    # reals_write, labels_write, 0., mirror_augment,
+                    # training_set.dynamic_range, drange_net)
+                reals_write, _ = training_set.get_minibatch_tf()
+                reals_write, _ = process_reals(
+                    reals_write, 0., 0., mirror_augment,
                     training_set.dynamic_range, drange_net)
                 reals_write = tf.concat(
                     [reals_write, reals_var[minibatch_gpu_in:]], axis=0)
-                labels_write = tf.concat(
-                    [labels_write, labels_var[minibatch_gpu_in:]], axis=0)
+                # labels_write = tf.concat(
+                    # [labels_write, labels_var[minibatch_gpu_in:]], axis=0)
+                labels_write = tf.zeros([sched.minibatch_gpu, training_set.label_size])
                 data_fetch_ops += [tf.assign(reals_var, reals_write)]
                 data_fetch_ops += [tf.assign(labels_var, labels_write)]
                 reals_read = reals_var[:minibatch_gpu_in]
