@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Fri 14 Aug 2020 22:53:29 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:01:20 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -217,7 +217,7 @@ def main():
     parser.add_argument('--batch_per_gpu', help='N batch per gpu.', metavar='N_BATCH_PER_GPU',
                         default=16, type=int)
     parser.add_argument('--latent_type', help='What type of latent priori to use.', metavar='LATENT_TYPE',
-                        default='uniform', choices=['uniform', 'normal', 'trunc_normal'], type=str)
+                        default='normal', choices=['uniform', 'normal', 'trunc_normal'], type=str)
     parser.add_argument('--fmap_decay', help='fmap decay for network building.', metavar='FMAP_DECAY',
                         default=0.15, type=float)
     parser.add_argument('--G_fmap_base', help='Fmap base for G.', metavar='G_FMAP_BASE',
