@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:23:38 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:36:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -323,7 +323,6 @@ def training_loop_vae(
                                   training_set=training_set,
                                   **sched_args)
         assert sched.minibatch_size % (sched.minibatch_gpu * num_gpus) == 0
-        training_set.configure(sched.minibatch_gpu, sched.lod)
 
         # Run training ops.
         feed_dict = {
@@ -423,7 +422,7 @@ def training_loop_vae(
             # Update summaries and RunContext.
             metrics.update_autosummaries()
             tflib.autosummary.save_summaries(summary_log, cur_nimg)
-            dnnlib.RunContext.get().update('%.2f' % sched.lod,
+            dnnlib.RunContext.get().update('%.2f' % 0,
                                            cur_epoch=cur_nimg // 1000,
                                            max_epoch=total_kimg)
             maintenance_time = dnnlib.RunContext.get(

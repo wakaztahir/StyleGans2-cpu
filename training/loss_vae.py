@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 01:41:14 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:37:05 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,15 +42,8 @@ def compute_gaussian_kl(z_mean, z_logvar):
         return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1])
 
 
-def beta_vae(E,
-             G,
-             opt,
-             training_set,
-             minibatch_size,
-             reals,
-             labels,
-             latent_type='normal',
-             hy_beta=1):
+def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
+             latent_type='normal', hy_beta=1):
     _ = opt, training_set
     means, log_var = E.get_output_for(reals, labels, is_training=True)
     kl_loss = compute_gaussian_kl(means, log_var)
