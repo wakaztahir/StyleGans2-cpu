@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:01:20 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:02:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -231,7 +231,7 @@ def main():
     parser.add_argument('--module_G_list', help='Module list for G modular network.', default=None,
                         metavar='MODULE_G_LIST', type=str)
     parser.add_argument('--module_E_list', help='Module list for E modular network.', default=None,
-                        metavar='MODULE_I_LIST', type=str)
+                        metavar='MODULE_E_LIST', type=str)
     parser.add_argument('--module_D_list', help='Module list for D modular network.', default=None,
                         metavar='MODULE_D_LIST', type=str)
     parser.add_argument('--fmap_min', help='FMAP min.', metavar='FMAP_MIN',
