@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:27:09 AEST
+# --- Last Modified: Sat 15 Aug 2020 02:31:09 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -98,7 +98,7 @@ def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape):
         )
         d6 = tf.layers.conv2d_transpose(
             inputs=d5,
-            filters=output_shape[2],
+            filters=output_shape[1],
             kernel_size=4,
             strides=2,
             padding="same",
