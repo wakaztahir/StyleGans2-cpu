@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 14 Aug 2020 18:56:31 AEST
+# --- Last Modified: Sat 15 Aug 2020 01:52:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -59,4 +59,44 @@ def build_standard_conv_E_64(reals_in, name, scope_idx):
 
 
 def build_standard_conv_E_128(reals_in, name, scope_idx):
+    pass
+
+def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        d3 = tf.layers.conv2d_transpose(
+            inputs=d2_reshaped,
+            filters=64,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+        )
+
+        d4 = tf.layers.conv2d_transpose(
+            inputs=d3,
+            filters=32,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+        )
+
+        d5 = tf.layers.conv2d_transpose(
+            inputs=d4,
+            filters=32,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+        )
+        d6 = tf.layers.conv2d_transpose(
+            inputs=d5,
+            filters=output_shape[2],
+            kernel_size=4,
+            strides=2,
+            padding="same",
+        )
+    return d6
+
+def build_standard_conv_G_128(d2_reshaped, name, scope_idx, output_shape):
     pass

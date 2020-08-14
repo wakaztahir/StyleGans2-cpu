@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 00:44:26 AEST
+# --- Last Modified: Sat 15 Aug 2020 01:24:07 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -253,20 +253,20 @@ def training_loop_vae(
                         E=E_gpu, G=G_gpu, D=D_gpu, opt=G_opt,
                         training_set=training_set,
                         minibatch_size=minibatch_gpu_in,
-                        reals=reals_read, **G_loss_args)
+                        reals=reals_read, labels=labels_read, **G_loss_args)
                 with tf.name_scope('D_loss'):
                     D_loss = dnnlib.util.call_func_by_name(
                         E=E_gpu, D=D_gpu, opt=D_opt,
                         training_set=training_set,
                         minibatch_size=minibatch_gpu_in,
-                        reals=reals_read, **D_loss_args)
+                        reals=reals_read, labels=labels_read, **D_loss_args)
             else:
                 with tf.name_scope('G_loss'):
                     G_loss = dnnlib.util.call_func_by_name(
                         E=E_gpu, G=G_gpu, opt=G_opt,
                         training_set=training_set,
                         minibatch_size=minibatch_gpu_in,
-                        reals=reals_read, **G_loss_args)
+                        reals=reals_read, labels=labels_read, **G_loss_args)
 
             # Register gradients.
             EG_gpu_trainables = collections.OrderedDict(
