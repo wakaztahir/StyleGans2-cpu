@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:45:50 AEST
+# --- Last Modified: Sat 15 Aug 2020 03:48:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -252,6 +252,10 @@ def main():
                         default=1, type=float)
     parser.add_argument('--hy_gamma', help='Hyper-param for factor-vae.', metavar='HY_GAMMA',
                         default=0, type=float)
+    parser.add_argument('--G_lrate_base', help='G learning rate.', metavar='G_LRATE_BASE',
+                        default=0.002, type=float)
+    parser.add_argument('--D_lrate_base', help='D learning rate.', metavar='D_LRATE_BASE',
+                        default=0.002, type=float)
 
     args = parser.parse_args()
 
