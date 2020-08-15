@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 16:28:10 AEST
+# --- Last Modified: Sat 15 Aug 2020 16:58:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -94,7 +94,7 @@ def E_main_modular(
 def G_main_modular(
         latents_in,  # First input: Real images [minibatch, image_size].
         labels_in,  # Second input: Conditioning labels [minibatch, label_size].
-        input_shape=None,  # Latent code shape (no batch).
+        input_shape=None,  # Latent code shape.
         num_channels=3,  # Number of channels in images.
         resolution=64,  # Resolution of images.
         is_training=False,  # Network is under training? Enables and disables specific features.
@@ -154,7 +154,7 @@ def G_main_modular(
 # Factor-VAE main Discriminator.
 def D_factor_vae_modular(
         latents_in,  # First input: Real images [minibatch, image_size].
-        input_shape=None,  # Input image shape.
+        input_shape=None,  # Latent code shape.
         is_training=False,  # Network is under training? Enables and disables specific features.
         is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
         is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
@@ -178,6 +178,7 @@ def D_factor_vae_modular(
     # Validate arguments.
     assert not is_training or not is_validation
 
+    print('input_shape:', input_shape)
     # Primary inputs.
     latents_in.set_shape(input_shape)
     latents_in = tf.cast(latents_in, dtype)
