@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sun 19 Jul 2020 18:13:17 AEST
+# --- Last Modified: Sat 15 Aug 2020 16:39:09 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -28,12 +28,13 @@ from training import misc
 #----------------------------------------------------------------------------
 
 class TPL(metric_base.MetricBase):
-    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, **kwargs):
+    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, **kwargs):
         super().__init__(**kwargs)
         self.crop = crop
         self.Gs_overrides = Gs_overrides
         self.n_samples_per_dim = n_samples_per_dim
         self.n_traversals = n_traversals
+        self.no_mapping = no_mapping
 
     def _evaluate(self, Gs, Gs_kwargs, num_gpus, **kwargs):
         Gs_kwargs = dict(Gs_kwargs)
@@ -52,7 +53,10 @@ class TPL(metric_base.MetricBase):
         for gpu_idx in range(num_gpus):
             with tf.device('/gpu:%d' % gpu_idx):
                 Gs_clone = Gs.clone()
-                noise_vars = [var for name, var in Gs_clone.components.synthesis.vars.items() if name.startswith('noise')]
+                if self.no_mapping:
+                    noise_vars = [var for name, var in Gs_clone.vars.items() if name.startswith('noise')]
+                else:
+                    noise_vars = [var for name, var in Gs_clone.components.synthesis.vars.items() if name.startswith('noise')]
 
                 # Latent pairs placeholder
                 eval_dim = tf.placeholder(tf.int32)
@@ -79,11 +83,17 @@ class TPL(metric_base.MetricBase):
                 lat_e = tflib.lerp(lat_t0, lat_t1, lerp_t[:, tf.newaxis]) # [b, n_continuous]
 
                 labels = tf.reshape(self._get_random_labels_tf(minibatch_per_gpu), [minibatch_per_gpu, -1])
-                dlat_e = Gs_clone.components.mapping.get_output_for(lat_e, labels, **Gs_kwargs)
+                if self.no_mapping:
+                    dlat_e = lat_e
+                else:
+                    dlat_e = Gs_clone.components.mapping.get_output_for(lat_e, labels, **Gs_kwargs)
 
                 # Synthesize images.
                 with tf.control_dependencies([var.initializer for var in noise_vars]): # use same noise inputs for the entire minibatch
-                    images = Gs_clone.components.synthesis.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
+                    if self.no_mapping:
+                        images = Gs_clone.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
+                    else:
+                        images = Gs_clone.components.synthesis.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
                     # print('images.shape:', images.get_shape().as_list())
                     images = tf.cast(images, tf.float32)
 

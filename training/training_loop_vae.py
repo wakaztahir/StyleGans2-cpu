@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 03:08:51 AEST
+# --- Last Modified: Sat 15 Aug 2020 16:27:21 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -127,20 +127,20 @@ def training_loop_vae(
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
-                              input_shape=training_set.shape,
+                              input_shape=[None, training_set.shape],
                               **E_args)
             G = tflib.Network('G',
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
-                              input_shape=training_set.shape,
+                              input_shape=[None, G_args.latent_size],
                               **G_args)
             if use_D:
                 D = tflib.Network('D',
                                   num_channels=training_set.shape[0],
                                   resolution=training_set.shape[1],
                                   label_size=training_set.label_size,
-                                  input_shape=training_set.shape,
+                                  input_shape=[None, D_args.latent_size],
                                   **D_args)
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)

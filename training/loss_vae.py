@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 03:53:15 AEST
+# --- Last Modified: Sat 15 Aug 2020 15:56:57 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,6 +42,20 @@ def compute_gaussian_kl(z_mean, z_logvar):
         return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1])
 
 
+def shuffle_codes(z):
+    """Shuffles latent variables across the batch.
+    Args:
+        z: [batch_size, num_latent] representation.
+    Returns:
+        shuffled: [batch_size, num_latent] shuffled representation across the batch.
+    """
+    z_shuffle = []
+    for i in range(z.get_shape()[1]):
+        z_shuffle.append(tf.random_shuffle(z[:, i]))
+    shuffled = tf.stack(z_shuffle, 1, name="latent_shuffled")
+    return shuffled
+
+
 def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
              latent_type='normal', hy_beta=1):
     _ = opt, training_set
@@ -54,4 +68,35 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     loss = autosummary('Loss/beta_vae_loss', loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/beta_vae_elbo', elbo)
+    return loss
+
+def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
+                 latent_type='normal', hy_gamma=1):
+    _ = opt, training_set
+    means, log_var = E.get_output_for(reals, labels, is_training=True)
+    kl_loss = compute_gaussian_kl(means, log_var)
+    sampled = sample_from_latent_distribution(means, log_var)
+    reconstructions = G.get_output_for(sampled, labels, is_training=True)
+
+    logits, probs = D.get_output_for(sampled, is_training=True)
+    # tc = E[log(p_real)-log(p_fake)] = E[logit_real - logit_fake]
+    tc_loss = logits[:, 0] - logits[:, 1]
+
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions)
+    elbo = reconstruction_loss + kl_loss
+    elbo = autosummary('Loss/fac_vae_elbo', elbo)
+    loss = elbo + hy_gamma * tc_loss
+    loss = autosummary('Loss/fac_vae_loss', loss)
+    return loss
+
+def factor_vae_D(E, D, opt, training_set, minibatch_size, reals, labels,
+                 latent_type='normal'):
+    _ = opt, training_set
+    means, log_var = E.get_output_for(reals, labels, is_training=True)
+    sampled = sample_from_latent_distribution(means, log_var)
+    shuffled = shuffle_codes(sampled)
+    logits, probs = D.get_output_for(sampled, is_training=True)
+    _, probs_shuffled = D.get_output_for(shuffled, is_training=True)
+    loss = 0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1])
+    loss = autosummary('Loss/fac_vae_discr_loss', loss)
     return loss

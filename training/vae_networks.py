@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 02:27:55 AEST
+# --- Last Modified: Sat 15 Aug 2020 16:28:10 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,6 +26,8 @@ from training.vae_standard_networks import build_standard_conv_E_64
 from training.vae_standard_networks import build_standard_conv_E_128
 from training.vae_standard_networks import build_standard_conv_G_64
 from training.vae_standard_networks import build_standard_conv_G_128
+from training.vae_standard_networks import build_standard_fc_D_64
+from training.vae_standard_networks import build_standard_fc_D_128
 
 #----------------------------------------------------------------------------
 # VAE main Encoder.
@@ -57,7 +59,7 @@ def E_main_modular(
     assert not is_training or not is_validation
 
     # Primary inputs.
-    reals_in.set_shape([None]+input_shape)
+    reals_in.set_shape(input_shape)
     reals_in = tf.cast(reals_in, dtype)
     labels_in.set_shape([None, label_size])
     labels_in = tf.cast(labels_in, dtype)
@@ -92,7 +94,9 @@ def E_main_modular(
 def G_main_modular(
         latents_in,  # First input: Real images [minibatch, image_size].
         labels_in,  # Second input: Conditioning labels [minibatch, label_size].
-        input_shape=None,  # Input image shape.
+        input_shape=None,  # Latent code shape (no batch).
+        num_channels=3,  # Number of channels in images.
+        resolution=64,  # Resolution of images.
         is_training=False,  # Network is under training? Enables and disables specific features.
         is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
         is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
@@ -117,7 +121,7 @@ def G_main_modular(
     assert not is_training or not is_validation
 
     # Primary inputs.
-    latents_in.set_shape([None]+[latent_size])
+    latents_in.set_shape(input_shape)
     latents_in = tf.cast(latents_in, dtype)
     labels_in.set_shape([None, label_size])
     labels_in = tf.cast(labels_in, dtype)
@@ -133,11 +137,11 @@ def G_main_modular(
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
-                                         output_shape=input_shape)
+                                         output_shape=[num_channels, resolution, resolution])
             break
         elif k == 'Standard_G_128':
             x = build_standard_conv_G_128(d2_reshaped=x, name=k, scope_idx=scope_idx,
-                                          output_shape=input_shape)
+                                          output_shape=[num_channels, resolution, resolution])
             break
         else:
             raise ValueError('Not supported module key:', k)
@@ -145,3 +149,53 @@ def G_main_modular(
     # Return requested outputs.
     x = tf.identity(x, name='fake_x')
     return x
+
+#----------------------------------------------------------------------------
+# Factor-VAE main Discriminator.
+def D_factor_vae_modular(
+        latents_in,  # First input: Real images [minibatch, image_size].
+        input_shape=None,  # Input image shape.
+        is_training=False,  # Network is under training? Enables and disables specific features.
+        is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
+        is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
+        dtype='float32',  # Data type to use for activations and outputs.
+        fmap_min=16,
+        fmap_max=512,
+        fmap_decay=0.15,
+        latent_size=10,
+        label_size=0,
+        module_D_list=None,
+        nf_scale=1,
+        fmap_base=8,
+        **kwargs):  # Arguments for sub-networks (mapping and synthesis).
+    '''
+    Modularized Factor-VAE discriminator.
+    '''
+
+    def nf(stage):
+        return np.clip(int(fmap_base / (2.0**(stage * fmap_decay))), fmap_min, fmap_max)
+
+    # Validate arguments.
+    assert not is_training or not is_validation
+
+    # Primary inputs.
+    latents_in.set_shape(input_shape)
+    latents_in = tf.cast(latents_in, dtype)
+
+    # Discriminator network.
+    key_ls, size_ls, count_dlatent_size = split_module_names(module_D_list)
+    x = latents_in
+    for scope_idx, k in enumerate(key_ls):
+        if k == 'Standard_D_64':
+            logits, probs = build_standard_fc_D_64(latents=x, name=k, scope_idx=scope_idx)
+            break
+        elif k == 'Standard_D_128':
+            logits, probs = build_standard_fc_D_128(latents=x, name=k, scope_idx=scope_idx)
+            break
+        else:
+            raise ValueError('Not supported module key:', k)
+
+    # Return requested outputs.
+    logits = tf.identity(logits, name='discrim_logits')
+    probs = tf.identity(probs, name='discrim_probs')
+    return logits, probs
