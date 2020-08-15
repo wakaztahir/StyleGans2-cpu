@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sat 15 Aug 2020 16:58:31 AEST
+# --- Last Modified: Sat 15 Aug 2020 17:02:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -178,7 +178,6 @@ def D_factor_vae_modular(
     # Validate arguments.
     assert not is_training or not is_validation
 
-    print('input_shape:', input_shape)
     # Primary inputs.
     latents_in.set_shape(input_shape)
     latents_in = tf.cast(latents_in, dtype)
