@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 18:32:13 AEST
+# --- Last Modified: Sat 15 Aug 2020 21:17:20 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,11 +28,22 @@ def sample_from_latent_distribution(z_mean, z_logvar):
                   name="sampled_latent_variable")
 
 
-def make_reconstruction_loss(true_images, reconstructed_images):
+def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_loss'):
     """Wrapper that creates reconstruction loss."""
     with tf.variable_scope("reconstruction_loss"):
-        per_sample_loss = tf.reduce_sum(tf.square(
-            true_images - reconstructed_images), [1, 2, 3])
+        if recons_type == 'l2_loss':
+            per_sample_loss = tf.reduce_sum(tf.square(
+                true_images - reconstructed_images), [1, 2, 3])
+        else:
+            flattened_dim = np.prod(true_images.get_shape().as_list()[1:])
+            reconstructed_images = tf.reshape(
+                reconstructed_images, shape=[-1, flattened_dim])
+            true_images = tf.reshape(true_images, shape=[-1, flattened_dim])
+            true_images = (true_images + 1.) / 2.
+            loss = tf.reduce_sum(
+                tf.nn.sigmoid_cross_entropy_with_logits(
+                    logits=reconstructed_images, labels=true_images),
+                axis=1)
     return per_sample_loss
 
 
@@ -64,7 +75,8 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions)
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+                                                   recons_type='bernoulli_loss')
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
     loss = reconstruction_loss + hy_beta * kl_loss
@@ -86,7 +98,8 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     # tc = E[log(p_real)-log(p_fake)] = E[logit_real - logit_fake]
     tc_loss = logits[:, 0] - logits[:, 1]
 
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions)
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+                                                   recons_type='bernoulli_loss')
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/fac_vae_elbo', elbo)
