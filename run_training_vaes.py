@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sat 15 Aug 2020 17:20:31 AEST
+# --- Last Modified: Sat 15 Aug 2020 19:08:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -93,9 +93,9 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
                      module_D_list=module_D_list,
                      nf_scale=D_nf_scale,
                      fmap_base=2 << D_fmap_base)  # Options for generator network.
-        G_opt = EasyDict(beta1=0.0, beta2=0.99,
+        G_opt = EasyDict(beta1=0.9, beta2=0.999,
                          epsilon=1e-8)  # Options for generator optimizer.
-        D_opt = EasyDict(beta1=0.0, beta2=0.99,
+        D_opt = EasyDict(beta1=0.5, beta2=0.9,
                          epsilon=1e-8)  # Options for discriminator optimizer.
         desc = 'factor_vae_net_modular'
     else:
