@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 15:56:57 AEST
+# --- Last Modified: Sat 15 Aug 2020 18:04:52 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -97,6 +97,6 @@ def factor_vae_D(E, D, opt, training_set, minibatch_size, reals, labels,
     shuffled = shuffle_codes(sampled)
     logits, probs = D.get_output_for(sampled, is_training=True)
     _, probs_shuffled = D.get_output_for(shuffled, is_training=True)
-    loss = 0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1])
+    loss = -(0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1]))
     loss = autosummary('Loss/fac_vae_discr_loss', loss)
     return loss
