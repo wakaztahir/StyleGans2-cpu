@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sat 15 Aug 2020 17:29:58 AEST
+# --- Last Modified: Sat 15 Aug 2020 17:33:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -92,7 +92,7 @@ class TPL(metric_base.MetricBase):
                 # Synthesize images.
                 with tf.control_dependencies([var.initializer for var in noise_vars]): # use same noise inputs for the entire minibatch
                     if self.no_mapping:
-                        images = Gs_clone.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
+                        images = Gs_clone.get_output_for(dlat_e, labels, randomize_noise=False, **Gs_kwargs)
                     else:
                         images = Gs_clone.components.synthesis.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
                     # print('images.shape:', images.get_shape().as_list())
