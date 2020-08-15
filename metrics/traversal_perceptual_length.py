@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sat 15 Aug 2020 16:39:09 AEST
+# --- Last Modified: Sat 15 Aug 2020 17:29:58 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -40,7 +40,8 @@ class TPL(metric_base.MetricBase):
         Gs_kwargs = dict(Gs_kwargs)
         Gs_kwargs.update(self.Gs_overrides)
         minibatch_per_gpu = (self.n_samples_per_dim - 1) // num_gpus + 1
-        Gs = Gs.convert(new_func_name='training.vc_networks2.G_main_vc2')
+        if not self.no_mapping:
+            Gs = Gs.convert(new_func_name='training.vc_networks2.G_main_vc2')
 
         # Construct TensorFlow graph.
         n_continuous = Gs.input_shape[1]
