@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 18:04:52 AEST
+# --- Last Modified: Sat 15 Aug 2020 18:32:13 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -61,9 +61,12 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     _ = opt, training_set
     means, log_var = E.get_output_for(reals, labels, is_training=True)
     kl_loss = compute_gaussian_kl(means, log_var)
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
+
     loss = reconstruction_loss + hy_beta * kl_loss
     loss = autosummary('Loss/beta_vae_loss', loss)
     elbo = reconstruction_loss + kl_loss
@@ -75,6 +78,7 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     _ = opt, training_set
     means, log_var = E.get_output_for(reals, labels, is_training=True)
     kl_loss = compute_gaussian_kl(means, log_var)
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
 
@@ -83,6 +87,7 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     tc_loss = logits[:, 0] - logits[:, 1]
 
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/fac_vae_elbo', elbo)
     loss = elbo + hy_gamma * tc_loss
