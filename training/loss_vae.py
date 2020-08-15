@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 21:17:20 AEST
+# --- Last Modified: Sat 15 Aug 2020 21:21:46 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,7 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
     """Wrapper that creates reconstruction loss."""
     with tf.variable_scope("reconstruction_loss"):
         if recons_type == 'l2_loss':
-            per_sample_loss = tf.reduce_sum(tf.square(
+            loss = tf.reduce_sum(tf.square(
                 true_images - reconstructed_images), [1, 2, 3])
         else:
             flattened_dim = np.prod(true_images.get_shape().as_list()[1:])
@@ -44,7 +44,7 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
                 tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=reconstructed_images, labels=true_images),
                 axis=1)
-    return per_sample_loss
+    return loss
 
 
 def compute_gaussian_kl(z_mean, z_logvar):
