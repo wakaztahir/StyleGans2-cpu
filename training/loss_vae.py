@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sun 16 Aug 2020 01:49:14 AEST
+# --- Last Modified: Sun 16 Aug 2020 01:50:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -79,7 +79,7 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     sampled = sample_from_latent_distribution(means, log_var)
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
-                                                   recons_type='bernoulli_loss')
+                                                   recons_type='l2_loss') # recons_type='bernoulli_loss')
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
     loss = reconstruction_loss + hy_beta * kl_loss
@@ -102,7 +102,7 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     tc_loss = logits[:, 0] - logits[:, 1]
 
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
-                                                   recons_type='bernoulli_loss')
+                                                   recons_type='l2_loss') # recons_type='bernoulli_loss')
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/fac_vae_elbo', elbo)
