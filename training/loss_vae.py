@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sun 16 Aug 2020 01:37:42 AEST
+# --- Last Modified: Sun 16 Aug 2020 01:49:14 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,11 +42,7 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
                 reconstructed_images, shape=[-1, flattened_dim])
             true_images = tf.reshape(true_images, shape=[-1, flattened_dim])
             true_images = (true_images + 1.) / 2.
-            # loss = tf.reduce_sum(
-                # tf.nn.sigmoid_cross_entropy_with_logits(
-                    # logits=reconstructed_images, labels=true_images),
-                # axis=1)
-            loss = tf.reduce_mean(
+            loss = tf.reduce_sum(
                 tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=reconstructed_images, labels=true_images),
                 axis=1)
