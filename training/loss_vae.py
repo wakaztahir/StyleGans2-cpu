@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sat 15 Aug 2020 21:21:46 AEST
+# --- Last Modified: Sun 16 Aug 2020 01:37:42 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,9 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
     """Wrapper that creates reconstruction loss."""
     with tf.variable_scope("reconstruction_loss"):
         if recons_type == 'l2_loss':
-            loss = tf.reduce_sum(tf.square(
+            # loss = tf.reduce_sum(tf.square(
+                # true_images - reconstructed_images), [1, 2, 3])
+            loss = tf.reduce_mean(tf.square(
                 true_images - reconstructed_images), [1, 2, 3])
         else:
             flattened_dim = np.prod(true_images.get_shape().as_list()[1:])
@@ -40,7 +42,11 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
                 reconstructed_images, shape=[-1, flattened_dim])
             true_images = tf.reshape(true_images, shape=[-1, flattened_dim])
             true_images = (true_images + 1.) / 2.
-            loss = tf.reduce_sum(
+            # loss = tf.reduce_sum(
+                # tf.nn.sigmoid_cross_entropy_with_logits(
+                    # logits=reconstructed_images, labels=true_images),
+                # axis=1)
+            loss = tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=reconstructed_images, labels=true_images),
                 axis=1)
@@ -50,7 +56,8 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
 def compute_gaussian_kl(z_mean, z_logvar):
     """Compute KL divergence between input Gaussian and Standard Normal."""
     with tf.variable_scope("kl_loss"):
-        return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1])
+        return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) -
+                                   z_logvar - 1, [1])
 
 
 def shuffle_codes(z):
