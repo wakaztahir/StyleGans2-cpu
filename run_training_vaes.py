@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sat 15 Aug 2020 03:48:39 AEST
+# --- Last Modified: Sat 15 Aug 2020 17:01:11 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -57,6 +57,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         key_D_ls, size_D_ls, count_dlatent_D_size = split_module_names(
             module_D_list)
 
+    print('count_dlatent_D_size:', count_dlatent_D_size)
     D = D_opt = D_loss = None
     if model_type == 'beta_vae':  # Beta-VAE
         E = EasyDict(func_name='training.vae_networks.E_main_modular',
