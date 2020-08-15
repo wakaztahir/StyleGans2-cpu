@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sat 15 Aug 2020 17:02:31 AEST
+# --- Last Modified: Sat 15 Aug 2020 17:20:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -116,7 +116,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
     sched = EasyDict()  # Options for TrainingSchedule.
     grid = EasyDict(size='1080p', layout='random')  # Options for setup_snapshot_image_grid().
     sc = dnnlib.SubmitConfig()  # Options for dnnlib.submit_run().
-    tf_config = {'rnd.np_random_seed': random_seed}  # Options for tflib.init_tf().
+    tf_config = {'rnd.np_random_seed': random_seed, 'allow_soft_placement': True}  # Options for tflib.init_tf().
 
     train.data_dir = data_dir
     train.total_kimg = total_kimg
