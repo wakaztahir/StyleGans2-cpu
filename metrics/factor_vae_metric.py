@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 17 Aug 2020 02:42:34 AEST
+# --- Last Modified: Mon 17 Aug 2020 02:45:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -107,6 +107,8 @@ class FactorVAEMetric(metric_base.MetricBase):
             representations_ls.append(representations)
         representations = np.concatenate(tuple(representations_ls), axis=0)
         # representations = np.transpose(representations)
+        print('representations.shape[0]:', representations.shape[0])
+        print('batch_size:', batch_size)
         assert representations.shape[0] == batch_size
         return np.var(representations, axis=0, ddof=1)
 
