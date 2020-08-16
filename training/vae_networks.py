@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 02:32:30 AEST
+# --- Last Modified: Mon 17 Aug 2020 02:38:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -33,7 +33,7 @@ from training.vae_standard_networks import build_standard_fc_D_128
 # VAE main Encoder.
 def E_main_modular(
         reals_in,  # First input: Real images [minibatch, image_size].
-        labels_in=None,  # Second input: Conditioning labels [minibatch, label_size].
+        labels_in,  # Second input: Conditioning labels [minibatch, label_size].
         input_shape=None,  # Input image shape.
         is_training=False,  # Network is under training? Enables and disables specific features.
         is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
@@ -61,9 +61,8 @@ def E_main_modular(
     # Primary inputs.
     reals_in.set_shape(input_shape)
     reals_in = tf.cast(reals_in, dtype)
-    if labels_in is not None:
-        labels_in.set_shape([None, label_size])
-        labels_in = tf.cast(labels_in, dtype)
+    labels_in.set_shape([None, label_size])
+    labels_in = tf.cast(labels_in, dtype)
 
     # Encoder network.
     key_ls, size_ls, count_dlatent_size = split_module_names(module_E_list)
@@ -94,7 +93,7 @@ def E_main_modular(
 # VAE main Generator.
 def G_main_modular(
         latents_in,  # First input: Real images [minibatch, image_size].
-        labels_in=None,  # Second input: Conditioning labels [minibatch, label_size].
+        labels_in,  # Second input: Conditioning labels [minibatch, label_size].
         input_shape=None,  # Latent code shape.
         num_channels=3,  # Number of channels in images.
         resolution=64,  # Resolution of images.
@@ -124,9 +123,8 @@ def G_main_modular(
     # Primary inputs.
     latents_in.set_shape(input_shape)
     latents_in = tf.cast(latents_in, dtype)
-    if labels_in is not None:
-        labels_in.set_shape([None, label_size])
-        labels_in = tf.cast(labels_in, dtype)
+    labels_in.set_shape([None, label_size])
+    labels_in = tf.cast(labels_in, dtype)
 
     # Pre-Conv layers.
     d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu)

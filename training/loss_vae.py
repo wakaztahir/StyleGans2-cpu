@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 17 Aug 2020 02:35:59 AEST
+# --- Last Modified: Mon 17 Aug 2020 02:38:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -77,7 +77,7 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = G.get_output_for(sampled, labels_in=labels, is_training=True)
+    reconstructions = G.get_output_for(sampled, labels, is_training=True)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
                                                    recons_type='bernoulli_loss')
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
@@ -95,7 +95,7 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = G.get_output_for(sampled, labels_in=labels, is_training=True)
+    reconstructions = G.get_output_for(sampled, labels, is_training=True)
 
     logits, probs = D.get_output_for(sampled, is_training=True)
     # tc = E[log(p_real)-log(p_fake)] = E[logit_real - logit_fake]

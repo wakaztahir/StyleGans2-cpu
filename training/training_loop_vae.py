@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 02:35:34 AEST
+# --- Last Modified: Mon 17 Aug 2020 02:39:16 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -177,7 +177,7 @@ def training_loop_vae(
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
     grid_fakes = G.run(grid_latents,
-                       labels_in=grid_labels,
+                       grid_labels,
                        is_validation=True,
                        minibatch_size=sched.minibatch_gpu,
                        randomize_noise=True)
@@ -409,7 +409,7 @@ def training_loop_vae(
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
                 grid_fakes = G.run(grid_latents,
-                                   labels_in=grid_labels,
+                                   grid_labels,
                                    is_validation=True,
                                    minibatch_size=sched.minibatch_gpu,
                                    randomize_noise=True)
