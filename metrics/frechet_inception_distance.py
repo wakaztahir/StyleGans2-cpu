@@ -37,6 +37,8 @@ class FID(metric_base.MetricBase):
             for idx, images in enumerate(self._iterate_reals(minibatch_size=minibatch_size)):
                 begin = idx * minibatch_size
                 end = min(begin + minibatch_size, self.num_images)
+                if images.get_shape().as_list()[1] == 1:
+                    images = tf.tile(images, [1, 3, 1, 1])
                 activations[begin:end] = inception.run(images[:end-begin], num_gpus=num_gpus, assume_frozen=True)
                 if end == self.num_images:
                     break
