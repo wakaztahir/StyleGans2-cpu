@@ -56,6 +56,8 @@ class FID(metric_base.MetricBase):
                 images = Gs_clone.get_output_for(latents, labels, **Gs_kwargs)
                 # images, _ = Gs_clone.get_output_for(latents, labels, **Gs_kwargs)
                 images = tflib.convert_images_to_uint8(images)
+                if images.get_shape().as_list()[1] == 1:
+                    images = tf.tile(images, [1, 3, 1, 1])
                 result_expr.append(inception_clone.get_output_for(images))
 
         # Calculate statistics for fakes.
