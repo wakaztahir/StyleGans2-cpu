@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 17 Aug 2020 02:45:51 AEST
+# --- Last Modified: Mon 17 Aug 2020 02:49:42 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -102,7 +102,7 @@ class FactorVAEMetric(metric_base.MetricBase):
             # representations = utils.obtain_representation(observations,
                                                           # representation_model,
                                                           # eval_batch_size)
-            representations = representation_model.run(observations,
+            representations, _ = representation_model.run(observations,
                                                        np.zeros([observations.shape[0], 0]), is_validation=True)
             representations_ls.append(representations)
         representations = np.concatenate(tuple(representations_ls), axis=0)
@@ -138,7 +138,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         observations = self.ground_truth_data.sample_observations_from_factors(
             factors, random_state)
         # pdb.set_trace()
-        representations = representation_model.run(observations,
+        representations, _ = representation_model.run(observations,
                                                    np.zeros([observations.shape[0], 0]), is_validation=True)
         local_variances = np.var(representations, axis=0, ddof=1)
         argmin = np.argmin(local_variances[active_dims] /
