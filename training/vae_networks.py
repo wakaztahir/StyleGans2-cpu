@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 15:44:14 AEST
+# --- Last Modified: Mon 17 Aug 2020 16:06:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -69,10 +69,12 @@ def E_main_modular(
     x = reals_in
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_E_64':
-            x = build_standard_conv_E_64(reals_in=x, name=k, scope_idx=scope_idx)
+            x = build_standard_conv_E_64(reals_in=x, name=k, scope_idx=scope_idx,
+                                         is_validation=is_validation)
             break
         elif k == 'Standard_E_128':
-            x = build_standard_conv_E_128(reals_in=x, name=k, scope_idx=scope_idx)
+            x = build_standard_conv_E_128(reals_in=x, name=k, scope_idx=scope_idx,
+                                          is_validation=is_validation)
             break
         else:
             raise ValueError('Not supported module key:', k)
@@ -87,7 +89,10 @@ def E_main_modular(
     # Return requested outputs.
     means = tf.identity(means, name='means')
     log_var = tf.identity(log_var, name='log_var')
-    return means, log_var
+    if is_validation:
+        return means
+    else:
+        return means, log_var
 
 #----------------------------------------------------------------------------
 # VAE main Generator.

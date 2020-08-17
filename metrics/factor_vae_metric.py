@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 17 Aug 2020 02:49:42 AEST
+# --- Last Modified: Mon 17 Aug 2020 16:11:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -27,7 +27,7 @@ from disentanglement_data_helper import DspritesDataHelper, Shape3DDataHelper
 
 class FactorVAEMetric(metric_base.MetricBase):
     def __init__(self, dataset_dir, dataset_name, use_latents, batch_size, num_train,
-                 num_eval, num_variance_estimate, **kwargs):
+                 num_eval, num_variance_estimate, has_label_place=False, **kwargs):
         super().__init__(**kwargs)
         if dataset_name == 'Dsprites':
             self.ground_truth_data = DspritesDataHelper(dataset_dir, use_latents)
@@ -39,6 +39,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         self.num_train = num_train
         self.num_eval = num_eval
         self.num_variance_estimate = num_variance_estimate
+        self.has_label_place = has_label_place
 
     def _evaluate(self, I_net, **kwargs):
         representation_model = I_net
@@ -102,13 +103,14 @@ class FactorVAEMetric(metric_base.MetricBase):
             # representations = utils.obtain_representation(observations,
                                                           # representation_model,
                                                           # eval_batch_size)
-            representations, _ = representation_model.run(observations,
-                                                       np.zeros([observations.shape[0], 0]), is_validation=True)
+            if self.has_label_place:
+                representations = representation_model.run(observations,
+                                                           np.zeros([observations.shape[0], 0]), is_validation=True)
+            else:
+                representations = representation_model.run(observations, is_validation=True)
             representations_ls.append(representations)
         representations = np.concatenate(tuple(representations_ls), axis=0)
         # representations = np.transpose(representations)
-        print('representations.shape[0]:', representations.shape[0])
-        print('batch_size:', batch_size)
         assert representations.shape[0] == batch_size
         return np.var(representations, axis=0, ddof=1)
 
@@ -138,8 +140,11 @@ class FactorVAEMetric(metric_base.MetricBase):
         observations = self.ground_truth_data.sample_observations_from_factors(
             factors, random_state)
         # pdb.set_trace()
-        representations, _ = representation_model.run(observations,
-                                                   np.zeros([observations.shape[0], 0]), is_validation=True)
+        if self.has_label_place:
+            representations = representation_model.run(observations,
+                                                       np.zeros([observations.shape[0], 0]), is_validation=True)
+        else:
+            representations = representation_model.run(observations, is_validation=True)
         local_variances = np.var(representations, axis=0, ddof=1)
         argmin = np.argmin(local_variances[active_dims] /
                            global_variances[active_dims])

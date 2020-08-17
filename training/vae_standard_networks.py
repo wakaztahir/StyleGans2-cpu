@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 15:44:49 AEST
+# --- Last Modified: Mon 17 Aug 2020 16:06:14 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -17,7 +17,7 @@ VAE standard networks.
 import tensorflow as tf
 
 
-def build_standard_conv_E_64(reals_in, name, scope_idx):
+def build_standard_conv_E_64(reals_in, name, scope_idx, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         e1 = tf.layers.conv2d(
             inputs=reals_in,
@@ -62,10 +62,10 @@ def build_standard_conv_E_64(reals_in, name, scope_idx):
     return e4
 
 
-def build_standard_conv_E_128(reals_in, name, scope_idx):
+def build_standard_conv_E_128(reals_in, name, scope_idx, is_validation=False):
     pass
 
-def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_validation):
+def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         d3 = tf.layers.conv2d_transpose(
             inputs=d2_reshaped,
@@ -108,7 +108,7 @@ def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_vali
             d6 = tf.nn.sigmoid(d6)
     return d6
 
-def build_standard_conv_G_128(d2_reshaped, name, scope_idx, output_shape, is_validation):
+def build_standard_conv_G_128(d2_reshaped, name, scope_idx, output_shape, is_validation=False):
     pass
 
 def build_standard_fc_D_64(latents, name, scope_idx):
