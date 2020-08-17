@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 02:38:56 AEST
+# --- Last Modified: Mon 17 Aug 2020 15:44:14 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -137,11 +137,13 @@ def G_main_modular(
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
-                                         output_shape=[num_channels, resolution, resolution])
+                                         output_shape=[num_channels, resolution, resolution],
+                                         is_validation=is_validation)
             break
         elif k == 'Standard_G_128':
             x = build_standard_conv_G_128(d2_reshaped=x, name=k, scope_idx=scope_idx,
-                                          output_shape=[num_channels, resolution, resolution])
+                                          output_shape=[num_channels, resolution, resolution],
+                                          is_validation=is_validation)
             break
         else:
             raise ValueError('Not supported module key:', k)
