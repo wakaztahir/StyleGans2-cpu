@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sat 15 Aug 2020 17:33:26 AEST
+# --- Last Modified: Mon 17 Aug 2020 14:39:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -28,13 +28,14 @@ from training import misc
 #----------------------------------------------------------------------------
 
 class TPL(metric_base.MetricBase):
-    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, **kwargs):
+    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, active_thresh=0.1, **kwargs):
         super().__init__(**kwargs)
         self.crop = crop
         self.Gs_overrides = Gs_overrides
         self.n_samples_per_dim = n_samples_per_dim
         self.n_traversals = n_traversals
         self.no_mapping = no_mapping
+        self.active_thresh = active_thresh
 
     def _evaluate(self, Gs, Gs_kwargs, num_gpus, **kwargs):
         Gs_kwargs = dict(Gs_kwargs)
@@ -153,7 +154,7 @@ class TPL(metric_base.MetricBase):
         avg_distance_per_dim = np.mean(traversals_dim, axis=0)
         std_distance_per_dim = np.std(traversals_dim, axis=0)
         # pdb.set_trace()
-        active_mask = np.array(avg_distance_per_dim) > 0.1
+        active_mask = np.array(avg_distance_per_dim) > self.active_thresh
         active_distances = np.extract(active_mask, avg_distance_per_dim)
         active_stds = np.extract(active_mask, std_distance_per_dim)
         sum_distance = np.sum(active_distances)
