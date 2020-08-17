@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 17 Aug 2020 16:11:51 AEST
+# --- Last Modified: Mon 17 Aug 2020 22:39:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -42,7 +42,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         self.has_label_place = has_label_place
 
     def _evaluate(self, I_net, **kwargs):
-        representation_model = I_net
+        representation_model = I_net.clone(is_validation=True)
         random_state = np.random.RandomState(123)
         global_variances = self._compute_variances(representation_model,
                                                    self.num_variance_estimate, random_state)
