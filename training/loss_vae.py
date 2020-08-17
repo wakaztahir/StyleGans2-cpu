@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 17 Aug 2020 02:38:31 AEST
+# --- Last Modified: Mon 17 Aug 2020 15:12:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -71,7 +71,7 @@ def shuffle_codes(z):
 
 
 def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
-             latent_type='normal', hy_beta=1):
+             latent_type='normal', hy_beta=1, recons_type='bernoulli_loss'):
     _ = opt, training_set
     means, log_var = E.get_output_for(reals, labels, is_training=True)
     kl_loss = compute_gaussian_kl(means, log_var)
@@ -79,7 +79,7 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     sampled = sample_from_latent_distribution(means, log_var)
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
-                                                   recons_type='bernoulli_loss')
+                                                   recons_type=recons_type)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
     loss = reconstruction_loss + hy_beta * kl_loss
@@ -89,7 +89,7 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     return loss
 
 def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
-                 latent_type='normal', hy_gamma=1):
+                 latent_type='normal', hy_gamma=1, recons_type='bernoulli_loss'):
     _ = opt, training_set
     means, log_var = E.get_output_for(reals, labels, is_training=True)
     kl_loss = compute_gaussian_kl(means, log_var)
@@ -102,7 +102,7 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     tc_loss = logits[:, 0] - logits[:, 1]
 
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
-                                                   recons_type='bernoulli_loss')
+                                                   recons_type=recons_type)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/fac_vae_elbo', elbo)

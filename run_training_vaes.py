@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sun 16 Aug 2020 02:25:45 AEST
+# --- Last Modified: Mon 17 Aug 2020 15:12:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,7 +39,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         D_fmap_base=9, module_D_list=None, D_nf_scale=4,
         fmap_decay=0.15, fmap_min=16, fmap_max=512,
         n_samples_per=10, arch='resnet', topk_dims_to_show=20,
-        hy_beta=1, hy_gamma=0, G_lrate_base=0.002, D_lrate_base=None):
+        hy_beta=1, hy_gamma=0, G_lrate_base=0.002, D_lrate_base=None,
+        drange_net=[-1, 1], recons_type='bernoulli_loss'):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
@@ -104,11 +105,11 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
     if model_type == 'beta_vae':  # Beta-VAE
         G_loss = EasyDict(
             func_name='training.loss_vae.beta_vae',
-            latent_type=latent_type, hy_beta=hy_beta)  # Options for generator loss.
+            latent_type=latent_type, hy_beta=hy_beta, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'factor_vae':  # Factor-VAE
         G_loss = EasyDict(
             func_name='training.loss_vae.factor_vae_G',
-            latent_type=latent_type, hy_gamma=hy_gamma)  # Options for generator loss.
+            latent_type=latent_type, hy_gamma=hy_gamma, recons_type=recons_type)  # Options for generator loss.
         D_loss = EasyDict(
             func_name='training.loss_vae.factor_vae_D',
             latent_type=latent_type)  # Options for discriminator loss.
@@ -143,7 +144,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         G_loss_args=G_loss, D_loss_args=D_loss,
         traversal_grid=True)
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid,
-                  n_continuous=count_dlatent_G_size,
+                  n_continuous=count_dlatent_G_size, drange_net=drange_net,
                   metric_arg_list=metrics, tf_config=tf_config, resume_pkl=resume_pkl,
                   n_samples_per=n_samples_per, topk_dims_to_show=topk_dims_to_show)
     kwargs.submit_config = copy.deepcopy(sc)
@@ -256,6 +257,11 @@ def main():
                         default=0.002, type=float)
     parser.add_argument('--D_lrate_base', help='D learning rate.', metavar='D_LRATE_BASE',
                         default=0.002, type=float)
+    parser.add_argument('--drange_net', help='Dynamic range used in networks.',
+                        default=[-1, 1], metavar='DRANGE_NET', type=_str_to_list_of_int)
+    parser.add_argument('--recons_type', help='Reconstruction loss type.',
+                        default='bernoulli_loss', metavar='RECONS_TYPE', type=str,
+                        choices=['l2_loss', 'bernoulli_loss'])
 
     args = parser.parse_args()
 
