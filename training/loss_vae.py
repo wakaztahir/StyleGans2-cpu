@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 17 Aug 2020 15:17:02 AEST
+# --- Last Modified: Mon 17 Aug 2020 22:17:23 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -52,8 +52,12 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
 def compute_gaussian_kl(z_mean, z_logvar):
     """Compute KL divergence between input Gaussian and Standard Normal."""
     with tf.variable_scope("kl_loss"):
-        return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) -
-                                   z_logvar - 1, [1])
+        # return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) -
+        # z_logvar - 1, [1])
+        return tf.reduce_mean(
+            0.5 * tf.reduce_sum(
+                tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1]),
+            name="kl_loss")
 
 
 def shuffle_codes(z):
@@ -80,6 +84,7 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
                                                    recons_type=recons_type)
+    reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
     loss = reconstruction_loss + hy_beta * kl_loss
@@ -103,6 +108,7 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
 
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
                                                    recons_type=recons_type)
+    reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/fac_vae_elbo', elbo)
@@ -118,6 +124,10 @@ def factor_vae_D(E, D, opt, training_set, minibatch_size, reals, labels,
     shuffled = shuffle_codes(sampled)
     logits, probs = D.get_output_for(sampled, is_training=True)
     _, probs_shuffled = D.get_output_for(shuffled, is_training=True)
-    loss = -(0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1]))
+    # loss = -(0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1]))
+    loss = -tf.add(
+        0.5 * tf.reduce_mean(tf.log(probs[:, 0])),
+        0.5 * tf.reduce_mean(tf.log(probs_shuffled[:, 1])),
+        name="discriminator_loss")
     loss = autosummary('Loss/fac_vae_discr_loss', loss)
     return loss

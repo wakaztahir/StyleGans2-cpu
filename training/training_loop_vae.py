@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 15:45:14 AEST
+# --- Last Modified: Mon 17 Aug 2020 22:17:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -275,10 +275,14 @@ def training_loop_vae(
             EG_gpu_trainables = collections.OrderedDict(
                     list(E_gpu.trainables.items()) +
                     list(G_gpu.trainables.items()))
-            G_opt.register_gradients(tf.reduce_mean(G_loss),
+            # G_opt.register_gradients(tf.reduce_mean(G_loss),
+                                     # EG_gpu_trainables)
+            G_opt.register_gradients(G_loss,
                                      EG_gpu_trainables)
             if use_D:
-                D_opt.register_gradients(tf.reduce_mean(D_loss),
+                # D_opt.register_gradients(tf.reduce_mean(D_loss),
+                                         # D_gpu.trainables)
+                D_opt.register_gradients(D_loss,
                                          D_gpu.trainables)
 
     # Setup training ops.
