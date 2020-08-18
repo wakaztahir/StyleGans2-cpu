@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 17 Aug 2020 15:12:04 AEST
+# --- Last Modified: Wed 19 Aug 2020 03:09:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -75,7 +75,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         G_opt = EasyDict(beta1=0.9, beta2=0.999,
                          epsilon=1e-8)  # Options for generator optimizer.
         desc = 'beta_vae_net_modular'
-    elif model_type == 'factor_vae':  # Factor-VAE
+    elif model_type == 'factor_vae' or model_type == 'factor_sindis_vae':  # Factor-VAE
         E = EasyDict(func_name='training.vae_networks.E_main_modular',
                      fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
                      latent_size=count_dlatent_E_size,
@@ -107,11 +107,14 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
             func_name='training.loss_vae.beta_vae',
             latent_type=latent_type, hy_beta=hy_beta, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'factor_vae':  # Factor-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.factor_vae_G',
+        G_loss = EasyDict(func_name='training.loss_vae.factor_vae_G',
             latent_type=latent_type, hy_gamma=hy_gamma, recons_type=recons_type)  # Options for generator loss.
-        D_loss = EasyDict(
-            func_name='training.loss_vae.factor_vae_D',
+        D_loss = EasyDict(func_name='training.loss_vae.factor_vae_D',
+            latent_type=latent_type)  # Options for discriminator loss.
+    elif model_type == 'factor_sindis_vae':  # Factor-VAE
+        G_loss = EasyDict(func_name='training.loss_vae.factor_vae_sindis_G',
+            latent_type=latent_type, hy_gamma=hy_gamma, recons_type=recons_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss_vae.factor_vae_sindis_D',
             latent_type=latent_type)  # Options for discriminator loss.
 
     sched = EasyDict()  # Options for TrainingSchedule.
@@ -207,7 +210,8 @@ def main():
         help='Comma-separated list of metrics or "none" (default: %(default)s)',
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='beta_vae',
-                        type=str, metavar='MODEL_TYPE', choices=['beta_vae', 'factor_vae'])
+                        type=str, metavar='MODEL_TYPE', choices=['beta_vae', 'factor_vae',
+                                                                 'factor_sindis_vae'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per',
