@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 19 Aug 2020 03:21:08 AEST
+# --- Last Modified: Wed 19 Aug 2020 03:22:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -202,7 +202,7 @@ def D_factor_vae_modular(
             break
         elif k == 'Standard_D_sindis_64':
             logits = build_standard_fc_sindis_D_64(latents=x, name=k, scope_idx=scope_idx)
-            probs = tf.copy(logits)
+            probs = logits
             break
         else:
             raise ValueError('Not supported module key:', k)
