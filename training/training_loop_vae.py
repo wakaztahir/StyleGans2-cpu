@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 22:17:53 AEST
+# --- Last Modified: Tue 18 Aug 2020 23:18:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -82,7 +82,7 @@ def training_loop_vae(
         metric_arg_list=[],  # Options for MetricGroup.
         tf_config={},  # Options for tflib.init_tf().
         data_dir=None,  # Directory to load datasets from.
-        minibatch_repeats=4,  # Number of minibatches to run before adjusting training parameters.
+        minibatch_repeats=1,  # Number of minibatches to run before adjusting training parameters.
         total_kimg=25000,  # Total length of the training, measured in thousands of real images.
         mirror_augment=False,  # Enable mirror augment?
         drange_net=[-1, 1],  # Dynamic range used when feeding image data to the networks.

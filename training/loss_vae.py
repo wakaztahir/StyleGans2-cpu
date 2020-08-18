@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 17 Aug 2020 22:17:23 AEST
+# --- Last Modified: Tue 18 Aug 2020 23:46:10 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -104,8 +104,8 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
 
     logits, probs = D.get_output_for(sampled, is_training=True)
     # tc = E[log(p_real)-log(p_fake)] = E[logit_real - logit_fake]
-    tc_loss = logits[:, 0] - logits[:, 1]
-
+    tc_loss_per_sample = logits[:, 0] - logits[:, 1]
+    tc_loss = tf.reduce_mean(tc_loss_per_sample, axis=0)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
                                                    recons_type=recons_type)
     reconstruction_loss = tf.reduce_mean(reconstruction_loss)
