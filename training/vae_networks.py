@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 17 Aug 2020 16:06:45 AEST
+# --- Last Modified: Wed 19 Aug 2020 02:44:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,6 +28,7 @@ from training.vae_standard_networks import build_standard_conv_G_64
 from training.vae_standard_networks import build_standard_conv_G_128
 from training.vae_standard_networks import build_standard_fc_D_64
 from training.vae_standard_networks import build_standard_fc_D_128
+from training.vae_standard_networks import build_standard_fc_sindis_D_64
 
 #----------------------------------------------------------------------------
 # VAE main Encoder.
@@ -198,6 +199,9 @@ def D_factor_vae_modular(
             break
         elif k == 'Standard_D_128':
             logits, probs = build_standard_fc_D_128(latents=x, name=k, scope_idx=scope_idx)
+            break
+        elif k == 'Standard_D_sindis_64':
+            logits, probs = build_standard_fc_sindis_D_64(latents=x, name=k, scope_idx=scope_idx)
             break
         else:
             raise ValueError('Not supported module key:', k)

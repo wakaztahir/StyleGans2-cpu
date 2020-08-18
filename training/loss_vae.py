@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Tue 18 Aug 2020 23:46:10 AEST
+# --- Last Modified: Wed 19 Aug 2020 02:41:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -52,12 +52,12 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
 def compute_gaussian_kl(z_mean, z_logvar):
     """Compute KL divergence between input Gaussian and Standard Normal."""
     with tf.variable_scope("kl_loss"):
-        # return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) -
-        # z_logvar - 1, [1])
-        return tf.reduce_mean(
-            0.5 * tf.reduce_sum(
-                tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1]),
-            name="kl_loss")
+        return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) -
+                                   z_logvar - 1, [1])
+        # return tf.reduce_mean(
+            # 0.5 * tf.reduce_sum(
+                # tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1]),
+            # name="kl_loss")
 
 
 def shuffle_codes(z):
@@ -84,7 +84,7 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
                                                    recons_type=recons_type)
-    reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
     loss = reconstruction_loss + hy_beta * kl_loss
@@ -104,11 +104,11 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
 
     logits, probs = D.get_output_for(sampled, is_training=True)
     # tc = E[log(p_real)-log(p_fake)] = E[logit_real - logit_fake]
-    tc_loss_per_sample = logits[:, 0] - logits[:, 1]
-    tc_loss = tf.reduce_mean(tc_loss_per_sample, axis=0)
+    tc_loss = logits[:, 0] - logits[:, 1]
+    # tc_loss = tf.reduce_mean(tc_loss, axis=0)
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
                                                    recons_type=recons_type)
-    reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/fac_vae_elbo', elbo)
@@ -124,10 +124,48 @@ def factor_vae_D(E, D, opt, training_set, minibatch_size, reals, labels,
     shuffled = shuffle_codes(sampled)
     logits, probs = D.get_output_for(sampled, is_training=True)
     _, probs_shuffled = D.get_output_for(shuffled, is_training=True)
-    # loss = -(0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1]))
-    loss = -tf.add(
-        0.5 * tf.reduce_mean(tf.log(probs[:, 0])),
-        0.5 * tf.reduce_mean(tf.log(probs_shuffled[:, 1])),
-        name="discriminator_loss")
+    loss = -(0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1]))
+    # loss = -tf.add(
+        # 0.5 * tf.reduce_mean(tf.log(probs[:, 0])),
+        # 0.5 * tf.reduce_mean(tf.log(probs_shuffled[:, 1])),
+        # name="discriminator_loss")
+    loss = autosummary('Loss/fac_vae_discr_loss', loss)
+    return loss
+
+def factor_vae_sindis_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
+                 latent_type='normal', hy_gamma=1, recons_type='bernoulli_loss'):
+    _ = opt, training_set
+    means, log_var = E.get_output_for(reals, labels, is_training=True)
+    kl_loss = compute_gaussian_kl(means, log_var)
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
+    sampled = sample_from_latent_distribution(means, log_var)
+    reconstructions = G.get_output_for(sampled, labels, is_training=True)
+
+    fake_scores_out = D.get_output_for(sampled, is_training=True)
+    tc_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+    # loss = tf.reduce_mean(loss)
+
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+                                                   recons_type=recons_type)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
+    elbo = reconstruction_loss + kl_loss
+    elbo = autosummary('Loss/fac_vae_elbo', elbo)
+    loss = elbo + hy_gamma * tc_loss
+    loss = autosummary('Loss/fac_vae_loss', loss)
+    return loss
+
+def factor_vae_sindis_D(E, D, opt, training_set, minibatch_size, reals, labels,
+                 latent_type='normal'):
+    _ = opt, training_set
+    means, log_var = E.get_output_for(reals, labels, is_training=True)
+    sampled = sample_from_latent_distribution(means, log_var)
+    shuffled = shuffle_codes(sampled)
+    real_scores_out = D.get_output_for(shuffled, is_training=True)
+    fake_scores_out = D.get_output_for(sampled, is_training=True)
+    real_scores_out = autosummary('Loss/scores/real', real_scores_out)
+    fake_scores_out = autosummary('Loss/scores/fake', fake_scores_out)
+    loss = tf.nn.softplus(fake_scores_out) # -log(1-sigmoid(fake_scores_out))
+    loss += tf.nn.softplus(-real_scores_out) # -log(sigmoid(real_scores_out)) # pylint: disable=invalid-unary-operand-type
     loss = autosummary('Loss/fac_vae_discr_loss', loss)
     return loss
