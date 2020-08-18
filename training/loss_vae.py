@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Wed 19 Aug 2020 02:41:53 AEST
+# --- Last Modified: Wed 19 Aug 2020 02:53:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -141,7 +141,7 @@ def factor_vae_sindis_G(E, G, D, opt, training_set, minibatch_size, reals, label
     sampled = sample_from_latent_distribution(means, log_var)
     reconstructions = G.get_output_for(sampled, labels, is_training=True)
 
-    fake_scores_out = D.get_output_for(sampled, is_training=True)
+    fake_scores_out, _ = D.get_output_for(sampled, is_training=True)
     tc_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     # loss = tf.reduce_mean(loss)
 
@@ -161,8 +161,8 @@ def factor_vae_sindis_D(E, D, opt, training_set, minibatch_size, reals, labels,
     means, log_var = E.get_output_for(reals, labels, is_training=True)
     sampled = sample_from_latent_distribution(means, log_var)
     shuffled = shuffle_codes(sampled)
-    real_scores_out = D.get_output_for(shuffled, is_training=True)
-    fake_scores_out = D.get_output_for(sampled, is_training=True)
+    real_scores_out, _ = D.get_output_for(shuffled, is_training=True)
+    fake_scores_out, _ = D.get_output_for(sampled, is_training=True)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)
     fake_scores_out = autosummary('Loss/scores/fake', fake_scores_out)
     loss = tf.nn.softplus(fake_scores_out) # -log(1-sigmoid(fake_scores_out))
