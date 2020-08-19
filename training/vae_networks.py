@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 19 Aug 2020 03:22:51 AEST
+# --- Last Modified: Wed 19 Aug 2020 14:37:06 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -29,6 +29,7 @@ from training.vae_standard_networks import build_standard_conv_G_128
 from training.vae_standard_networks import build_standard_fc_D_64
 from training.vae_standard_networks import build_standard_fc_D_128
 from training.vae_standard_networks import build_standard_fc_sindis_D_64
+from training.vae_standard_networks import build_simple_fc_sindis_D_64
 
 #----------------------------------------------------------------------------
 # VAE main Encoder.
@@ -202,6 +203,10 @@ def D_factor_vae_modular(
             break
         elif k == 'Standard_D_sindis_64':
             logits = build_standard_fc_sindis_D_64(latents=x, name=k, scope_idx=scope_idx)
+            probs = logits
+            break
+        elif k == 'Simple_D_sindis_64':
+            logits = build_simple_fc_sindis_D_64(latents=x, name=k, scope_idx=scope_idx)
             probs = logits
             break
         else:

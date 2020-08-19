@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 19 Aug 2020 03:27:36 AEST
+# --- Last Modified: Wed 19 Aug 2020 14:37:36 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -36,7 +36,8 @@ LATENT_MODULES = [
     'C_spgroup_lc', 'Cout_spgroup', 'Cout_genatts_spgroup',
     'Standard_E_64', 'Standard_E_128',
     'Standard_G_64', 'Standard_G_128',
-    'Standard_D_64', 'Standard_D_128', 'Standard_D_sindis_64'
+    'Standard_D_64', 'Standard_D_128',
+    'Standard_D_sindis_64', 'Simple_D_sindis_64'
 ]
 
 #----------------------------------------------------------------------------

@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 19 Aug 2020 02:43:39 AEST
+# --- Last Modified: Wed 19 Aug 2020 14:36:05 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -132,6 +132,14 @@ def build_standard_fc_sindis_D_64(latents, name, scope_idx):
         d5 = tf.layers.dense(d4, 1000, activation=tf.nn.leaky_relu, name="d5")
         d6 = tf.layers.dense(d5, 1000, activation=tf.nn.leaky_relu, name="d6")
         logits = tf.layers.dense(d6, 1, activation=None, name="logits")
+    return logits
+
+def build_simple_fc_sindis_D_64(latents, name, scope_idx):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        d1 = tf.layers.dense(latents, 256, activation=tf.nn.leaky_relu, name="d1")
+        d2 = tf.layers.dense(d1, 128, activation=tf.nn.leaky_relu, name="d2")
+        d3 = tf.layers.dense(d2, 64, activation=tf.nn.leaky_relu, name="d3")
+        logits = tf.layers.dense(d3, 1, activation=None, name="logits")
     return logits
 
 def build_standard_fc_D_128(latents, name, scope_idx):
