@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Wed 19 Aug 2020 02:53:04 AEST
+# --- Last Modified: Sun 23 Aug 2020 16:31:52 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -73,6 +73,76 @@ def shuffle_codes(z):
     shuffled = tf.stack(z_shuffle, 1, name="latent_shuffled")
     return shuffled
 
+def compute_covariance_z_mean(z_mean):
+    """Computes the covariance of z_mean.
+       Uses cov(z_mean) = E[z_mean*z_mean^T] - E[z_mean]E[z_mean]^T.
+       Args:
+         z_mean: Encoder mean, tensor of size [batch_size, num_latent].
+       Returns:
+         cov_z_mean: Covariance of encoder mean, tensor of size [num_latent,
+         num_latent].
+    """
+    expectation_z_mean_z_mean_t = tf.reduce_mean(
+        tf.expand_dims(z_mean, 2) * tf.expand_dims(z_mean, 1), axis=0)
+    expectation_z_mean = tf.reduce_mean(z_mean, axis=0)
+    cov_z_mean = tf.subtract(
+        expectation_z_mean_z_mean_t,
+        tf.expand_dims(expectation_z_mean, 1) * tf.expand_dims(
+            expectation_z_mean, 0))
+    return cov_z_mean
+
+def regularize_diag_off_diag_dip(covariance_matrix, lambda_od, lambda_d):
+    """Compute on and off diagonal regularizers for DIP-VAE models.
+       Penalize deviations of covariance_matrix from the identity matrix. Uses
+       different weights for the deviations of the diagonal and off diagonal entries.
+       Args:
+         covariance_matrix: Tensor of size [num_latent, num_latent] to regularize.
+         lambda_od: Weight of penalty for off diagonal elements.
+         lambda_d: Weight of penalty for diagonal elements.
+       Returns:
+       dip_regularizer: Regularized deviation from diagonal of covariance_matrix.
+    """
+    covariance_matrix_diagonal = tf.diag_part(covariance_matrix)
+    covariance_matrix_off_diagonal = covariance_matrix - tf.diag(
+        covariance_matrix_diagonal)
+    dip_regularizer = tf.add(
+        lambda_od * tf.reduce_sum(covariance_matrix_off_diagonal**2),
+        lambda_d * tf.reduce_sum((covariance_matrix_diagonal - 1)**2))
+    return dip_regularizer
+
+def total_correlation(z, z_mean, z_logvar):
+    """Estimate of total correlation on a batch.
+       We need to compute the expectation over a batch of: E_j [log(q(z(x_j))) -
+       log(prod_l q(z(x_j)_l))]. We ignore the constants as they do not matter
+       for the minimization. The constant should be equal to (num_latents - 1) *
+       log(batch_size * dataset_size)
+       Args:
+         z: [batch_size, num_latents]-tensor with sampled representation.
+         z_mean: [batch_size, num_latents]-tensor with mean of the encoder.
+         z_logvar: [batch_size, num_latents]-tensor with log variance of the encoder.
+       Returns:
+    Total correlation estimated on a batch.
+    """
+    # Compute log(q(z(x_j)|x_i)) for every sample in the batch, which is a
+    # tensor of size [batch_size, batch_size, num_latents]. In the following
+    # comments, [batch_size, batch_size, num_latents] are indexed by [j, i, l].
+    log_qz_prob = gaussian_log_density(
+        tf.expand_dims(z, 1), tf.expand_dims(z_mean, 0),
+        tf.expand_dims(z_logvar, 0))
+    # Compute log prod_l p(z(x_j)_l) = sum_l(log(sum_i(q(z(z_j)_l|x_i)))
+    # + constant) for each sample in the batch, which is a vector of size
+    # [batch_size,].
+    log_qz_product = tf.reduce_sum(
+        tf.reduce_logsumexp(log_qz_prob, axis=1, keepdims=False),
+        axis=1,
+        keepdims=False)
+    # Compute log(q(z(x_j))) as log(sum_i(q(z(x_j)|x_i))) + constant =
+    # log(sum_i(prod_l q(z(x_j)_l|x_i))) + constant.
+    log_qz = tf.reduce_logsumexp(
+        tf.reduce_sum(log_qz_prob, axis=2, keepdims=False),
+        axis=1,
+        keepdims=False)
+    return tf.reduce_mean(log_qz - log_qz_product)
 
 def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
              latent_type='normal', hy_beta=1, recons_type='bernoulli_loss'):
@@ -91,6 +161,65 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     loss = autosummary('Loss/beta_vae_loss', loss)
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/beta_vae_elbo', elbo)
+    return loss
+
+def betatc_vae(E, G, opt, training_set, minibatch_size, reals, labels,
+             latent_type='normal', hy_beta=1, recons_type='bernoulli_loss'):
+    _ = opt, training_set
+    means, log_var = E.get_output_for(reals, labels, is_training=True)
+    kl_loss = compute_gaussian_kl(means, log_var)
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
+    sampled = sample_from_latent_distribution(means, log_var)
+    reconstructions = G.get_output_for(sampled, labels, is_training=True)
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+                                                   recons_type=recons_type)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
+
+    tc = (hy_beta - 1.) * total_correlation(sampled, means, log_var)
+    # return tc + kl_loss
+    elbo = reconstruction_loss + kl_loss
+    elbo = autosummary('Loss/betatc_vae_elbo', elbo)
+    loss = elbo + tc
+    loss = autosummary('Loss/betatc_vae_loss', loss)
+    return loss
+
+def dip_vae(E, G, opt, training_set, minibatch_size, reals, labels,
+            latent_type='normal', dip_type='dip_vae_i',
+            lambda_d_factor=10., lambda_od=1.,
+            recons_type='bernoulli_loss'):
+    _ = opt, training_set
+    means, log_var = E.get_output_for(reals, labels, is_training=True)
+    kl_loss = compute_gaussian_kl(means, log_var)
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
+    sampled = sample_from_latent_distribution(means, log_var)
+    reconstructions = G.get_output_for(sampled, labels, is_training=True)
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+                                                   recons_type=recons_type)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
+
+    # Regularization
+    cov_z_mean = compute_covariance_z_mean(means)
+    lambda_d = lambda_d_factor * lambda_od
+    if dip_type == 'dip_vae_i':
+        # mu = means is [batch_size, num_latent]
+        # Compute cov_p(x) [mu(x)] = E[mu*mu^T] - E[mu]E[mu]^T]
+        cov_dip_regularizer = regularize_diag_off_diag_dip(
+            cov_z_mean, lambda_od, lambda_d)
+    elif dip_type == 'dip_vae_ii':
+        cov_enc = tf.matrix_diag(tf.exp(log_var))
+        expectation_cov_enc = tf.reduce_mean(cov_enc, axis=0)
+        cov_z = expectation_cov_enc + cov_z_mean
+        cov_dip_regularizer = regularize_diag_off_diag_dip(
+            cov_z, lambda_od, lambda_d)
+    else:
+        raise NotImplementedError("DIP variant not supported.")
+
+    elbo = reconstruction_loss + kl_loss
+    elbo = autosummary('Loss/dip_vae_elbo', elbo)
+    loss = elbo + cov_dip_regularizer
+    loss = autosummary('Loss/dip_vae_loss', loss)
     return loss
 
 def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,

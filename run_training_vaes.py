@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Wed 19 Aug 2020 03:09:31 AEST
+# --- Last Modified: Sun 23 Aug 2020 16:36:22 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,6 +40,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         fmap_decay=0.15, fmap_min=16, fmap_max=512,
         n_samples_per=10, arch='resnet', topk_dims_to_show=20,
         hy_beta=1, hy_gamma=0, G_lrate_base=0.002, D_lrate_base=None,
+        lambda_d_factor=10., lambda_od=1.,
         drange_net=[-1, 1], recons_type='bernoulli_loss'):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
@@ -59,53 +60,46 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
             module_D_list)
 
     D = D_opt = D_loss = None
-    if model_type == 'beta_vae':  # Beta-VAE
-        E = EasyDict(func_name='training.vae_networks.E_main_modular',
-                     fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
-                     latent_size=count_dlatent_E_size,
-                     module_E_list=module_E_list,
-                     nf_scale=E_nf_scale,
-                     fmap_base=2 << E_fmap_base)  # Options for encoder network.
-        G = EasyDict(func_name='training.vae_networks.G_main_modular',
-                     fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
-                     latent_size=count_dlatent_G_size,
-                     module_G_list=module_G_list,
-                     nf_scale=G_nf_scale,
-                     fmap_base=2 << G_fmap_base)  # Options for generator network.
-        G_opt = EasyDict(beta1=0.9, beta2=0.999,
-                         epsilon=1e-8)  # Options for generator optimizer.
-        desc = 'beta_vae_net_modular'
-    elif model_type == 'factor_vae' or model_type == 'factor_sindis_vae':  # Factor-VAE
-        E = EasyDict(func_name='training.vae_networks.E_main_modular',
-                     fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
-                     latent_size=count_dlatent_E_size,
-                     module_E_list=module_E_list,
-                     nf_scale=E_nf_scale,
-                     fmap_base=2 << E_fmap_base)  # Options for encoder network.
-        G = EasyDict(func_name='training.vae_networks.G_main_modular',
-                     fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
-                     latent_size=count_dlatent_G_size,
-                     module_G_list=module_G_list,
-                     nf_scale=G_nf_scale,
-                     fmap_base=2 << G_fmap_base)  # Options for generator network.
+    E = EasyDict(func_name='training.vae_networks.E_main_modular',
+                 fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
+                 latent_size=count_dlatent_E_size,
+                 module_E_list=module_E_list,
+                 nf_scale=E_nf_scale,
+                 fmap_base=2 << E_fmap_base)  # Options for encoder network.
+    G = EasyDict(func_name='training.vae_networks.G_main_modular',
+                 fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
+                 latent_size=count_dlatent_G_size,
+                 module_G_list=module_G_list,
+                 nf_scale=G_nf_scale,
+                 fmap_base=2 << G_fmap_base)  # Options for generator network.
+    G_opt = EasyDict(beta1=0.9, beta2=0.999,
+                     epsilon=1e-8)  # Options for generator optimizer.
+    if model_type == 'factor_vae' or model_type == 'factor_sindis_vae':  # Factor-VAE
         D = EasyDict(func_name='training.vae_networks.D_factor_vae_modular',
                      fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
                      latent_size=count_dlatent_D_size,
                      module_D_list=module_D_list,
                      nf_scale=D_nf_scale,
                      fmap_base=2 << D_fmap_base)  # Options for generator network.
-        G_opt = EasyDict(beta1=0.9, beta2=0.999,
-                         epsilon=1e-8)  # Options for generator optimizer.
         D_opt = EasyDict(beta1=0.5, beta2=0.9,
                          epsilon=1e-8)  # Options for discriminator optimizer.
-        desc = 'factor_vae_net_modular'
     else:
         raise ValueError('Not supported model tyle: ' + model_type)
+    desc = model_type + '_modular'
 
     if model_type == 'beta_vae':  # Beta-VAE
         G_loss = EasyDict(
             func_name='training.loss_vae.beta_vae',
             latent_type=latent_type, hy_beta=hy_beta, recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'betatc_vae':  # BetaTC-VAE
+        G_loss = EasyDict(
+            func_name='training.loss_vae.betatc_vae',
+            latent_type=latent_type, hy_beta=hy_beta, recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
+        G_loss = EasyDict(
+            func_name='training.loss_vae.dip_vae',
+            lambda_d_factor=lambda_d_factor, lambda_od=lambda_od,
+            latent_type=latent_type, dip_type=model_type, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'factor_vae':  # Factor-VAE
         G_loss = EasyDict(func_name='training.loss_vae.factor_vae_G',
             latent_type=latent_type, hy_gamma=hy_gamma, recons_type=recons_type)  # Options for generator loss.
@@ -211,7 +205,9 @@ def main():
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='beta_vae',
                         type=str, metavar='MODEL_TYPE', choices=['beta_vae', 'factor_vae',
-                                                                 'factor_sindis_vae'])
+                                                                 'factor_sindis_vae',
+                                                                 'dip_vae_i', 'dip_vae_ii',
+                                                                 'betatc_vae'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per',
@@ -266,6 +262,10 @@ def main():
     parser.add_argument('--recons_type', help='Reconstruction loss type.',
                         default='bernoulli_loss', metavar='RECONS_TYPE', type=str,
                         choices=['l2_loss', 'bernoulli_loss'])
+    parser.add_argument('--lambda_d_factor', help='DIP vae lambda_d_factor.', metavar='LAMBDA_D_FACTOR',
+                        default=10., type=float)
+    parser.add_argument('--lambda_od', help='DIP vae lambda_od.', metavar='LAMBDA_OD',
+                        default=1., type=float)
 
     args = parser.parse_args()
 
