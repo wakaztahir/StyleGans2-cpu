@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sun 23 Aug 2020 16:36:22 AEST
+# --- Last Modified: Sun 23 Aug 2020 16:58:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -83,8 +83,6 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
                      fmap_base=2 << D_fmap_base)  # Options for generator network.
         D_opt = EasyDict(beta1=0.5, beta2=0.9,
                          epsilon=1e-8)  # Options for discriminator optimizer.
-    else:
-        raise ValueError('Not supported model tyle: ' + model_type)
     desc = model_type + '_modular'
 
     if model_type == 'beta_vae':  # Beta-VAE
