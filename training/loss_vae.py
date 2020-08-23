@@ -8,13 +8,14 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sun 23 Aug 2020 17:01:39 AEST
+# --- Last Modified: Sun 23 Aug 2020 17:03:10 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
 Loss of VAEs. Some code borrowed from disentanglement_lib.
 """
 import numpy as np
+import math
 import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
