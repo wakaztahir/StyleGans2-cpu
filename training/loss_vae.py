@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Sun 23 Aug 2020 16:31:52 AEST
+# --- Last Modified: Sun 23 Aug 2020 17:01:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -110,6 +110,13 @@ def regularize_diag_off_diag_dip(covariance_matrix, lambda_od, lambda_d):
         lambda_d * tf.reduce_sum((covariance_matrix_diagonal - 1)**2))
     return dip_regularizer
 
+def gaussian_log_density(samples, mean, log_var):
+    pi = tf.constant(math.pi)
+    normalization = tf.log(2. * pi)
+    inv_sigma = tf.exp(-log_var)
+    tmp = (samples - mean)
+    return -0.5 * (tmp * tmp * inv_sigma + log_var + normalization)
+
 def total_correlation(z, z_mean, z_logvar):
     """Estimate of total correlation on a batch.
        We need to compute the expectation over a batch of: E_j [log(q(z(x_j))) -
@@ -142,7 +149,8 @@ def total_correlation(z, z_mean, z_logvar):
         tf.reduce_sum(log_qz_prob, axis=2, keepdims=False),
         axis=1,
         keepdims=False)
-    return tf.reduce_mean(log_qz - log_qz_product)
+    # return tf.reduce_mean(log_qz - log_qz_product)
+    return log_qz - log_qz_product
 
 def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
              latent_type='normal', hy_beta=1, recons_type='bernoulli_loss'):
