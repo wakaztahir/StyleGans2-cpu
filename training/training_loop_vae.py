@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 19 Aug 2020 02:38:54 AEST
+# --- Last Modified: Sun 23 Aug 2020 18:39:29 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -343,18 +343,19 @@ def training_loop_vae(
 
             # Fast path without gradient accumulation.
             if len(rounds) == 1:
-                tflib.run([data_fetch_op], feed_dict)
                 tflib.run([G_train_op], feed_dict)
+                tflib.run([data_fetch_op], feed_dict)
                 if use_D:
                     tflib.run([D_train_op], feed_dict)
 
             # Slow path with gradient accumulation.
             else:
                 for _round in rounds:
-                    tflib.run(data_fetch_op, feed_dict)
                     tflib.run(G_train_op, feed_dict)
                 for _round in rounds:
-                    tflib.run(D_train_op, feed_dict)
+                    tflib.run(data_fetch_op, feed_dict)
+                    if use_D:
+                        tflib.run(D_train_op, feed_dict)
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
