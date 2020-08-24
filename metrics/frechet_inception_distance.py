@@ -14,6 +14,7 @@ import dnnlib.tflib as tflib
 
 from metrics import metric_base
 from training import misc
+from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
 
@@ -55,7 +56,7 @@ class FID(metric_base.MetricBase):
                 inception_clone = inception.clone()
                 latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
                 labels = self._get_random_labels_tf(self.minibatch_per_gpu)
-                images = Gs_clone.get_output_for(latents, labels, **Gs_kwargs)
+                images = get_return_v(Gs_clone.get_output_for(latents, labels, **Gs_kwargs), 1)
                 # images, _ = Gs_clone.get_output_for(latents, labels, **Gs_kwargs)
                 images = tflib.convert_images_to_uint8(images)
                 if images.get_shape().as_list()[1] == 1:

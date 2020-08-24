@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Tue 18 Aug 2020 22:58:46 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:08:54 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -24,6 +24,7 @@ import dnnlib.tflib as tflib
 from metrics import metric_base
 from metrics.perceptual_path_length import normalize, slerp
 from training import misc
+from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
 
@@ -88,14 +89,14 @@ class TPL(metric_base.MetricBase):
                 if self.no_mapping:
                     dlat_e = lat_e
                 else:
-                    dlat_e = Gs_clone.components.mapping.get_output_for(lat_e, labels, **Gs_kwargs)
+                    dlat_e = get_return_v(Gs_clone.components.mapping.get_output_for(lat_e, labels, **Gs_kwargs), 1)
 
                 # Synthesize images.
                 with tf.control_dependencies([var.initializer for var in noise_vars]): # use same noise inputs for the entire minibatch
                     if self.no_mapping:
-                        images = Gs_clone.get_output_for(dlat_e, labels, randomize_noise=False, **Gs_kwargs)
+                        images = get_return_v(Gs_clone.get_output_for(dlat_e, labels, randomize_noise=False, **Gs_kwargs), 1)
                     else:
-                        images = Gs_clone.components.synthesis.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs)
+                        images = get_return_v(Gs_clone.components.synthesis.get_output_for(dlat_e, randomize_noise=False, **Gs_kwargs), 1)
                     # print('images.shape:', images.get_shape().as_list())
                     images = tf.cast(images, tf.float32)
 

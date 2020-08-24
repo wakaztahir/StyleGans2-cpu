@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Tue 18 Aug 2020 22:57:18 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:05:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -22,6 +22,7 @@ from metrics import metric_base
 from metrics.perceptual_path_length import normalize, slerp
 from training import misc
 from disentanglement_data_helper import DspritesDataHelper, Shape3DDataHelper
+from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
 
@@ -105,10 +106,11 @@ class FactorVAEMetric(metric_base.MetricBase):
                                                           # representation_model,
                                                           # eval_batch_size)
             if self.has_label_place:
-                representations = representation_model.run(observations,
-                                                           np.zeros([observations.shape[0], 0]), is_validation=True)
+                representations = get_return_v(representation_model.run(observations,
+                                                                        np.zeros([observations.shape[0], 0]),
+                                                                        is_validation=True), 1)
             else:
-                representations = representation_model.run(observations, is_validation=True)
+                representations = get_return_v(representation_model.run(observations, is_validation=True), 1)
             representations_ls.append(representations)
         representations = np.concatenate(tuple(representations_ls), axis=0)
         # representations = np.transpose(representations)
@@ -142,10 +144,11 @@ class FactorVAEMetric(metric_base.MetricBase):
             factors, random_state)
         # pdb.set_trace()
         if self.has_label_place:
-            representations = representation_model.run(observations,
-                                                       np.zeros([observations.shape[0], 0]), is_validation=True)
+            representations = get_return_v(representation_model.run(observations,
+                                                                    np.zeros([observations.shape[0], 0]),
+                                                                    is_validation=True), 1)
         else:
-            representations = representation_model.run(observations, is_validation=True)
+            representations = get_return_v(representation_model.run(observations, is_validation=True), 1)
         local_variances = np.var(representations, axis=0, ddof=1)
         argmin = np.argmin(local_variances[active_dims] /
                            global_variances[active_dims])
