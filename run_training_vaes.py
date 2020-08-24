@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 24 Aug 2020 16:38:24 AEST
+# --- Last Modified: Mon 24 Aug 2020 16:54:01 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -98,7 +98,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
             latent_type=latent_type, hy_beta=hy_beta, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'group_vae':  # Group-VAE
         G_loss = EasyDict(
-            func_name='training.loss_vae.betatc_vae',
+            func_name='training.loss_vae.group_vae',
             latent_type=latent_type, hy_beta=hy_beta,
             group_loss_type=group_loss_type, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
@@ -213,7 +213,7 @@ def main():
                         type=str, metavar='MODEL_TYPE', choices=['beta_vae', 'factor_vae',
                                                                  'factor_sindis_vae',
                                                                  'dip_vae_i', 'dip_vae_ii',
-                                                                 'betatc_vae'])
+                                                                 'betatc_vae', 'group_vae'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per',

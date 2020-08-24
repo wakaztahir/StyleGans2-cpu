@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 24 Aug 2020 16:10:33 AEST
+# --- Last Modified: Mon 24 Aug 2020 16:58:09 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -158,8 +158,8 @@ def G_main_modular(
                                        is_validation=is_validation)
         elif k == 'Group_prior_G':
             x, group_feats = build_group_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
-                                    group_feats_size=group_feats_size,
-                                    is_validation=is_validation)
+                                                 group_feats_size=group_feats_size,
+                                                 is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                          output_shape=[num_channels, resolution, resolution],
