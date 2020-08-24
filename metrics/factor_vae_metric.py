@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 24 Aug 2020 22:22:12 AEST
+# --- Last Modified: Mon 24 Aug 2020 22:29:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -28,7 +28,8 @@ from training.utils import get_return_v
 
 class FactorVAEMetric(metric_base.MetricBase):
     def __init__(self, dataset_dir, dataset_name, use_latents, batch_size, num_train,
-                 num_eval, num_variance_estimate, has_label_place=False, **kwargs):
+                 num_eval, num_variance_estimate, has_label_place=False,
+                 drange_net=[-1., 1.] **kwargs):
         super().__init__(**kwargs)
         if dataset_name == 'Dsprites':
             self.ground_truth_data = DspritesDataHelper(dataset_dir, use_latents)
@@ -41,6 +42,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         self.num_eval = num_eval
         self.num_variance_estimate = num_variance_estimate
         self.has_label_place = has_label_place
+        self.drange_net = drange_net
 
     def _evaluate(self, I_net, **kwargs):
         representation_model = I_net.clone(is_validation=True)
@@ -104,7 +106,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         representations_ls = []
         for i in range(batch_size // 100):
             observations = self.ground_truth_data.sample_observations(100, random_state)
-            observations = misc.adjust_dynamic_range(observations, [-1., 1.], [0., 1.])
+            observations = misc.adjust_dynamic_range(observations, [-1., 1.], self.drange_net)
             # representations = utils.obtain_representation(observations,
                                                           # representation_model,
                                                           # eval_batch_size)
@@ -145,7 +147,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         # Obtain the observations.
         observations = self.ground_truth_data.sample_observations_from_factors(
             factors, random_state)
-        observations = misc.adjust_dynamic_range(observations, [-1., 1.], [0., 1.])
+        observations = misc.adjust_dynamic_range(observations, [-1., 1.], self.drange_net)
         # pdb.set_trace()
         if self.has_label_place:
             representations = get_return_v(representation_model.run(observations,
