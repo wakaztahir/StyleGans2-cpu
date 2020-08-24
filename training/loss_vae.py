@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 24 Aug 2020 17:22:21 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:28:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -358,7 +358,7 @@ def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     sampled_sum = sampled[:minibatch_size//2] + sampled[minibatch_size//2:]
     sampled_all = tf.concat([sampled, sampled_sum], axis=0)
     labels_all = tf.concat([labels, labels[:minibatch_size//2]], axis=0)
-    reconstructions, group_feats_G = get_return_v(G.get_output_for(sampled, labels, is_training=True), 2)
+    reconstructions, group_feats_G = get_return_v(G.get_output_for(sampled_all, labels_all, is_training=True), 2)
     group_feat_loss = make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
                                            group_loss_type)
 

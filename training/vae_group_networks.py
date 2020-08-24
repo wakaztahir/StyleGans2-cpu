@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks.py
 # --- Creation Date: 24-08-2020
-# --- Last Modified: Mon 24 Aug 2020 15:44:58 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:25:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,7 +22,7 @@ def build_group_post_E(x, name, scope_idx, group_feats_size, latent_size, is_val
         e5 = tf.layers.dense(flat_x, 512, activation=tf.nn.relu, name="e5")
 
         # Group feats mapping.
-        group_feats = tf.layers.dense(e5, group_feats_size, activation=None, name="group_feats")
+        group_feats = tf.layers.dense(e5, group_feats_size, activation=None, name="group_feats_E")
 
         e6 = tf.layers.dense(group_feats, 512, activation=tf.nn.relu, name="e6")
         means = tf.layers.dense(e6, latent_size, activation=None, name="means")
@@ -34,7 +34,7 @@ def build_group_prior_G(latents_in, name, scope_idx, group_feats_size, is_valida
         d1 = tf.layers.dense(latents_in, 512, activation=tf.nn.relu)
 
         # Group feats mapping.
-        group_feats = tf.layers.dense(d1, group_feats_size, activation=None, name="group_feats")
+        group_feats = tf.layers.dense(d1, group_feats_size, activation=None, name="group_feats_G")
 
         d2 = tf.layers.dense(group_feats, 512, activation=tf.nn.relu)
         d3 = tf.layers.dense(d2, 1024, activation=tf.nn.relu)
