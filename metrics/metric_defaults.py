@@ -32,6 +32,7 @@ metric_defaults = EasyDict([(args.name, args) for args in [
     EasyDict(name='factorvae_dsprites_scalxy_devcube2',  func_name='metrics.factor_vae_metric.FactorVAEMetric',     dataset_dir='/home/xqzhu/disentangle_datasets/dsprites/dsprites_square_scalxy_noshuffle_tfr', dataset_name='Dsprites', use_latents='[1,3,4]', batch_size=60, num_train=10000, num_eval=5000, num_variance_estimate=10000),
     EasyDict(name='factorvae_shape3d_all',  func_name='metrics.factor_vae_metric.FactorVAEMetric',     dataset_dir='/mnt/hdd/Datasets/shapes_3d/shape3d_all_noshuffle_tfr', dataset_name='3DShapes', use_latents='[0,1,2,3,4,5]', batch_size=60, num_train=10000, num_eval=5000, num_variance_estimate=10000),
     EasyDict(name='factorvae_shape3d_all_hpc',  func_name='metrics.factor_vae_metric.FactorVAEMetric',     dataset_dir='/project/xqzhu/disentangle_datasets/shapes_3d/shape3d_all_noshuffle_tfr', dataset_name='3DShapes', use_latents='[0,1,2,3,4,5]', batch_size=60, num_train=10000, num_eval=5000, num_variance_estimate=10000),
+    EasyDict(name='factorvae_shape3d_all_hpc_vae',  func_name='metrics.factor_vae_metric.FactorVAEMetric',     dataset_dir='/project/xqzhu/disentangle_datasets/shapes_3d/shape3d_all_noshuffle_tfr', dataset_name='3DShapes', use_latents='[0,1,2,3,4,5]', batch_size=60, num_train=10000, num_eval=5000, num_variance_estimate=10000, has_label_place=True, drange_net=[0., 1.]),
 ]])
 
 #----------------------------------------------------------------------------
