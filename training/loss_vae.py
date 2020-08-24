@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 24 Aug 2020 16:29:31 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:13:20 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -312,7 +312,7 @@ def make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
                          group_loss_type):
     group_feats_G_ori = group_feats_G[:minibatch_size]
     group_feats_G_sum = group_feats_G[minibatch_size:]
-    mat_dim = math.sqrt(group_feats_E.get_shape().as_list()[1])
+    mat_dim = int(math.sqrt(group_feats_E.get_shape().as_list()[1]))
     group_feats_G_mat = tf.reshape(group_feats_G,
                                    [minibatch_size+minibatch_size//2,
                                     mat_dim, mat_dim])
