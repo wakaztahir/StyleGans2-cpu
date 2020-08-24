@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 24 Aug 2020 17:05:41 AEST
+# --- Last Modified: Mon 24 Aug 2020 21:51:13 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -63,6 +63,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         training_votes = self._generate_training_batch(representation_model, self.batch_size,
                                                        self.num_train, random_state,
                                                        global_variances, active_dims)
+        print('training_votes:', training_votes)
         classifier = np.argmax(training_votes, axis=0)
         other_index = np.arange(training_votes.shape[1])
 
@@ -76,6 +77,7 @@ class FactorVAEMetric(metric_base.MetricBase):
                                               self.num_eval, random_state,
                                               global_variances, active_dims)
 
+        print('eval votes:', eval_votes)
         print("Evaluate evaluation set accuracy.")
         eval_accuracy = np.sum(eval_votes[classifier,
                                           other_index]) * 1. / np.sum(eval_votes)
