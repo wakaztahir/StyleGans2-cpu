@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 24 Aug 2020 17:28:30 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:31:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -326,24 +326,24 @@ def make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
     assert group_feats_E_mul_mat.get_shape().as_list()[1] == mat_dim
     loss = 0
     if 'rec' in group_loss_type:
-        loss += tf.reduce_sum(tf.square(
-                group_feats_E - group_feats_G_ori), axis=1)
+        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
+                group_feats_E - group_feats_G_ori), axis=1))
     if 'mat' in group_loss_type:
-        loss += tf.reduce_sum(tf.square(
-                group_feats_E_mul_mat - group_feats_G_sum_mat), axis=[1, 2])
+        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
+                group_feats_E_mul_mat - group_feats_G_sum_mat), axis=[1, 2]))
     if 'oth' in group_loss_type:
         group_feats_G_mat2 = tf.matmul(group_feats_G_mat, group_feats_G_mat,
                                        transpose_b=True)
         G_mat_eye = tf.eye(mat_dim, dtype=group_feats_G_mat2.dtype,
                            batch_shape=[minibatch_size+minibatch_size//2])
-        loss += tf.reduce_sum(tf.square(
-                group_feats_G_mat2 - G_mat_eye), axis=[1, 2])
+        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
+                group_feats_G_mat2 - G_mat_eye), axis=[1, 2]))
     if 'det' in group_loss_type:
         group_feats_G_det = tf.linalg.det(group_feats_G_mat, name='G_mat_det')
         group_feats_one_det = tf.ones(tf.shape(group_feats_G_det),
                                       dtype=group_feats_G_det.dtype)
-        loss += tf.reduce_sum(tf.square(
-                group_feats_G_det - group_feats_one_det), axis=[1])
+        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
+                group_feats_G_det - group_feats_one_det), axis=[1]))
     return loss
 
 def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
