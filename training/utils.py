@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 14 Aug 2020 22:40:28 AEST
+# --- Last Modified: Mon 24 Aug 2020 16:25:13 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,6 +22,14 @@ import dnnlib
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 from training import misc
+
+def get_return_v(x, topk=1):
+    if (not isinstance(x, tuple)) or (not isinstance(x, list)):
+        return x
+    if topk == 1:
+        return x[0]
+    else:
+        return x[:topk]
 
 def save_atts(atts, filename, grid_size, drange, grid_fakes, n_samples_per):
     canvas = np.zeros([grid_fakes.shape[0], 1, grid_fakes.shape[2], grid_fakes.shape[3]])

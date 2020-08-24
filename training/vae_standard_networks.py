@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 19 Aug 2020 14:36:05 AEST
+# --- Last Modified: Mon 24 Aug 2020 15:25:21 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -65,6 +65,21 @@ def build_standard_conv_E_64(reals_in, name, scope_idx, is_validation=False):
 def build_standard_conv_E_128(reals_in, name, scope_idx, is_validation=False):
     pass
 
+def build_standard_post_E(x, name, scope_idx, latent_size, is_validation=False):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        flat_x = tf.layers.flatten(x)
+        e5 = tf.layers.dense(flat_x, 256, activation=tf.nn.relu, name="e5")
+        means = tf.layers.dense(e5, latent_size, activation=None, name="means")
+        log_var = tf.layers.dense(e5, latent_size, activation=None, name="log_var")
+    return means, log_var
+
+def build_standard_prior_G(latents_in, name, scope_idx, is_validation=False):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu)
+        d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
+        d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
+    return d2_reshaped
+
 def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         d3 = tf.layers.conv2d_transpose(
@@ -96,6 +111,7 @@ def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_vali
             padding="same",
             data_format='channels_first',
         )
+
         d6 = tf.layers.conv2d_transpose(
             inputs=d5,
             filters=output_shape[0],

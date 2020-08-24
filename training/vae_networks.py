@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 19 Aug 2020 14:37:06 AEST
+# --- Last Modified: Mon 24 Aug 2020 16:10:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -24,12 +24,16 @@ from dnnlib import EasyDict
 from training.vc_modular_networks2 import split_module_names
 from training.vae_standard_networks import build_standard_conv_E_64
 from training.vae_standard_networks import build_standard_conv_E_128
+from training.vae_standard_networks import build_standard_post_E
 from training.vae_standard_networks import build_standard_conv_G_64
 from training.vae_standard_networks import build_standard_conv_G_128
+from training.vae_standard_networks import build_standard_prior_G
 from training.vae_standard_networks import build_standard_fc_D_64
 from training.vae_standard_networks import build_standard_fc_D_128
 from training.vae_standard_networks import build_standard_fc_sindis_D_64
 from training.vae_standard_networks import build_simple_fc_sindis_D_64
+from training.vae_group_networks import build_group_post_E
+from training.vae_group_networks import build_group_prior_G
 
 #----------------------------------------------------------------------------
 # VAE main Encoder.
@@ -49,6 +53,7 @@ def E_main_modular(
         module_E_list=None,
         nf_scale=1,
         fmap_base=8,
+        group_feats_size=400,  # Should be square of an integer.
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -73,28 +78,37 @@ def E_main_modular(
         if k == 'Standard_E_64':
             x = build_standard_conv_E_64(reals_in=x, name=k, scope_idx=scope_idx,
                                          is_validation=is_validation)
-            break
         elif k == 'Standard_E_128':
             x = build_standard_conv_E_128(reals_in=x, name=k, scope_idx=scope_idx,
                                           is_validation=is_validation)
+        elif k == 'Standard_post_E':
+            x = build_standard_post_E(x=x, name=k, scope_idx=scope_idx,
+                                      latent_size=latent_size, is_validation=is_validation)
+            break
+        elif k == 'Group_post_E':
+            x = build_group_post_E(x=x, name=k, scope_idx=scope_idx,
+                                   group_feats_size=group_feats_size,
+                                   latent_size=latent_size, is_validation=is_validation)
             break
         else:
             raise ValueError('Not supported module key:', k)
 
-    # Post-Conv layers.
-    with tf.variable_scope('ConcatAtts'):
-        flat_x = tf.layers.flatten(x)
-        e5 = tf.layers.dense(flat_x, 256, activation=tf.nn.relu, name="e5")
-        means = tf.layers.dense(e5, latent_size, activation=None, name="means")
-        log_var = tf.layers.dense(e5, latent_size, activation=None, name="log_var")
+    assert isinstance(x, tuple)
+    # if len(x) == 2:
+        # means, log_var = x
+    # elif len(x) == 3:
+        # means, log_var, feats = x
+    # else:
+        # raise ValueError('Strange return value: len(x) > 3.')
 
-    # Return requested outputs.
-    means = tf.identity(means, name='means')
-    log_var = tf.identity(log_var, name='log_var')
-    if is_validation:
-        return means
-    else:
-        return means, log_var
+    # # Return requested outputs.
+    # means = tf.identity(means, name='means')
+    # log_var = tf.identity(log_var, name='log_var')
+    # if is_validation:
+        # return means
+    # else:
+        # return means, log_var
+    return x
 
 #----------------------------------------------------------------------------
 # VAE main Generator.
@@ -116,6 +130,7 @@ def G_main_modular(
         module_G_list=None,
         nf_scale=1,
         fmap_base=8,
+        group_feats_size=400,  # Should be square of an integer.
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -133,16 +148,19 @@ def G_main_modular(
     labels_in.set_shape([None, label_size])
     labels_in = tf.cast(labels_in, dtype)
 
-    # Pre-Conv layers.
-    d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu)
-    d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
-    d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
-
     # Generator network.
     key_ls, size_ls, count_dlatent_size = split_module_names(module_G_list)
-    x = d2_reshaped
+    x = latents_in
+    group_feats = None
     for scope_idx, k in enumerate(key_ls):
-        if k == 'Standard_G_64':
+        if k == 'Standard_prior_G':
+            x = build_standard_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                       is_validation=is_validation)
+        elif k == 'Group_prior_G':
+            x, group_feats = build_group_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                    group_feats_size=group_feats_size,
+                                    is_validation=is_validation)
+        elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                          output_shape=[num_channels, resolution, resolution],
                                          is_validation=is_validation)
@@ -157,7 +175,10 @@ def G_main_modular(
 
     # Return requested outputs.
     x = tf.identity(x, name='fake_x')
-    return x
+    if group_feats is not None:
+        return x, group_feats
+    else:
+        return x
 
 #----------------------------------------------------------------------------
 # Factor-VAE main Discriminator.

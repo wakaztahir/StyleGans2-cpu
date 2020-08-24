@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sun 23 Aug 2020 16:58:34 AEST
+# --- Last Modified: Mon 24 Aug 2020 16:38:24 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,7 +40,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         fmap_decay=0.15, fmap_min=16, fmap_max=512,
         n_samples_per=10, arch='resnet', topk_dims_to_show=20,
         hy_beta=1, hy_gamma=0, G_lrate_base=0.002, D_lrate_base=None,
-        lambda_d_factor=10., lambda_od=1.,
+        lambda_d_factor=10., lambda_od=1., group_loss_type='rec_mat',
+        group_feats_size=400,
         drange_net=[-1, 1], recons_type='bernoulli_loss'):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
@@ -63,12 +64,14 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
     E = EasyDict(func_name='training.vae_networks.E_main_modular',
                  fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
                  latent_size=count_dlatent_E_size,
+                 group_feats_size=group_feats_size,
                  module_E_list=module_E_list,
                  nf_scale=E_nf_scale,
                  fmap_base=2 << E_fmap_base)  # Options for encoder network.
     G = EasyDict(func_name='training.vae_networks.G_main_modular',
                  fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
                  latent_size=count_dlatent_G_size,
+                 group_feats_size=group_feats_size,
                  module_G_list=module_G_list,
                  nf_scale=G_nf_scale,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
@@ -93,6 +96,11 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         G_loss = EasyDict(
             func_name='training.loss_vae.betatc_vae',
             latent_type=latent_type, hy_beta=hy_beta, recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'group_vae':  # Group-VAE
+        G_loss = EasyDict(
+            func_name='training.loss_vae.betatc_vae',
+            latent_type=latent_type, hy_beta=hy_beta,
+            group_loss_type=group_loss_type, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
         G_loss = EasyDict(
             func_name='training.loss_vae.dip_vae',
@@ -264,6 +272,10 @@ def main():
                         default=10., type=float)
     parser.add_argument('--lambda_od', help='DIP vae lambda_od.', metavar='LAMBDA_OD',
                         default=1., type=float)
+    parser.add_argument('--group_loss_type', help='Group vae loss type.', metavar='GROUP_LOSS_TYPE',
+                        default='rec_mat', type=str)
+    parser.add_argument('--group_feats_size', help='Group vae group_feats_size.', metavar='GROUP_FEATS_SIZE',
+                        default=400, type=int)
 
     args = parser.parse_args()
 
