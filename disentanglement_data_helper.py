@@ -8,7 +8,7 @@
 
 # --- File Name: dsprites_data_helper.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Tue 26 May 2020 18:28:55 AEST
+# --- Last Modified: Mon 24 Aug 2020 22:21:11 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -47,13 +47,13 @@ class DisentangleDataHelper:
     def sample_observations_from_factors(self, factors, random_state):
         idxs = self.batch_latents_to_data_indices(factors)
         images = self.np_data[idxs]
-        images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
+        images = misc.adjust_dynamic_range(images, [0, 255], [-1., 1.])
         return images
 
     def sample_observations(self, num, random_state):
         idxs = random_state.randint(self.n_data, size=num)
         images = self.np_data[idxs]
-        images = misc.adjust_dynamic_range(images, [0, 255], [-1, 1])
+        images = misc.adjust_dynamic_range(images, [0, 255], [-1., 1.])
         return images
 
     def get_data(self, idx):
