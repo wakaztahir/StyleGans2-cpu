@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 24 Aug 2020 17:13:20 AEST
+# --- Last Modified: Mon 24 Aug 2020 17:22:21 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -313,21 +313,22 @@ def make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
     group_feats_G_ori = group_feats_G[:minibatch_size]
     group_feats_G_sum = group_feats_G[minibatch_size:]
     mat_dim = int(math.sqrt(group_feats_E.get_shape().as_list()[1]))
+    assert mat_dim * mat_dim == group_feats_E.get_shape().as_list()[1]
+    group_feats_E_mat = tf.reshape(group_feats_E,
+                                   [minibatch_size, mat_dim, mat_dim])
     group_feats_G_mat = tf.reshape(group_feats_G,
                                    [minibatch_size+minibatch_size//2,
                                     mat_dim, mat_dim])
+    group_feats_G_sum_mat = tf.reshape(group_feats_G_sum,
+                                   [minibatch_size//2, mat_dim, mat_dim])
+    group_feats_E_mul_mat = tf.matmul(group_feats_E_mat[:minibatch_size//2],
+                                      group_feats_E_mat[minibatch_size//2:])
+    assert group_feats_E_mul_mat.get_shape().as_list()[1] == mat_dim
     loss = 0
     if 'rec' in group_loss_type:
         loss += tf.reduce_sum(tf.square(
                 group_feats_E - group_feats_G_ori), axis=1)
     if 'mat' in group_loss_type:
-        assert mat_dim * mat_dim == group_feats_E.get_shape().as_list()[1]
-        group_feats_E_mat = tf.reshape(group_feats_E,
-                                       [minibatch_size, mat_dim, mat_dim])
-        group_feats_G_sum_mat = tf.reshape(group_feats_G_sum,
-                                       [minibatch_size, mat_dim, mat_dim])
-        group_feats_E_mul_mat = tf.matmul(group_feats_E_mat[:minibatch_size],
-                                          group_feats_E_mat[:minibatch_size])
         loss += tf.reduce_sum(tf.square(
                 group_feats_E_mul_mat - group_feats_G_sum_mat), axis=[1, 2])
     if 'oth' in group_loss_type:
