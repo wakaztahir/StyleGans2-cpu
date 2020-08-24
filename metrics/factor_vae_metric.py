@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 24 Aug 2020 22:29:56 AEST
+# --- Last Modified: Mon 24 Aug 2020 22:36:11 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -29,7 +29,7 @@ from training.utils import get_return_v
 class FactorVAEMetric(metric_base.MetricBase):
     def __init__(self, dataset_dir, dataset_name, use_latents, batch_size, num_train,
                  num_eval, num_variance_estimate, has_label_place=False,
-                 drange_net=[-1., 1.] **kwargs):
+                 drange_net=[-1., 1.], **kwargs):
         super().__init__(**kwargs)
         if dataset_name == 'Dsprites':
             self.ground_truth_data = DspritesDataHelper(dataset_dir, use_latents)
