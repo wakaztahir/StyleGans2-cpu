@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sat 29 Aug 2020 01:46:54 AEST
+# --- Last Modified: Sat 29 Aug 2020 01:48:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -169,7 +169,8 @@ def main():
         for k, v in this_results.items():
             if k not in results.keys():
                 results = fill_configs_for_new_metric(results, k)
-            print(results)
+            print('results:', results)
+            print('this_results:', this_results)
             results[k][idx_config].append(v)
 
     for k, v in results.items():
