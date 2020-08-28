@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Mon 24 Aug 2020 17:31:34 AEST
+# --- Last Modified: Thu 27 Aug 2020 23:04:20 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -342,8 +342,7 @@ def make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
         group_feats_G_det = tf.linalg.det(group_feats_G_mat, name='G_mat_det')
         group_feats_one_det = tf.ones(tf.shape(group_feats_G_det),
                                       dtype=group_feats_G_det.dtype)
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-                group_feats_G_det - group_feats_one_det), axis=[1]))
+        loss += tf.reduce_mean(tf.square(group_feats_G_det - group_feats_one_det))
     return loss
 
 def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
@@ -361,6 +360,7 @@ def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     reconstructions, group_feats_G = get_return_v(G.get_output_for(sampled_all, labels_all, is_training=True), 2)
     group_feat_loss = make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
                                            group_loss_type)
+    group_feat_loss = autosummary('Loss/group_feat_loss', group_feat_loss)
 
     reconstruction_loss = make_reconstruction_loss(reals, reconstructions[:minibatch_size],
                                                    recons_type=recons_type)

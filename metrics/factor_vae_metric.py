@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 24 Aug 2020 22:36:11 AEST
+# --- Last Modified: Fri 28 Aug 2020 01:20:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -56,9 +56,9 @@ class FactorVAEMetric(metric_base.MetricBase):
             scores_dict["train_accuracy"] = 0.
             scores_dict["eval_accuracy"] = 0.
             scores_dict["num_active_dims"] = 0
-            self._report_result(0., suffix='train_acc')
-            self._report_result(0., suffix='eval_acc')
-            self._report_result(0., suffix='act_dim')
+            self._report_result(0., suffix='_train_acc')
+            self._report_result(0., suffix='_eval_acc')
+            self._report_result(0., suffix='_act_dim')
             return scores_dict
 
         print("Generating training set.")
@@ -88,9 +88,9 @@ class FactorVAEMetric(metric_base.MetricBase):
         scores_dict["train_accuracy"] = train_accuracy
         scores_dict["eval_accuracy"] = eval_accuracy
         scores_dict["num_active_dims"] = np.sum(active_dims.astype(int))
-        self._report_result(train_accuracy, suffix='train_acc')
-        self._report_result(eval_accuracy, suffix='eval_acc')
-        self._report_result(np.sum(active_dims.astype(int)), suffix='act_dim')
+        self._report_result(train_accuracy, suffix='_train_acc')
+        self._report_result(eval_accuracy, suffix='_eval_acc')
+        self._report_result(np.sum(active_dims.astype(int)), suffix='_act_dim')
         # return scores_dict
         print('scores_dict:', scores_dict)
 

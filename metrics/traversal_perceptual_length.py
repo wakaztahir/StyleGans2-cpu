@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Mon 24 Aug 2020 17:08:54 AEST
+# --- Last Modified: Thu 27 Aug 2020 23:57:53 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -169,10 +169,10 @@ class TPL(metric_base.MetricBase):
         print('mean_std:', mean_std)
         print('norm_dis_std:', norm_dis_std)
         # def _report_result(self, value, suffix='', fmt='%-10.4f'):
-        self._report_result(sum_distance, suffix='sum_dist')
-        self._report_result(mean_distance, suffix='mean_dist')
-        self._report_result(mean_std, suffix='mean_std')
-        self._report_result(norm_dis_std, suffix='norm_dist_std')
+        self._report_result(sum_distance, suffix='_sum_dist')
+        self._report_result(mean_distance, suffix='_mean_dist')
+        self._report_result(mean_std, suffix='_mean_std')
+        self._report_result(norm_dis_std, suffix='_norm_dist_std')
         # pdb.set_trace()
         return {'tpl_per_dim': avg_distance_per_dim}
 #----------------------------------------------------------------------------

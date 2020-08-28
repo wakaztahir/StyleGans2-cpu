@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 24 Aug 2020 17:11:35 AEST
+# --- Last Modified: Fri 28 Aug 2020 03:05:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -25,11 +25,18 @@ from training import misc
 
 def get_return_v(x, topk=1):
     if (not isinstance(x, tuple)) and (not isinstance(x, list)):
-        return x
-    if topk == 1:
-        return x[0]
+        return x if topk == 1 else tuple([x] + [None] * (topk - 1))
+    if topk > len(x):
+        return tuple(list(x) + [None] * (topk - len(x)))
     else:
-        return x[:topk]
+        if topk == 1:
+            return x[0]
+        else:
+            return tuple(x[:topk])
+    # if topk == 1:
+        # return x[0]
+    # else:
+        # return x[:topk]
 
 def save_atts(atts, filename, grid_size, drange, grid_fakes, n_samples_per):
     canvas = np.zeros([grid_fakes.shape[0], 1, grid_fakes.shape[2], grid_fakes.shape[3]])

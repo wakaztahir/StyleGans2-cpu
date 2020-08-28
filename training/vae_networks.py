@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 24 Aug 2020 16:58:09 AEST
+# --- Last Modified: Fri 28 Aug 2020 03:41:12 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,6 +34,7 @@ from training.vae_standard_networks import build_standard_fc_sindis_D_64
 from training.vae_standard_networks import build_simple_fc_sindis_D_64
 from training.vae_group_networks import build_group_post_E
 from training.vae_group_networks import build_group_prior_G
+from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
 # VAE main Encoder.
@@ -84,6 +85,11 @@ def E_main_modular(
         elif k == 'Standard_post_E':
             x = build_standard_post_E(x=x, name=k, scope_idx=scope_idx,
                                       latent_size=latent_size, is_validation=is_validation)
+            break
+        elif k == 'Standard_post_norelu_E':
+            x = build_standard_post_E(x=x, name=k, scope_idx=scope_idx,
+                                      latent_size=latent_size, use_relu=False,
+                                      is_validation=is_validation)
             break
         elif k == 'Group_post_E':
             x = build_group_post_E(x=x, name=k, scope_idx=scope_idx,
@@ -154,8 +160,13 @@ def G_main_modular(
     group_feats = None
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_prior_G':
-            x = build_standard_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+            x, group_feats = \
+                build_standard_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                        is_validation=is_validation)
+        elif k == 'Standard_prior_norelu_G':
+            x, group_feats = \
+                build_standard_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                       use_relu=False, is_validation=is_validation)
         elif k == 'Group_prior_G':
             x, group_feats = build_group_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                  group_feats_size=group_feats_size,
@@ -174,11 +185,12 @@ def G_main_modular(
             raise ValueError('Not supported module key:', k)
 
     # Return requested outputs.
-    x = tf.identity(x, name='fake_x')
-    if group_feats is not None:
-        return x, group_feats
-    else:
-        return x
+    # x = tf.identity(x, name='fake_x')
+    # if group_feats is not None:
+        # return x, group_feats
+    # else:
+        # return x
+    return x, group_feats
 
 #----------------------------------------------------------------------------
 # Factor-VAE main Discriminator.

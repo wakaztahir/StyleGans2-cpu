@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 24 Aug 2020 15:25:21 AEST
+# --- Last Modified: Fri 28 Aug 2020 03:39:22 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -65,20 +65,20 @@ def build_standard_conv_E_64(reals_in, name, scope_idx, is_validation=False):
 def build_standard_conv_E_128(reals_in, name, scope_idx, is_validation=False):
     pass
 
-def build_standard_post_E(x, name, scope_idx, latent_size, is_validation=False):
+def build_standard_post_E(x, name, scope_idx, latent_size, use_relu=True, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         flat_x = tf.layers.flatten(x)
-        e5 = tf.layers.dense(flat_x, 256, activation=tf.nn.relu, name="e5")
+        e5 = tf.layers.dense(flat_x, 256, activation=tf.nn.relu if use_relu else None, name="e5")
         means = tf.layers.dense(e5, latent_size, activation=None, name="means")
         log_var = tf.layers.dense(e5, latent_size, activation=None, name="log_var")
-    return means, log_var
+    return means, log_var, e5
 
-def build_standard_prior_G(latents_in, name, scope_idx, is_validation=False):
+def build_standard_prior_G(latents_in, name, scope_idx, use_relu=True, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
-        d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu)
+        d1 = tf.layers.dense(latents_in, 256, activation=tf.nn.relu if use_relu else None)
         d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
         d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
-    return d2_reshaped
+    return d2_reshaped, d1
 
 def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
