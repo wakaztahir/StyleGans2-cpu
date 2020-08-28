@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sat 29 Aug 2020 01:58:50 AEST
+# --- Last Modified: Sat 29 Aug 2020 01:59:48 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -164,10 +164,10 @@ def main():
         config = get_config(dir_name, args.config_variables)
         this_results = extract_this_results(dir_name, args.target_step)
         if this_results != {}:
-            idx_config = config_ls.index(config)
             if config not in config_ls:
                 config_ls.append(config)
                 results = extend_exist_metrics_for_new_config(results)
+            idx_config = config_ls.index(config)
         # this_results: {'fvm.eval_acc': 0.5, 'fvm.n_dim': 4, ...}
         for k, v in this_results.items():
             if k not in results.keys():
