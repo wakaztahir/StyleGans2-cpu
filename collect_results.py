@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sat 29 Aug 2020 01:48:33 AEST
+# --- Last Modified: Sat 29 Aug 2020 01:50:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,6 +40,8 @@ brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
          'Standard_prior_G': 'stdG',
          'factorvae_dsprites_all': 'fvm',
          'factorvae_dsprites_all_vae': 'fvm', 'group_verify': 'gv',
+         'factorvae_dsprites_all_hpc': 'fvm',
+         'factorvae_dsprites_all_hpc_vae': 'fvm',
          'tpl_nomap': 'tpl'}
 
 def extend_exist_metrics_for_new_config(results):
