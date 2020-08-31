@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sat 29 Aug 2020 02:05:14 AEST
+# --- Last Modified: Mon 31 Aug 2020 16:48:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -38,6 +38,7 @@ brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
          'betatc_vae_modular': 'btcv', 'group_vae_modular': 'gpv',
          'Standard_prior_norelu_G': 'nreluG',
          'Standard_prior_G': 'stdG',
+         'Group_prior_G': 'gpG', 'Group_prior_sim_G': 'gpsimG',
          'factorvae_dsprites_all': 'fvm',
          'factorvae_dsprites_all_vae': 'fvm', 'group_verify': 'gv',
          'factorvae_dsprites_all_hpc': 'fvm',
