@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 31 Aug 2020 16:45:30 AEST
+# --- Last Modified: Mon 31 Aug 2020 17:36:22 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,6 +34,8 @@ from training.vae_standard_networks import build_standard_fc_sindis_D_64
 from training.vae_standard_networks import build_simple_fc_sindis_D_64
 from training.vae_group_networks import build_group_post_E
 from training.vae_group_networks import build_group_prior_G
+from training.vae_group_networks import build_group_sim_post_E
+from training.vae_group_networks import build_group_sim_prior_G
 from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
@@ -91,8 +93,13 @@ def E_main_modular(
                                       latent_size=latent_size, use_relu=False,
                                       is_validation=is_validation)
             break
-        elif k == 'Group_post_E' or k == 'Group_post_sim_E':
+        elif k == 'Group_post_E':
             x = build_group_post_E(x=x, name=k, scope_idx=scope_idx,
+                                   group_feats_size=group_feats_size,
+                                   latent_size=latent_size, is_validation=is_validation)
+            break
+        elif k == 'Group_post_sim_E':
+            x = build_group_sim_post_E(x=x, name=k, scope_idx=scope_idx,
                                    group_feats_size=group_feats_size,
                                    latent_size=latent_size, is_validation=is_validation)
             break
@@ -167,8 +174,12 @@ def G_main_modular(
             x, group_feats = \
                 build_standard_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                        use_relu=False, is_validation=is_validation)
-        elif k == 'Group_prior_G' or k == 'Group_prior_sim_G':
+        elif k == 'Group_prior_G':
             x, group_feats = build_group_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                                 group_feats_size=group_feats_size,
+                                                 is_validation=is_validation)
+        elif k == 'Group_prior_sim_G':
+            x, group_feats = build_group_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                  group_feats_size=group_feats_size,
                                                  is_validation=is_validation)
         elif k == 'Standard_G_64':
