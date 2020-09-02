@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 24 Aug 2020 17:03:33 AEST
+# --- Last Modified: Tue 01 Sep 2020 23:13:45 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -133,7 +133,7 @@ def training_loop_vae(
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
-                              input_shape=[None, G_args.latent_size],
+                              input_shape=[None, n_discrete+G_args.latent_size],
                               **G_args)
             if use_D:
                 D = tflib.Network('D',

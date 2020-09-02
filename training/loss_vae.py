@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Thu 27 Aug 2020 23:04:20 AEST
+# --- Last Modified: Thu 03 Sep 2020 03:17:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -323,39 +323,140 @@ def make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
                                    [minibatch_size//2, mat_dim, mat_dim])
     group_feats_E_mul_mat = tf.matmul(group_feats_E_mat[:minibatch_size//2],
                                       group_feats_E_mat[minibatch_size//2:])
+    group_feats_G_mul_mat = tf.matmul(group_feats_G_mat[:minibatch_size//2],
+                                      group_feats_G_mat[minibatch_size//2:minibatch_size])
     assert group_feats_E_mul_mat.get_shape().as_list()[1] == mat_dim
     loss = 0
-    if 'rec' in group_loss_type:
+    if '_rec_' in group_loss_type:
         loss += tf.reduce_mean(tf.reduce_sum(tf.square(
                 group_feats_E - group_feats_G_ori), axis=1))
-    if 'mat' in group_loss_type:
+    if '_mat_' in group_loss_type:
         loss += tf.reduce_mean(tf.reduce_sum(tf.square(
                 group_feats_E_mul_mat - group_feats_G_sum_mat), axis=[1, 2]))
-    if 'oth' in group_loss_type:
+    if '_gmat_' in group_loss_type:
+        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
+                group_feats_G_mul_mat - group_feats_G_sum_mat), axis=[1, 2]))
+    if '_oth_' in group_loss_type:
         group_feats_G_mat2 = tf.matmul(group_feats_G_mat, group_feats_G_mat,
                                        transpose_b=True)
         G_mat_eye = tf.eye(mat_dim, dtype=group_feats_G_mat2.dtype,
                            batch_shape=[minibatch_size+minibatch_size//2])
         loss += tf.reduce_mean(tf.reduce_sum(tf.square(
                 group_feats_G_mat2 - G_mat_eye), axis=[1, 2]))
-    if 'det' in group_loss_type:
+    if '_det_' in group_loss_type:
         group_feats_G_det = tf.linalg.det(group_feats_G_mat, name='G_mat_det')
         group_feats_one_det = tf.ones(tf.shape(group_feats_G_det),
                                       dtype=group_feats_G_det.dtype)
         loss += tf.reduce_mean(tf.square(group_feats_G_det - group_feats_one_det))
     return loss
 
+def split_latents(x, minibatch_size):
+    # x: [b, dim]
+    b = minibatch_size
+    dim = x.get_shape().as_list()[1]
+    split_idx = tf.random.uniform(shape=[b], maxval=dim+1, dtype=tf.int32)
+    idx_range = tf.tile(tf.range(dim)[tf.newaxis, :], [b, 1])
+    mask_1 = tf.cast(idx_range < split_idx[:, tf.newaxis], tf.float32)
+    mask_2 = 1. - mask_1
+    return x * mask_1, x * mask_2
+
+def make_group_dcp_loss(group_feats_G_split, group_feats_G, minibatch_size):
+    mat_dim = int(math.sqrt(group_feats_G.get_shape().as_list()[1]))
+    group_feats_G_mat = tf.reshape(group_feats_G, [minibatch_size, mat_dim, mat_dim])
+    group_feats_G_split_mat = tf.reshape(group_feats_G_split, [2*minibatch_size, mat_dim, mat_dim])
+    group_feats_G_mul_split_mat = tf.matmul(group_feats_G_split_mat[:minibatch_size],
+                                            group_feats_G_split_mat[minibatch_size:])
+    loss = tf.reduce_mean(tf.reduce_sum(tf.square(
+        group_feats_G_mul_split_mat - group_feats_G_mat), axis=[1, 2]))
+    return loss
+
 def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
-              latent_type='normal', hy_beta=1, group_loss_type='rec_mat',
-              recons_type='bernoulli_loss'):
+              latent_type='normal', hy_beta=1, hy_gamma=1, group_loss_type='_rec_mat_',
+              recons_type='bernoulli_loss', use_group_decomp=False):
     _ = opt, training_set
     means, log_var, group_feats_E = get_return_v(E.get_output_for(reals, labels, is_training=True), 3)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
 
     sampled = sample_from_latent_distribution(means, log_var)
+
+    # Group feat loss.
     sampled_sum = sampled[:minibatch_size//2] + sampled[minibatch_size//2:]
     sampled_all = tf.concat([sampled, sampled_sum], axis=0)
+    labels_all = tf.concat([labels, labels[:minibatch_size//2]], axis=0)
+    reconstructions, group_feats_G = get_return_v(G.get_output_for(sampled_all, labels_all, is_training=True), 2)
+    group_feat_loss = make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
+                                           group_loss_type)
+    group_feat_loss = autosummary('Loss/group_feat_loss', group_feat_loss)
+
+    reconstruction_loss = make_reconstruction_loss(reals, reconstructions[:minibatch_size],
+                                                   recons_type=recons_type)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
+
+    elbo = reconstruction_loss + kl_loss
+    elbo = autosummary('Loss/group_vae_elbo', elbo)
+    loss = elbo + hy_beta * group_feat_loss
+
+    # Group decompose loss.
+    if use_group_decomp:
+        sampled_1, sampled_2 = split_latents(sampled, minibatch_size)
+        sampled_split = tf.concat([sampled_1, sampled_2], axis=0)
+        labels_split = tf.concat([labels, labels], axis=0)
+        _, group_feats_G_split = get_return_v(G.get_output_for(sampled_split, labels_split, is_training=True), 2)
+        group_dcp_loss = make_group_dcp_loss(group_feats_G_split, group_feats_G[:minibatch_size], minibatch_size)
+        group_dcp_loss = autosummary('Loss/group_dcp_loss', group_dcp_loss)
+        loss += hy_gamma * group_dcp_loss
+    loss = autosummary('Loss/group_vae_loss', loss)
+    return loss
+
+def compute_cat_kl(cat_dist):
+    assert len(cat_dist.get_shape()) == 2
+    n_cat = cat_dist.get_shape().as_list()[1]
+    uni_dist = tf.ones(tf.shape(cat_dist), dtype=cat_dist.dtype) / n_cat
+    cat_dist = tf.distributions.Categorical(probs=cat_dist)
+    uni_dist = tf.distributions.Categorical(probs=uni_dist)
+    kl_loss = tf.distributions.kl_divergence(cat_dist, uni_dist)
+    return kl_loss
+
+def sample_from_cat_distribution(alpha, temp=0.67, eps=1e-12):
+    unif = tf.random.uniform(shape=tf.shape(alpha), dtype=alpha.dtype)
+    gumbel = -tf.log(-tf.log(unif + eps) + eps)
+    log_alpha = tf.log(alpha + eps)
+    logit = (log_alpha + gumbel) / temp
+    return tf.nn.softmax(logit, axis=1)
+
+def cat_latent_sum(cat_1, cat_2):
+    n_cat = cat_1.get_shape()[1]
+    argmax_1 = tf.math.argmax(cat_1, axis=-1)
+    argmax_2 = tf.math.argmax(cat_2, axis=-1)
+    argmax_mod_sum = (argmax_1 + argmax_2) % n_cat
+    cat_sum = tf.one_hot(argmax_mod_sum, depth=n_cat, dtype=cat_1.dtype)
+    return cat_sum
+
+def group_vae_wc(E, G, opt, training_set, minibatch_size, reals, labels,
+              latent_type='normal', hy_beta=1, group_loss_type='_rec_mat_',
+              temp=0.67, recons_type='bernoulli_loss'):
+    _ = opt, training_set
+    means, log_var, group_feats_E, cat_dist = get_return_v(E.get_output_for(reals, labels, is_training=True), 4)
+    kl_con_loss = compute_gaussian_kl(means, log_var)
+    kl_con_loss = autosummary('Loss/kl_con_loss', kl_con_loss)
+    kl_cat_loss = compute_cat_kl(cat_dist)
+    kl_cat_loss = autosummary('Loss/kl_cat_loss', kl_cat_loss)
+    kl_loss = kl_con_loss + kl_cat_loss
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
+
+    # Continuous latents.
+    sampled_con = sample_from_latent_distribution(means, log_var)
+    sampled_sum_con = sampled_con[:minibatch_size//2] + sampled_con[minibatch_size//2:]
+    sampled_all_con = tf.concat([sampled_con, sampled_sum_con], axis=0)
+    # Category latents.
+    sampled_cat = sample_from_cat_distribution(cat_dist, temp=temp)
+    sampled_sum_cat = cat_latent_sum(sampled_cat[:minibatch_size//2], sampled_cat[minibatch_size//2:])
+    sampled_all_cat = tf.concat([sampled_cat, sampled_sum_cat], axis=0)
+
+    sampled_all = tf.concat([sampled_all_cat, sampled_all_con], axis=1)
+
     labels_all = tf.concat([labels, labels[:minibatch_size//2]], axis=0)
     reconstructions, group_feats_G = get_return_v(G.get_output_for(sampled_all, labels_all, is_training=True), 2)
     group_feat_loss = make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,

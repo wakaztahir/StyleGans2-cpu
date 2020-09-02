@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 31 Aug 2020 17:36:22 AEST
+# --- Last Modified: Wed 02 Sep 2020 02:39:44 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -33,9 +33,13 @@ from training.vae_standard_networks import build_standard_fc_D_128
 from training.vae_standard_networks import build_standard_fc_sindis_D_64
 from training.vae_standard_networks import build_simple_fc_sindis_D_64
 from training.vae_group_networks import build_group_post_E
+from training.vae_group_networks import build_group_post_E_wc
 from training.vae_group_networks import build_group_prior_G
 from training.vae_group_networks import build_group_sim_post_E
+from training.vae_group_networks import build_group_sim_post_up_E
+from training.vae_group_networks import build_group_sim_post_E_wc
 from training.vae_group_networks import build_group_sim_prior_G
+from training.vae_group_networks import build_group_sim_prior_down_G
 from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
@@ -48,6 +52,7 @@ def E_main_modular(
         is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
         is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
         dtype='float32',  # Data type to use for activations and outputs.
+        n_discrete=0,  # Number of discrete categories.
         fmap_min=16,
         fmap_max=512,
         fmap_decay=0.15,
@@ -98,10 +103,29 @@ def E_main_modular(
                                    group_feats_size=group_feats_size,
                                    latent_size=latent_size, is_validation=is_validation)
             break
+        elif k == 'Group_post_E_wc':
+            x = build_group_post_E_wc(x=x, name=k, scope_idx=scope_idx,
+                                      group_feats_size=group_feats_size,
+                                      con_latent_size=latent_size,
+                                      cat_latent_size=n_discrete,
+                                      is_validation=is_validation)
+            break
         elif k == 'Group_post_sim_E':
             x = build_group_sim_post_E(x=x, name=k, scope_idx=scope_idx,
-                                   group_feats_size=group_feats_size,
-                                   latent_size=latent_size, is_validation=is_validation)
+                                       group_feats_size=group_feats_size,
+                                       latent_size=latent_size, is_validation=is_validation)
+            break
+        elif k == 'Group_post_sim_up_E':
+            x = build_group_sim_post_up_E(x=x, name=k, scope_idx=scope_idx,
+                                       group_feats_size=group_feats_size,
+                                       latent_size=latent_size, is_validation=is_validation)
+            break
+        elif k == 'Group_post_sim_E_wc':
+            x = build_group_sim_post_E_wc(x=x, name=k, scope_idx=scope_idx,
+                                          group_feats_size=group_feats_size,
+                                          con_latent_size=latent_size,
+                                          cat_latent_size=n_discrete,
+                                          is_validation=is_validation)
             break
         else:
             raise ValueError('Not supported module key:', k)
@@ -180,8 +204,12 @@ def G_main_modular(
                                                  is_validation=is_validation)
         elif k == 'Group_prior_sim_G':
             x, group_feats = build_group_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
-                                                 group_feats_size=group_feats_size,
-                                                 is_validation=is_validation)
+                                                     group_feats_size=group_feats_size,
+                                                     is_validation=is_validation)
+        elif k == 'Group_prior_sim_down_G':
+            x, group_feats = build_group_sim_prior_down_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                                     group_feats_size=group_feats_size,
+                                                     is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                          output_shape=[num_channels, resolution, resolution],

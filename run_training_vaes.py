@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 24 Aug 2020 16:54:01 AEST
+# --- Last Modified: Thu 03 Sep 2020 03:19:31 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,9 +40,11 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         fmap_decay=0.15, fmap_min=16, fmap_max=512,
         n_samples_per=10, arch='resnet', topk_dims_to_show=20,
         hy_beta=1, hy_gamma=0, G_lrate_base=0.002, D_lrate_base=None,
-        lambda_d_factor=10., lambda_od=1., group_loss_type='rec_mat',
-        group_feats_size=400,
-        drange_net=[-1, 1], recons_type='bernoulli_loss'):
+        lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
+        group_feats_size=400, temp=0.67, n_discrete=0,
+        drange_net=[-1, 1], recons_type='bernoulli_loss',
+        use_group_decomp=False,
+        snapshot_ticks=10):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
@@ -66,7 +68,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
                  latent_size=count_dlatent_E_size,
                  group_feats_size=group_feats_size,
                  module_E_list=module_E_list,
-                 nf_scale=E_nf_scale,
+                 nf_scale=E_nf_scale, n_discrete=n_discrete,
                  fmap_base=2 << E_fmap_base)  # Options for encoder network.
     G = EasyDict(func_name='training.vae_networks.G_main_modular',
                  fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
@@ -99,7 +101,13 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
     elif model_type == 'group_vae':  # Group-VAE
         G_loss = EasyDict(
             func_name='training.loss_vae.group_vae',
-            latent_type=latent_type, hy_beta=hy_beta,
+            latent_type=latent_type, hy_beta=hy_beta, hy_gamma=hy_gamma,
+            use_group_decomp=use_group_decomp,
+            group_loss_type=group_loss_type, recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'group_vae_wc':  # Group-VAE
+        G_loss = EasyDict(
+            func_name='training.loss_vae.group_vae_wc',
+            latent_type=latent_type, hy_beta=hy_beta, temp=temp,
             group_loss_type=group_loss_type, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
         G_loss = EasyDict(
@@ -125,7 +133,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
     train.data_dir = data_dir
     train.total_kimg = total_kimg
     train.mirror_augment = mirror_augment
-    train.image_snapshot_ticks = train.network_snapshot_ticks = 10
+    train.image_snapshot_ticks = train.network_snapshot_ticks = snapshot_ticks
     sched.G_lrate_base = G_lrate_base
     sched.D_lrate_base = D_lrate_base
     sched.minibatch_size_base = batch_size
@@ -147,7 +155,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
         G_loss_args=G_loss, D_loss_args=D_loss,
         traversal_grid=True)
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid,
-                  n_continuous=count_dlatent_G_size, drange_net=drange_net,
+                  n_continuous=count_dlatent_G_size, n_discrete=n_discrete,
+                  drange_net=drange_net,
                   metric_arg_list=metrics, tf_config=tf_config, resume_pkl=resume_pkl,
                   n_samples_per=n_samples_per, topk_dims_to_show=topk_dims_to_show)
     kwargs.submit_config = copy.deepcopy(sc)
@@ -213,9 +222,12 @@ def main():
                         type=str, metavar='MODEL_TYPE', choices=['beta_vae', 'factor_vae',
                                                                  'factor_sindis_vae',
                                                                  'dip_vae_i', 'dip_vae_ii',
-                                                                 'betatc_vae', 'group_vae'])
+                                                                 'betatc_vae', 'group_vae',
+                                                                 'group_vae_wc'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
+    parser.add_argument('--snapshot_ticks', help='Network and image snapshot tick.', metavar='SNAPSHOT_TICKS',
+                        default=10, type=int)
     parser.add_argument('--n_samples_per',
         help='Number of samples for each line in traversal (default: %(default)s)',
         metavar='N_SHOWN_SAMPLES_PER_LINE', default=10, type=int)
@@ -273,9 +285,15 @@ def main():
     parser.add_argument('--lambda_od', help='DIP vae lambda_od.', metavar='LAMBDA_OD',
                         default=1., type=float)
     parser.add_argument('--group_loss_type', help='Group vae loss type.', metavar='GROUP_LOSS_TYPE',
-                        default='rec_mat', type=str)
+                        default='_rec_mat_', type=str)
     parser.add_argument('--group_feats_size', help='Group vae group_feats_size.', metavar='GROUP_FEATS_SIZE',
                         default=400, type=int)
+    parser.add_argument('--temp', help='Group vae with discrete latents. Gumbel temp.', metavar='TEMP',
+                        default=0.67, type=float)
+    parser.add_argument('--n_discrete', help='Number of discrete categories in model.', metavar='N_DISCRETE',
+                        default=0, type=int)
+    parser.add_argument('--use_group_decomp', help='If use group decomposition loss in group vae',
+                        default=False, metavar='USE_GROUP_DECOMP', type=_str_to_bool)
 
     args = parser.parse_args()
 
