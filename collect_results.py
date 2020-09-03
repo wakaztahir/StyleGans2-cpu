@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Thu 03 Sep 2020 12:07:59 AEST
+# --- Last Modified: Thu 03 Sep 2020 12:13:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -103,7 +103,7 @@ def extract_v(data_dict, config_ls):
             if config_ls[0] in data_dict:
                 return data_dict[config_ls[0]]
             else:
-                return 'nah'
+                return 'N'
     return str(extract_v(data_dict[config_ls[0]], config_ls[1:]))
 
 def simplify_conf_name(name):
