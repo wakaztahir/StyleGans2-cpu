@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 31 Aug 2020 16:48:26 AEST
+# --- Last Modified: Thu 03 Sep 2020 12:07:59 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -100,7 +100,10 @@ def extract_v(data_dict, config_ls):
         elif config_ls[0] == 'module_G_list':
             return data_dict[config_ls[0]][0].split('-')[0]
         else:
-            return data_dict[config_ls[0]]
+            if config_ls[0] in data_dict:
+                return data_dict[config_ls[0]]
+            else:
+                return 'nah'
     return str(extract_v(data_dict[config_ls[0]], config_ls[1:]))
 
 def simplify_conf_name(name):
