@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Thu 03 Sep 2020 23:16:27 AEST
+# --- Last Modified: Fri 04 Sep 2020 15:52:34 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -161,6 +161,7 @@ def G_main_modular(
         is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
         dtype='float32',  # Data type to use for activations and outputs.
         n_discrete=0,  # Number of discrete categories.
+        recons_type='bernoulli_loss',  # Reconstruction type.
         fmap_min=16,
         fmap_max=512,
         fmap_decay=0.15,
@@ -225,11 +226,13 @@ def G_main_modular(
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                          output_shape=[num_channels, resolution, resolution],
+                                         recons_type=recons_type,
                                          is_validation=is_validation)
             break
         elif k == 'Standard_G_128':
             x = build_standard_conv_G_128(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                           output_shape=[num_channels, resolution, resolution],
+                                          recons_type=recons_type,
                                           is_validation=is_validation)
             break
         else:

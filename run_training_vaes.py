@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Thu 03 Sep 2020 22:20:39 AEST
+# --- Last Modified: Fri 04 Sep 2020 15:50:51 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -76,6 +76,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
                  group_feats_size=group_feats_size,
                  module_G_list=module_G_list,
                  nf_scale=G_nf_scale, n_discrete=n_discrete,
+                 recons_type=recons_type,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.

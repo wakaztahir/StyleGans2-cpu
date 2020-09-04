@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 28 Aug 2020 03:39:22 AEST
+# --- Last Modified: Fri 04 Sep 2020 15:53:49 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -80,7 +80,8 @@ def build_standard_prior_G(latents_in, name, scope_idx, use_relu=True, is_valida
         d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
     return d2_reshaped, d1
 
-def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_validation=False):
+def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape,
+                             recons_type='bernoulli_loss', is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         d3 = tf.layers.conv2d_transpose(
             inputs=d2_reshaped,
@@ -120,11 +121,12 @@ def build_standard_conv_G_64(d2_reshaped, name, scope_idx, output_shape, is_vali
             padding="same",
             data_format='channels_first',
         )
-        if is_validation:
+        if is_validation and recons_type=='bernoulli_loss':
             d6 = tf.nn.sigmoid(d6)
     return d6
 
-def build_standard_conv_G_128(d2_reshaped, name, scope_idx, output_shape, is_validation=False):
+def build_standard_conv_G_128(d2_reshaped, name, scope_idx, output_shape,
+                              recons_type='bernoulli_loss', is_validation=False):
     pass
 
 def build_standard_fc_D_64(latents, name, scope_idx):

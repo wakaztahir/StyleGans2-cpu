@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Thu 03 Sep 2020 22:18:13 AEST
+# --- Last Modified: Fri 04 Sep 2020 15:54:47 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,7 +37,7 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
                 true_images - reconstructed_images), [1, 2, 3])
             # loss = tf.reduce_mean(tf.square(
                 # true_images - reconstructed_images), [1, 2, 3])
-        else:
+        elif recons_type == 'bernoulli_loss':
             flattened_dim = np.prod(true_images.get_shape().as_list()[1:])
             reconstructed_images = tf.reshape(
                 reconstructed_images, shape=[-1, flattened_dim])
@@ -47,6 +47,8 @@ def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_
                 tf.nn.sigmoid_cross_entropy_with_logits(
                     logits=reconstructed_images, labels=true_images),
                 axis=1)
+        else:
+            raise ValueError('Unsupported reconstruction loss type: '+recons_type)
     return loss
 
 
