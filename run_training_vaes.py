@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Thu 03 Sep 2020 03:19:31 AEST
+# --- Last Modified: Thu 03 Sep 2020 22:20:39 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -75,7 +75,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
                  latent_size=count_dlatent_G_size,
                  group_feats_size=group_feats_size,
                  module_G_list=module_G_list,
-                 nf_scale=G_nf_scale,
+                 nf_scale=G_nf_scale, n_discrete=n_discrete,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -104,10 +104,11 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg,
             latent_type=latent_type, hy_beta=hy_beta, hy_gamma=hy_gamma,
             use_group_decomp=use_group_decomp,
             group_loss_type=group_loss_type, recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_vae_wc':  # Group-VAE
+    elif model_type == 'group_vae_wc':  # Group-VAE-with_Cat
         G_loss = EasyDict(
             func_name='training.loss_vae.group_vae_wc',
-            latent_type=latent_type, hy_beta=hy_beta, temp=temp,
+            latent_type=latent_type, hy_beta=hy_beta, hy_gamma=hy_gamma, temp=temp,
+            use_group_decomp=use_group_decomp,
             group_loss_type=group_loss_type, recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
         G_loss = EasyDict(

@@ -158,6 +158,7 @@ class Network:
         self.output_templates = [out_expr] if tfutil.is_tf_expression(out_expr) else list(out_expr)
         self.num_outputs = len(self.output_templates)
         assert self.num_outputs >= 1
+        # print([t for t in self.output_templates])
         assert all(tfutil.is_tf_expression(t) for t in self.output_templates)
 
         # Perform sanity checks.

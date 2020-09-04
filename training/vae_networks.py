@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 02 Sep 2020 02:39:44 AEST
+# --- Last Modified: Thu 03 Sep 2020 23:16:27 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,6 +39,7 @@ from training.vae_group_networks import build_group_sim_post_E
 from training.vae_group_networks import build_group_sim_post_up_E
 from training.vae_group_networks import build_group_sim_post_E_wc
 from training.vae_group_networks import build_group_sim_prior_G
+from training.vae_group_networks import build_group_sim_prior_G_wc
 from training.vae_group_networks import build_group_sim_prior_down_G
 from training.utils import get_return_v
 
@@ -159,6 +160,7 @@ def G_main_modular(
         is_validation=False,  # Network is under validation? Chooses which value to use for truncation_psi.
         is_template_graph=False,  # True = template graph constructed by the Network class, False = actual evaluation.
         dtype='float32',  # Data type to use for activations and outputs.
+        n_discrete=0,  # Number of discrete categories.
         fmap_min=16,
         fmap_max=512,
         fmap_decay=0.15,
@@ -189,6 +191,8 @@ def G_main_modular(
     key_ls, size_ls, count_dlatent_size = split_module_names(module_G_list)
     x = latents_in
     group_feats = None
+    group_feats_cat_mat = tf.zeros([1], dtype=latents_in.dtype)
+    group_feats_con_mat = tf.zeros([1], dtype=latents_in.dtype)
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_prior_G':
             x, group_feats = \
@@ -206,6 +210,14 @@ def G_main_modular(
             x, group_feats = build_group_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                      group_feats_size=group_feats_size,
                                                      is_validation=is_validation)
+        elif k == 'Group_prior_sim_G_wc':
+            # return d2_reshaped, group_feats, group_feats_cat_mat, group_feats_con_mat
+            x, group_feats, group_feats_cat_mat, group_feats_con_mat = build_group_sim_prior_G_wc(
+                latents_in=x, name=k, scope_idx=scope_idx,
+                group_feats_size=group_feats_size,
+                con_latent_size=latent_size,
+                cat_latent_size=n_discrete,
+                is_validation=is_validation)
         elif k == 'Group_prior_sim_down_G':
             x, group_feats = build_group_sim_prior_down_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                      group_feats_size=group_feats_size,
@@ -229,7 +241,7 @@ def G_main_modular(
         # return x, group_feats
     # else:
         # return x
-    return x, group_feats
+    return x, group_feats, group_feats_cat_mat, group_feats_con_mat
 
 #----------------------------------------------------------------------------
 # Factor-VAE main Discriminator.

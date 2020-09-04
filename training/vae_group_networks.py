@@ -8,12 +8,13 @@
 
 # --- File Name: vae_group_networks.py
 # --- Creation Date: 24-08-2020
-# --- Last Modified: Wed 02 Sep 2020 02:37:57 AEST
+# --- Last Modified: Thu 03 Sep 2020 21:57:19 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
 Group VAE networks.
 """
+import math
 import tensorflow as tf
 
 def build_group_post_E(x, name, scope_idx, group_feats_size, latent_size, is_validation=False):
@@ -120,3 +121,30 @@ def build_group_sim_prior_down_G(latents_in, name, scope_idx, group_feats_size, 
         d2 = tf.layers.dense(group_feats, 1024, activation=tf.nn.relu)
         d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
     return d2_reshaped, group_feats
+
+def build_group_sim_prior_G_wc(latents_in, name, scope_idx, group_feats_size,
+                               con_latent_size, cat_latent_size,
+                               is_validation=False):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        # Split discrete and continuous latents.
+        latents_in_cat = latents_in[:, :cat_latent_size]
+        latents_in_con = latents_in[:, cat_latent_size:]
+
+        # Group feats mapping.
+        group_feats_cat = tf.layers.dense(latents_in_cat, group_feats_size, activation=None)
+        group_feats_con = tf.layers.dense(latents_in_con, group_feats_size, activation=None)
+
+        mat_dim = int(math.sqrt(group_feats_con.get_shape().as_list()[1]))
+        assert mat_dim * mat_dim == group_feats_con.get_shape().as_list()[1]
+
+        group_feats_cat_mat = tf.reshape(group_feats_cat,
+                                         [-1, mat_dim, mat_dim])
+        group_feats_con_mat = tf.reshape(group_feats_con,
+                                         [-1, mat_dim, mat_dim])
+        group_feats_mat = tf.matmul(group_feats_cat_mat, group_feats_con_mat)
+        group_feats = tf.layers.flatten(group_feats_mat)
+
+        d1 = tf.layers.dense(group_feats, 256, activation=tf.nn.relu)
+        d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
+        d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
+    return d2_reshaped, group_feats, group_feats_cat_mat, group_feats_con_mat

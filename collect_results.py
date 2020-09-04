@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Thu 03 Sep 2020 12:13:56 AEST
+# --- Last Modified: Fri 04 Sep 2020 15:37:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,6 +43,10 @@ brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
          'factorvae_dsprites_all_vae': 'fvm', 'group_verify': 'gv',
          'factorvae_dsprites_all_hpc': 'fvm',
          'factorvae_dsprites_all_hpc_vae': 'fvm',
+         'factorvae_shape3d_all_hpc_vae': 'fvm',
+         'factorvae_shape3d_all_hpc': 'fvm',
+         'factorvae_shape3d_all_vae': 'fvm',
+         'factorvae_shape3d_all': 'fvm',
          'tpl_nomap': 'tpl'}
 
 def extend_exist_metrics_for_new_config(results):
@@ -103,7 +107,7 @@ def extract_v(data_dict, config_ls):
             if config_ls[0] in data_dict:
                 return data_dict[config_ls[0]]
             else:
-                return 'N'
+                return 0
     return str(extract_v(data_dict[config_ls[0]], config_ls[1:]))
 
 def simplify_conf_name(name):
