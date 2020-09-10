@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 18 Jul 2020 16:28:42 AEST
+# --- Last Modified: Wed 09 Sep 2020 02:29:19 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,7 +43,7 @@ def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_l
     if delta_type == 'onedim':
         prob_C = tf.nn.softmax(regress_out[:, D_global_size:], axis=1)
         I_loss_C = C_delta_latents * tf.log(prob_C + 1e-12)
-        I_loss = C_lambda * I_loss_C
+        I_loss_C = C_lambda * I_loss_C
 
         I_loss_C = tf.reduce_sum(I_loss_C, axis=1)
         I_loss = - I_loss_C

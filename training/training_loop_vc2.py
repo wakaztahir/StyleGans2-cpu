@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 14 Aug 2020 22:40:38 AEST
+# --- Last Modified: Tue 08 Sep 2020 23:23:12 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -77,6 +77,7 @@ def training_loop_vc2(
         n_discrete=3,  # Number of discrete latents in model.
         n_continuous=4,  # Number of continuous latents in model.
         return_atts=False,  # If return attention maps.
+        return_I_atts=False,  # If return I_attention maps of vpex.
         opt_reset_ls=None,  # Reset lr list for gradual latents.
         topk_dims_to_show=20, # Number of top disentant dimensions to show in a snapshot.
         n_samples_per=10):  # Number of samples for each line in traversal.
@@ -189,6 +190,21 @@ def training_loop_vc2(
                          dnnlib.make_run_dir_path('fakes_init.png'),
                          drange=drange_net,
                          grid_size=grid_size)
+
+    if include_I and return_I_atts:
+        _, atts = I.run(grid_fakes,
+                        grid_fakes,
+                        grid_latents,
+                        is_validation=True,
+                        minibatch_size=sched.minibatch_gpu,
+                        return_atts=True,
+                        resolution=training_set.shape[1])
+        save_atts(atts,
+                  filename=dnnlib.make_run_dir_path('fakes_I_atts_init.png'),
+                  grid_size=grid_size,
+                  drange=[0, 1],
+                  grid_fakes=grid_fakes,
+                  n_samples_per=n_samples_per)
 
     # Setup training inputs.
     print('Building TensorFlow graph...')
@@ -530,6 +546,21 @@ def training_loop_vc2(
                                          'fakes%06d.png' % (cur_nimg // 1000)),
                                      drange=drange_net,
                                      grid_size=grid_size)
+                if include_I and return_I_atts:
+                    _, atts = I.run(grid_fakes,
+                                    grid_fakes,
+                                    grid_latents,
+                                    is_validation=True,
+                                    minibatch_size=sched.minibatch_gpu,
+                                    return_atts=True,
+                                    resolution=training_set.shape[1])
+                    atts = atts[:, topk_dims]
+                    save_atts(atts,
+                              filename=dnnlib.make_run_dir_path('fakes_I_atts%06d.png' % (cur_nimg // 1000)),
+                              grid_size=grid_size,
+                              drange=[0, 1],
+                              grid_fakes=grid_fakes,
+                              n_samples_per=n_samples_per)
 
             # Update summaries and RunContext.
             metrics.update_autosummaries()

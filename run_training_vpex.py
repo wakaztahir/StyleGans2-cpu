@@ -6,13 +6,13 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: run_training_vc2.py
-# --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 07 Sep 2020 21:05:38 AEST
+# --- File Name: run_training_vpex.py
+# --- Creation Date: 08-09-2020
+# --- Last Modified: Wed 09 Sep 2020 00:02:36 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Run training file for variation consistency related networks (v2) use.
+Run training file for variation predictability extended version.
 Code borrowed from run_training.py from NVIDIA.
 """
 
@@ -33,22 +33,19 @@ from training.vc_modular_networks2 import split_module_names, LATENT_MODULES
 def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         mirror_augment, metrics, resume_pkl,
         I_fmap_base=8, G_fmap_base=8, D_fmap_base=9,
-        fmap_decay=0.15, D_lambda=1, C_lambda=1, cls_alpha=0,
+        fmap_decay=0.15, D_lambda=0, C_lambda=1,
         n_samples_per=10, module_list=None, model_type='vc_gan2',
         epsilon_loss=3, random_eps=False, latent_type='uniform',
         delta_type='onedim', connect_mode='concat', batch_size=32, batch_per_gpu=16,
         return_atts=False, random_seed=1000,
         module_I_list=None, module_D_list=None,
         fmap_min=16, fmap_max=512,
-        G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
-        gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
-        dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
-        loose_rate=0.2, topk_dims_to_show=20):
+        G_nf_scale=4, I_nf_scale=4, D_nf_scale=4,
+        return_I_atts=False,
+        dlatent_size=24, arch='resnet', topk_dims_to_show=20):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
-    if opt_reset_ls is not None:
-        opt_reset_ls = _str_to_list_of_int(opt_reset_ls)
 
     D_global_size = 0
     if not(module_list is None):
@@ -67,6 +64,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         for i, key in enumerate(key_I_ls):
             if key.startswith('D_global') or key.startswith('D_nocond_global'):
                 D_global_I_size += size_I_ls[i]
+
     if not(module_D_list is None):
         D_global_D_size = 0
         module_D_list = _str_to_list(module_D_list)
@@ -75,42 +73,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             if key.startswith('D_global') or key.startswith('D_nocond_global'):
                 D_global_D_size += size_D_ls[i]
 
-    if model_type == 'vc2_info_gan': # G1 and G2 version InfoGAN
-        G = EasyDict(
-            func_name='training.vc_networks2.G_main_vc2',
-            synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts,
-            G_nf_scale=G_nf_scale
-        )  # Options for generator network.
-        D = EasyDict(func_name='training.vc_networks2.D_info_modular_vc2',
-                     dlatent_size=count_dlatent_D_size, D_global_size=D_global_D_size,
-                     fmap_min=fmap_min, fmap_max=fmap_max,
-                     connect_mode=connect_mode, module_D_list=module_D_list,
-                     gen_atts_in_D=gen_atts_in_D,
-                     no_atts_in_D=no_atts_in_D,
-                     D_nf_scale=D_nf_scale)
-        I = EasyDict()
-        I_info = EasyDict()
-        desc = 'vc2_info_gan_net'
-    elif model_type == 'vc2_info_gan2': # Independent branch version InfoGAN
-        G = EasyDict(
-            func_name='training.vc_networks2.G_main_vc2',
-            synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts,
-            G_nf_scale=G_nf_scale
-        )  # Options for generator network.
-        I = EasyDict(func_name='training.vc_networks2.vc2_head_infogan2',
-                     dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-                     fmap_min=fmap_min, fmap_max=fmap_max)
-        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
-        I_info = EasyDict()
-        desc = 'vc2_info_gan2_net'
-    elif model_type == 'vc2_gan': # Standard VP-GAN
+    if model_type == 'vc2_gan': # Standard VP-GAN
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -127,7 +90,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
         desc = 'vc2_gan'
-    elif model_type == 'vc2_gan_byvae': # COMA-FAIN
+    elif model_type == 'vpex_gan': # VP-GAN extended.
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -136,28 +99,14 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             module_list=module_list, use_noise=True, return_atts=return_atts,
             G_nf_scale=G_nf_scale
         )  # Options for generator network.
-        I = EasyDict(func_name='training.vc_networks2.vc2_head_byvae',
+        I = EasyDict(func_name='training.vpex_networks.vpex_net',
                      dlatent_size=count_dlatent_size, D_global_size=D_global_size,
                      fmap_min=fmap_min, fmap_max=fmap_max,
-                     connect_mode=connect_mode)
+                     connect_mode=connect_mode, return_atts=return_I_atts)
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan_byvae'
-    elif model_type == 'vc2_gan_style2_noI': # Just Style2-style GAN
-        G = EasyDict(
-            func_name='training.vc_networks2.G_main_vc2',
-            synthesis_func='G_synthesis_stylegan2_vc2',
-            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
-            latent_size=dlatent_size, architecture=arch,
-            dlatent_size=count_dlatent_size, use_noise=True, return_atts=return_atts,
-            G_nf_scale=G_nf_scale
-        )  # Options for generator network.
-        I = EasyDict()
-        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
-        I_info = EasyDict()
-        desc = 'vc2_gan_style2_noI'
+        desc = 'vpex_gan'
     elif model_type == 'vc2_gan_own_I': # Standard VP-GAN with own I
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
@@ -197,20 +146,6 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      D_nf_scale=D_nf_scale)
         I_info = EasyDict()
         desc = 'vc2_gan_ownID'
-    elif model_type == 'vc2_gan_noI': # Just modular GAN
-        G = EasyDict(
-            func_name='training.vc_networks2.G_main_vc2',
-            synthesis_func='G_synthesis_modular_vc2',
-            fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
-            dlatent_size=count_dlatent_size, D_global_size=D_global_size,
-            module_list=module_list, use_noise=True, return_atts=return_atts,
-            G_nf_scale=G_nf_scale
-        )  # Options for generator network.
-        I = EasyDict()
-        D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
-            fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
-        I_info = EasyDict()
-        desc = 'vc2_gan_noI'
     else:
         raise ValueError('Not supported model tyle: ' + model_type)
 
@@ -218,29 +153,15 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      epsilon=1e-8)  # Options for generator optimizer.
     D_opt = EasyDict(beta1=0.0, beta2=0.99,
                      epsilon=1e-8)  # Options for discriminator optimizer.
-    if model_type == 'vc2_info_gan': # G1 and G2 version InfoGAN
-        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan',
-            D_global_size=D_global_size, C_lambda=C_lambda,
-            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
-            delta_type=delta_type, outlier_detector=outlier_detector,
-            gen_atts_in_D=gen_atts_in_D, att_lambda=att_lambda)  # Options for generator loss.
-        D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan',
-            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_info_gan2': # Independent branch version InfoGAN
-        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_info_gan2',
-            D_global_size=D_global_size, C_lambda=C_lambda,
-            latent_type=latent_type, norm_ord=norm_ord, n_dim_strict=n_dim_strict, loose_rate=loose_rate)  # Options for generator loss.
-        D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2_info_gan2',
-            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan': # Standard VP-GAN
+    if model_type == 'vc2_gan': # Standard VP-GAN
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_byvae': # COMA-FAIN
-        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_byvae_ns_vc2',
+    elif model_type == 'vpex_gan': # VP-GAN extended.
+        G_loss = EasyDict(func_name='training.loss_vpex.G_logistic_ns_vpex',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type)  # Options for generator loss.
@@ -251,11 +172,6 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type, own_I=True)  # Options for generator loss.
-        D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
-            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_gan_style2_noI': # Just GANs (modular or StyleGAN2-style)
-        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns',
-                          latent_type=latent_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
 
@@ -284,9 +200,6 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     desc += '-' + config_id
 
     # Configs A-E: Shrink networks to match original StyleGAN.
-    # I.fmap_base = 2 << 8
-    # G.fmap_base = 2 << 8
-    # D.fmap_base = 2 << 9
     I.fmap_base = 2 << I_fmap_base
     G.fmap_base = 2 << G_fmap_base
     D.fmap_base = 2 << D_fmap_base
@@ -304,11 +217,12 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                   G_loss_args=G_loss, D_loss_args=D_loss,
                   use_info_gan=(model_type == 'vc2_info_gan2'), # Independent branch version
                   use_vc_head=(model_type == 'vc2_gan' or
+                               model_type == 'vpex_gan' or
                                model_type == 'vc2_gan_own_I' or
                                model_type == 'vc2_gan_own_ID' or
                                model_type=='vc2_gan_byvae'),
-                  use_vc2_info_gan=(model_type == 'vc2_info_gan'), # G1 and G2 version
-                  traversal_grid=True, return_atts=return_atts)
+                  traversal_grid=True, return_atts=return_atts,
+                  return_I_atts=return_I_atts)
     n_continuous = 0
     if not(module_list is None):
         for i, key in enumerate(key_ls):
@@ -388,7 +302,7 @@ def main():
         '--metrics', help='Comma-separated list of metrics or "none" (default: %(default)s)',
         default='None', type=_parse_comma_sep)
     parser.add_argument('--model_type', help='Type of model to train', default='vc2_gan',
-                        type=str, metavar='MODEL_TYPE', choices=['vc2_gan', 'vc2_gan_noI',
+                        type=str, metavar='MODEL_TYPE', choices=['vc2_gan', 'vpex_gan', 'vc2_gan_noI',
                                                                  'vc2_gan_own_I', 'vc2_gan_own_ID',
                                                                  'vc2_info_gan',
                                                                  'vc2_gan_style2_noI', 'vc2_gan_byvae',
@@ -404,11 +318,9 @@ def main():
     parser.add_argument('--batch_per_gpu', help='N batch per gpu.',
                         metavar='N_BATCH_PER_GPU', default=16, type=int)
     parser.add_argument('--D_lambda', help='Discrete lambda for INFO-GAN and VC-GAN.',
-                        metavar='D_LAMBDA', default=1, type=float)
+                        metavar='D_LAMBDA', default=0, type=float)
     parser.add_argument('--C_lambda', help='Continuous lambda for INFO-GAN and VC-GAN.',
                         metavar='C_LAMBDA', default=1, type=float)
-    parser.add_argument('--cls_alpha', help='Classification hyper in VC-GAN.',
-                        metavar='CLS_ALPHA', default=0, type=float)
     parser.add_argument('--epsilon_loss', help='Continuous lambda for INFO-GAN and VC-GAN.',
                         metavar='EPSILON_LOSS', default=0.4, type=float)
     parser.add_argument('--latent_type', help='What type of latent priori to use.',
@@ -430,6 +342,8 @@ def main():
                         metavar='D_FMAP_BASE', default=9, type=int)
     parser.add_argument('--return_atts', help='If return attention maps.',
                         default=False, metavar='RETURN_ATTS', type=_str_to_bool)
+    parser.add_argument('--return_I_atts', help='If return I_attention maps of vpex.',
+                        default=False, metavar='RETURN_I_ATTS', type=_str_to_bool)
     parser.add_argument('--random_seed', help='TF random seed.',
                         metavar='RANDOM_SEED', default=9, type=int)
     parser.add_argument('--module_I_list', help='Module list for I modular network.',
@@ -446,26 +360,10 @@ def main():
                         metavar='I_NF_SCALE', default=4, type=int)
     parser.add_argument('--D_nf_scale', help='N feature map scale for D.',
                         metavar='D_NF_SCALE', default=4, type=int)
-    parser.add_argument('--outlier_detector', help='If use outlier detector instead of regressor.',
-                        default=False, metavar='OUTLIER_DETECTOR', type=_str_to_bool)
-    parser.add_argument('--gen_atts_in_D', help='If generate atts in D of vc2_infogan.',
-                        default=False, metavar='GEN_ATTS_IN_D', type=_str_to_bool)
-    parser.add_argument('--no_atts_in_D', help='If not use atts in D of vc2_infogan.',
-                        default=False, metavar='NO_ATTS_IN_D', type=_str_to_bool)
-    parser.add_argument('--att_lambda', help='ATT lambda of gen_atts in D for vc2_infogan loss.',
-                        metavar='ATT_LAMBDA', default=0, type=float)
     parser.add_argument('--dlatent_size', help='Latent size. Used for vc2_gan_style2_noI.',
                         metavar='DLATENT_SIZE', default=24, type=int)
     parser.add_argument('--arch', help='Architecture for vc2_gan_style2_noI.',
                         metavar='ARCH', default='resnet', type=str)
-    parser.add_argument('--opt_reset_ls', help='Opt update step list.',
-                        default=None, metavar='OPT_RESET_LS', type=str)
-    parser.add_argument('--norm_ord', help='InfoGAN loss with p-norm.',
-                        metavar='NORM_ORD', default=2, type=float)
-    parser.add_argument('--n_dim_strict', help='Number of dims to drop in InfoGAN.',
-                        metavar='N_DIM_DROP', default=0, type=int)
-    parser.add_argument('--loose_rate', help='InfoGAN loss with loose_rate.',
-                        metavar='LOOSE_RATE', default=0.2, type=float)
     parser.add_argument('--topk_dims_to_show', help='Number of top disentant dimensions to show in a snapshot.',
                         metavar='TOPK_DIMS_TO_SHOW', default=20, type=int)
 
