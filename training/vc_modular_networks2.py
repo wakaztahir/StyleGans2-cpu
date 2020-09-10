@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 03 Sep 2020 22:50:21 AEST
+# --- Last Modified: Thu 10 Sep 2020 21:56:13 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -109,7 +109,7 @@ def build_D_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     return x
 
 
-def build_C_global_layers_paral(x, name, n_latents, start_idx, scope_idx, dlatents_in,
+def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                           act, fused_modconv, fmaps=128, **kwargs):
     '''
     Build continuous latent layers, e.g. C_global layers.
@@ -120,19 +120,19 @@ def build_C_global_layers_paral(x, name, n_latents, start_idx, scope_idx, dlaten
                                                   up=False, fused_modconv=fused_modconv), act=act)
     return x
 
-def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
-                          act, fused_modconv, fmaps=128, **kwargs):
-    '''
-    Build continuous latent layers, e.g. C_global layers.
-    '''
-    with tf.variable_scope(name + '-' + str(scope_idx)):
-        C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
-        for i in range(n_latents):
-            with tf.variable_scope('style_mod-' + str(i)):
-                x = instance_norm(x)
-                x = style_mod(x, C_global_latents[:, i:i+1])
-                x = apply_bias_act(conv2d_layer(x, fmaps=x.shape[1], kernel=1), act=act)
-    return x
+# def build_C_global_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
+                          # act, fused_modconv, fmaps=128, **kwargs):
+    # '''
+    # Build continuous latent layers, e.g. C_global layers.
+    # '''
+    # with tf.variable_scope(name + '-' + str(scope_idx)):
+        # C_global_latents = dlatents_in[:, start_idx:start_idx + n_latents]
+        # for i in range(n_latents):
+            # with tf.variable_scope('style_mod-' + str(i)):
+                # x = instance_norm(x)
+                # x = style_mod(x, C_global_latents[:, i:i+1])
+                # x = apply_bias_act(conv2d_layer(x, fmaps=x.shape[1], kernel=1), act=act)
+    # return x
 
 def build_C_fgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                           act, fused_modconv, fmaps=128, return_atts=False, resolution=128, **kwargs):
