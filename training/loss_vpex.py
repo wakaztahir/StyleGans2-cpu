@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vpex.py
 # --- Creation Date: 07-09-2020
-# --- Last Modified: Wed 09 Sep 2020 16:59:31 AEST
+# --- Last Modified: Fri 11 Sep 2020 01:04:30 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,8 +34,8 @@ def calc_vpex_loss(C_delta_latents, regress_out, C_global_size,
     # I_loss = -I_loss_C
 
     # l2_loss
-    # prob_C = tf.nn.sigmoid(regress_out)
-    prob_C = tf.nn.softmax(regress_out, axis=1)
+    prob_C = tf.nn.sigmoid(regress_out)
+    # prob_C = tf.nn.softmax(regress_out, axis=1)
     I_loss = C_lambda * tf.reduce_sum((prob_C - C_delta_latents)**2, axis=1)
 
     return I_loss
