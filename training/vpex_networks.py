@@ -8,7 +8,7 @@
 
 # --- File Name: vpex_networks.py
 # --- Creation Date: 07-09-2020
-# --- Last Modified: Fri 11 Sep 2020 17:40:35 AEST
+# --- Last Modified: Fri 11 Sep 2020 17:52:43 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -149,11 +149,11 @@ def vpex_net(
         x_ch, x_h, x_w = x.get_shape().as_list()[1:]
         assert x_h == 16
         x_ori = tf.reshape(x, [-1, 1, x_ch, x_h, x_w])
-        x_ori = tf.reshape(x_ori, [-1, 1, x_ch, x_h * x_w]) # [b, 1, ch, h, w]
+        x_ori = tf.reshape(x_ori, [-1, 1, x_ch, x_h * x_w]) # [b, 1, ch, h*w]
         x = tf.reshape(x, [-1, 1, x_ch, x_h * x_w])
         x = att_map * x
         x = tf.reduce_sum(x, axis=-1) # [b, dlatent, ch]
-        x = tf.reshape(x, [-1, dlatent_size, x_ch, 1, 1]) # [b, dlatent, ch, 1, 1]
+        x = tf.reshape(x, [-1, dlatent_size, x_ch, 1]) # [b, dlatent, ch, 1]
         x = x + x_ori # [b, dlatent, ch, h, w]
         x = tf.reshape(x, [-1, x_ch, x_h, x_w])
         with tf.variable_scope('after_att_conv_1x1'):
