@@ -8,7 +8,7 @@
 
 # --- File Name: vpex_networks.py
 # --- Creation Date: 07-09-2020
-# --- Last Modified: Fri 11 Sep 2020 17:52:43 AEST
+# --- Last Modified: Fri 11 Sep 2020 21:28:10 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -118,7 +118,7 @@ def vpex_net(
         latents = latents[:, tf.newaxis, :]
         latents = tf.tile(latents, [1, dlatent_size, 1])
         latents = tf.reshape(latents, [-1, dlatent_size])
-        att_map = apply_bias_act(modulated_conv2d_layer(att_feats, latents, fmaps=1, kernel=3,
+        att_map = apply_bias_act(modulated_conv2d_layer(att_feats, latents, fmaps=64, kernel=3,
                                                         demodulate=False, fused_modconv=False),
                                  act=act) # shape: [b*dlatent_size, 1, 16, 16]
         with tf.variable_scope('att_conv_3x3'):
@@ -127,7 +127,7 @@ def vpex_net(
                                                   kernel=3),
                                      act=act)
         with tf.variable_scope('att_conv_1x1'):
-            att_map = conv2d_layer(att_map, fmaps=1, kernel=1)
+            att_map = apply_bias_act(conv2d_layer(att_map, fmaps=1, kernel=1))
         att_map = tf.reshape(att_map, [-1, dlatent_size, 1, 16*16])
         att_map = tf.nn.softmax(att_map, axis=-1)
         # att_map = tf.nn.sigmoid(att_map)
@@ -148,17 +148,17 @@ def vpex_net(
     with tf.variable_scope('apply_att'):
         x_ch, x_h, x_w = x.get_shape().as_list()[1:]
         assert x_h == 16
-        x_ori = tf.reshape(x, [-1, 1, x_ch, x_h, x_w])
-        x_ori = tf.reshape(x_ori, [-1, 1, x_ch, x_h * x_w]) # [b, 1, ch, h*w]
+        x_ori = tf.reshape(x, [-1, 1, x_ch, x_h * x_w]) # [b, 1, ch, h*w]
         x = tf.reshape(x, [-1, 1, x_ch, x_h * x_w])
         x = att_map * x
         x = tf.reduce_sum(x, axis=-1) # [b, dlatent, ch]
-        x = tf.reshape(x, [-1, dlatent_size, x_ch, 1]) # [b, dlatent, ch, 1]
-        x = x + x_ori # [b, dlatent, ch, h, w]
-        x = tf.reshape(x, [-1, x_ch, x_h, x_w])
+        x = tf.reshape(x, [-1, x_ch, 1, 1]) # [b * dlatent, ch, 1, 1]
         with tf.variable_scope('after_att_conv_1x1'):
-            x = conv2d_layer(x, fmaps=x_ch, kernel=1)
+            x = apply_bias_act(conv2d_layer(x, fmaps=x_ch, kernel=1))
+        x = tf.reshape(x, [-1, dlatent_size, x_ch, 1]) # [b, dlatent, ch, 1]
 
+        x = x + x_ori # [b, dlatent, ch, h * w]
+        x = tf.reshape(x, [-1, x_ch, x_h, x_w])
         y_ch, y_h, y_w = y.get_shape().as_list()[1:]
         y = y[:, tf.newaxis, ...]
         y = tf.tile(y, [1, dlatent_size, 1, 1, 1])
