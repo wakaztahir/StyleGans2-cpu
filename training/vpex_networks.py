@@ -8,7 +8,7 @@
 
 # --- File Name: vpex_networks.py
 # --- Creation Date: 07-09-2020
-# --- Last Modified: Fri 11 Sep 2020 21:28:10 AEST
+# --- Last Modified: Sat 12 Sep 2020 00:03:10 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -111,16 +111,16 @@ def vpex_net(
 
     # attention features for each latent dimension.
     with tf.variable_scope('att_feats'):
-        att_feats = tf.get_variable('att_feats', shape=[1, dlatent_size, 64, 16, 16],
+        att_feats = tf.get_variable('att_feats', shape=[1, dlatent_size, 64, 8, 8],
                                     initializer=tf.initializers.random_normal())
         att_feats = tf.tile(tf.cast(att_feats, dtype), [tf.shape(latents)[0], 1, 1, 1, 1])
-        att_feats = tf.reshape(att_feats, [-1, 64, 16, 16])
+        att_feats = tf.reshape(att_feats, [-1, 64, 8, 8])
         latents = latents[:, tf.newaxis, :]
         latents = tf.tile(latents, [1, dlatent_size, 1])
         latents = tf.reshape(latents, [-1, dlatent_size])
         att_map = apply_bias_act(modulated_conv2d_layer(att_feats, latents, fmaps=64, kernel=3,
                                                         demodulate=False, fused_modconv=False),
-                                 act=act) # shape: [b*dlatent_size, 1, 16, 16]
+                                 act=act) # shape: [b*dlatent_size, 1, 8, 8]
         with tf.variable_scope('att_conv_3x3'):
             att_map = apply_bias_act(conv2d_layer(att_map,
                                                   fmaps=64,
@@ -128,15 +128,15 @@ def vpex_net(
                                      act=act)
         with tf.variable_scope('att_conv_1x1'):
             att_map = apply_bias_act(conv2d_layer(att_map, fmaps=1, kernel=1))
-        att_map = tf.reshape(att_map, [-1, dlatent_size, 1, 16*16])
+        att_map = tf.reshape(att_map, [-1, dlatent_size, 1, 8*8])
         att_map = tf.nn.softmax(att_map, axis=-1)
         # att_map = tf.nn.sigmoid(att_map)
-        # att_map = tf.reshape(att_map, [-1, dlatent_size, 1, 16, 16])
+        # att_map = tf.reshape(att_map, [-1, dlatent_size, 1, 8, 8])
 
     # Main layers.
     x = None
     y = images_in
-    for res in range(resolution_log2, 4, -1):
+    for res in range(resolution_log2, 3, -1):
         with tf.variable_scope('%dx%d' % (2**res, 2**res)):
             if architecture == 'skip' or res == resolution_log2:
                 x = fromrgb(x, y, res)
@@ -147,7 +147,7 @@ def vpex_net(
     # Duplicate for each att.
     with tf.variable_scope('apply_att'):
         x_ch, x_h, x_w = x.get_shape().as_list()[1:]
-        assert x_h == 16
+        assert x_h == 8
         x_ori = tf.reshape(x, [-1, 1, x_ch, x_h * x_w]) # [b, 1, ch, h*w]
         x = tf.reshape(x, [-1, 1, x_ch, x_h * x_w])
         x = att_map * x
@@ -164,7 +164,7 @@ def vpex_net(
         y = tf.tile(y, [1, dlatent_size, 1, 1, 1])
         y = tf.reshape(y, [-1, y_ch, y_h, y_w])
 
-    for res in range(4, 2, -1):
+    for res in range(3, 2, -1):
         with tf.variable_scope('%dx%d' % (2**res, 2**res)):
             if architecture == 'skip' or res == resolution_log2:
                 x = fromrgb(x, y, res)
@@ -192,7 +192,7 @@ def vpex_net(
     assert x.dtype == tf.as_dtype(dtype)
     if return_atts:
         with tf.variable_scope('Reshape_atts'):
-            att_map = tf.reshape(att_map, [-1, 16, 16, 1])
+            att_map = tf.reshape(att_map, [-1, 8, 8, 1])
             att_map = tf.image.resize(att_map, size=(resolution, resolution))
             att_map = tf.reshape(att_map, [-1, dlatent_size, 1, resolution, resolution])
         return x, att_map
