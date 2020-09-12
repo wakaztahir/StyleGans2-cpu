@@ -8,7 +8,7 @@
 
 # --- File Name: vpex_networks.py
 # --- Creation Date: 07-09-2020
-# --- Last Modified: Sat 12 Sep 2020 00:03:10 AEST
+# --- Last Modified: Sat 12 Sep 2020 13:24:22 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -118,9 +118,10 @@ def vpex_net(
         latents = latents[:, tf.newaxis, :]
         latents = tf.tile(latents, [1, dlatent_size, 1])
         latents = tf.reshape(latents, [-1, dlatent_size])
-        att_map = apply_bias_act(modulated_conv2d_layer(att_feats, latents, fmaps=64, kernel=3,
-                                                        demodulate=False, fused_modconv=False),
-                                 act=act) # shape: [b*dlatent_size, 1, 8, 8]
+        # att_map = apply_bias_act(modulated_conv2d_layer(att_feats, latents, fmaps=64, kernel=3,
+                                                        # demodulate=False, fused_modconv=False),
+                                 # act=act) # shape: [b*dlatent_size, 1, 8, 8]
+        att_map = att_feats
         with tf.variable_scope('att_conv_3x3'):
             att_map = apply_bias_act(conv2d_layer(att_map,
                                                   fmaps=64,
