@@ -8,7 +8,7 @@
 
 # --- File Name: vpex_networks.py
 # --- Creation Date: 07-09-2020
-# --- Last Modified: Mon 14 Sep 2020 15:21:03 AEST
+# --- Last Modified: Mon 14 Sep 2020 15:25:24 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -170,6 +170,7 @@ def vpex_net(
             x = apply_bias_act(conv2d_layer(x, fmaps=x_ch, kernel=1))
         x = tf.reshape(x, [-1, dlatent_size, x_ch, 1]) # [b, dlatent, ch, 1]
 
+        x = tf.tile(x, [1, 1, 1, x_h * x_w])
         # x = x + x_ori # [b, dlatent, ch, h * w]
         x = tf.reshape(x, [-1, x_ch, x_h, x_w])
         y_ch, y_h, y_w = y.get_shape().as_list()[1:]
