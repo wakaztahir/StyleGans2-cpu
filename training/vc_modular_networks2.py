@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 24 Sep 2020 23:39:09 AEST
+# --- Last Modified: Fri 25 Sep 2020 17:52:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,7 +46,7 @@ LATENT_MODULES = [
     'Group_prior_sim_G_wc',
     'Group_post_sim_up_E',
     'Group_prior_sim_down_G',
-    'Lie_prior_sim_G', 'Lie_prior_sim_G_oth',
+    'Lie_prior_sim_G', 'Lie_prior_sim_G_oth', 'Lie_prior_sim_G_oth_squash',
     'Standard_prior_G', 'Standard_prior_norelu_G'
 ]
 
