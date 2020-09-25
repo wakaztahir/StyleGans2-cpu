@@ -1,0 +1,35 @@
+# Lie-VAE
+#for j in 0 1 2 3 4 5 6 7 8 9
+for j in 0 1 2 3 4 5
+do
+    for i in 20 50 100
+    do
+        for k in 50
+        do
+            CUDA_VISIBLE_DEVICES=1 \
+                python run_training_vaes.py \
+                --result-dir /mnt/hdd/repo_results/stylegan2/results_lie_vae_dsp \
+                --data-dir /mnt/hdd/Datasets/dsprites \
+                --dataset dsprites_all_noshuffle_nolabel_tfr \
+                --total-kimg 20000 \
+                --random_seed ${j} \
+                --drange_net '[0, 1]' \
+                --snapshot_ticks 200 \
+                --recons_type bernoulli_loss \
+                --metrics factorvae_dsprites_all_vae \
+                --G_lrate_base 0.001 \
+                --num-gpus 1 \
+                --model_type lie_vae \
+                --hy_dcp 0 \
+                --hy_hes 1 \
+                --hy_lin 0 \
+                --hy_ncut 1 \
+                --hy_rec 3 \
+                --group_feats_size 100 \
+                --batch_size 256 \
+                --batch_per_gpu 256 \
+                --module_E_list '[Standard_E_64-1, Group_post_sim_E-10]' \
+                --module_G_list '[Lie_prior_sim_G-10, Standard_G_64-1]'
+        done
+    done
+done

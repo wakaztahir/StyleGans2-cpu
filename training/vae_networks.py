@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 04 Sep 2020 15:52:34 AEST
+# --- Last Modified: Thu 24 Sep 2020 23:38:48 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -41,6 +41,8 @@ from training.vae_group_networks import build_group_sim_post_E_wc
 from training.vae_group_networks import build_group_sim_prior_G
 from training.vae_group_networks import build_group_sim_prior_G_wc
 from training.vae_group_networks import build_group_sim_prior_down_G
+from training.vae_lie_networks import build_lie_sim_prior_G
+from training.vae_lie_networks import build_lie_sim_prior_G_oth
 from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
@@ -194,6 +196,8 @@ def G_main_modular(
     group_feats = None
     group_feats_cat_mat = tf.zeros([1], dtype=latents_in.dtype)
     group_feats_con_mat = tf.zeros([1], dtype=latents_in.dtype)
+    lie_alg_feats = tf.zeros([1], dtype=latents_in.dtype)
+    lie_alg_basis = tf.zeros([1], dtype=latents_in.dtype)
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_prior_G':
             x, group_feats = \
@@ -223,6 +227,14 @@ def G_main_modular(
             x, group_feats = build_group_sim_prior_down_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                      group_feats_size=group_feats_size,
                                                      is_validation=is_validation)
+        elif k == 'Lie_prior_sim_G':
+            x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                                                  group_feats_size=group_feats_size,
+                                                                  is_validation=is_validation)
+        elif k == 'Lie_prior_sim_G_oth':
+            x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth(latents_in=x, name=k, scope_idx=scope_idx,
+                                                                  group_feats_size=group_feats_size,
+                                                                  is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                          output_shape=[num_channels, resolution, resolution],
@@ -230,7 +242,7 @@ def G_main_modular(
                                          is_validation=is_validation)
             break
         elif k == 'Standard_G_128':
-            x = build_standard_conv_G_128(d2_reshaped=x, name=k, scope_idx=scope_idx,
+            x = build_standard_conv_G_128(x, name=k, scope_idx=scope_idx,
                                           output_shape=[num_channels, resolution, resolution],
                                           recons_type=recons_type,
                                           is_validation=is_validation)
@@ -244,7 +256,7 @@ def G_main_modular(
         # return x, group_feats
     # else:
         # return x
-    return x, group_feats, group_feats_cat_mat, group_feats_con_mat
+    return x, group_feats, group_feats_cat_mat, group_feats_con_mat, lie_alg_feats, lie_alg_basis
 
 #----------------------------------------------------------------------------
 # Factor-VAE main Discriminator.

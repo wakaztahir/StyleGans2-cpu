@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Fri 04 Sep 2020 15:54:47 AEST
+# --- Last Modified: Mon 14 Sep 2020 18:48:07 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -21,6 +21,7 @@ import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 from training.utils import get_return_v
 
+
 def sample_from_latent_distribution(z_mean, z_logvar):
     """Samples from the Gaussian distribution defined by z_mean and z_logvar."""
     return tf.add(z_mean,
@@ -29,38 +30,40 @@ def sample_from_latent_distribution(z_mean, z_logvar):
                   name="sampled_latent_variable")
 
 
-def make_reconstruction_loss(true_images, reconstructed_images, recons_type='l2_loss'):
+def make_reconstruction_loss(true_images,
+                             reconstructed_images,
+                             recons_type='l2_loss'):
     """Wrapper that creates reconstruction loss."""
     with tf.variable_scope("reconstruction_loss"):
         if recons_type == 'l2_loss':
-            loss = tf.reduce_sum(tf.square(
-                true_images - reconstructed_images), [1, 2, 3])
+            loss = tf.reduce_sum(tf.square(true_images - reconstructed_images),
+                                 [1, 2, 3])
             # loss = tf.reduce_mean(tf.square(
-                # true_images - reconstructed_images), [1, 2, 3])
+            # true_images - reconstructed_images), [1, 2, 3])
         elif recons_type == 'bernoulli_loss':
             flattened_dim = np.prod(true_images.get_shape().as_list()[1:])
-            reconstructed_images = tf.reshape(
-                reconstructed_images, shape=[-1, flattened_dim])
+            reconstructed_images = tf.reshape(reconstructed_images,
+                                              shape=[-1, flattened_dim])
             true_images = tf.reshape(true_images, shape=[-1, flattened_dim])
             # true_images = (true_images + 1.) / 2. # drange_net has been set to [0, 1]
-            loss = tf.reduce_sum(
-                tf.nn.sigmoid_cross_entropy_with_logits(
-                    logits=reconstructed_images, labels=true_images),
-                axis=1)
+            loss = tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=reconstructed_images, labels=true_images),
+                                 axis=1)
         else:
-            raise ValueError('Unsupported reconstruction loss type: '+recons_type)
+            raise ValueError('Unsupported reconstruction loss type: ' +
+                             recons_type)
     return loss
 
 
 def compute_gaussian_kl(z_mean, z_logvar):
     """Compute KL divergence between input Gaussian and Standard Normal."""
     with tf.variable_scope("kl_loss"):
-        return 0.5 * tf.reduce_sum(tf.square(z_mean) + tf.exp(z_logvar) -
-                                   z_logvar - 1, [1])
+        return 0.5 * tf.reduce_sum(
+            tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1])
         # return tf.reduce_mean(
-            # 0.5 * tf.reduce_sum(
-                # tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1]),
-            # name="kl_loss")
+        # 0.5 * tf.reduce_sum(
+        # tf.square(z_mean) + tf.exp(z_logvar) - z_logvar - 1, [1]),
+        # name="kl_loss")
 
 
 def shuffle_codes(z):
@@ -76,6 +79,7 @@ def shuffle_codes(z):
     shuffled = tf.stack(z_shuffle, 1, name="latent_shuffled")
     return shuffled
 
+
 def compute_covariance_z_mean(z_mean):
     """Computes the covariance of z_mean.
        Uses cov(z_mean) = E[z_mean*z_mean^T] - E[z_mean]E[z_mean]^T.
@@ -85,14 +89,16 @@ def compute_covariance_z_mean(z_mean):
          cov_z_mean: Covariance of encoder mean, tensor of size [num_latent,
          num_latent].
     """
-    expectation_z_mean_z_mean_t = tf.reduce_mean(
-        tf.expand_dims(z_mean, 2) * tf.expand_dims(z_mean, 1), axis=0)
+    expectation_z_mean_z_mean_t = tf.reduce_mean(tf.expand_dims(z_mean, 2) *
+                                                 tf.expand_dims(z_mean, 1),
+                                                 axis=0)
     expectation_z_mean = tf.reduce_mean(z_mean, axis=0)
     cov_z_mean = tf.subtract(
         expectation_z_mean_z_mean_t,
-        tf.expand_dims(expectation_z_mean, 1) * tf.expand_dims(
-            expectation_z_mean, 0))
+        tf.expand_dims(expectation_z_mean, 1) *
+        tf.expand_dims(expectation_z_mean, 0))
     return cov_z_mean
+
 
 def regularize_diag_off_diag_dip(covariance_matrix, lambda_od, lambda_d):
     """Compute on and off diagonal regularizers for DIP-VAE models.
@@ -113,12 +119,14 @@ def regularize_diag_off_diag_dip(covariance_matrix, lambda_od, lambda_d):
         lambda_d * tf.reduce_sum((covariance_matrix_diagonal - 1)**2))
     return dip_regularizer
 
+
 def gaussian_log_density(samples, mean, log_var):
     pi = tf.constant(math.pi)
     normalization = tf.log(2. * pi)
     inv_sigma = tf.exp(-log_var)
     tmp = (samples - mean)
     return -0.5 * (tmp * tmp * inv_sigma + log_var + normalization)
+
 
 def total_correlation(z, z_mean, z_logvar):
     """Estimate of total correlation on a batch.
@@ -136,34 +144,48 @@ def total_correlation(z, z_mean, z_logvar):
     # Compute log(q(z(x_j)|x_i)) for every sample in the batch, which is a
     # tensor of size [batch_size, batch_size, num_latents]. In the following
     # comments, [batch_size, batch_size, num_latents] are indexed by [j, i, l].
-    log_qz_prob = gaussian_log_density(
-        tf.expand_dims(z, 1), tf.expand_dims(z_mean, 0),
-        tf.expand_dims(z_logvar, 0))
+    log_qz_prob = gaussian_log_density(tf.expand_dims(z, 1),
+                                       tf.expand_dims(z_mean, 0),
+                                       tf.expand_dims(z_logvar, 0))
     # Compute log prod_l p(z(x_j)_l) = sum_l(log(sum_i(q(z(z_j)_l|x_i)))
     # + constant) for each sample in the batch, which is a vector of size
     # [batch_size,].
-    log_qz_product = tf.reduce_sum(
-        tf.reduce_logsumexp(log_qz_prob, axis=1, keepdims=False),
-        axis=1,
-        keepdims=False)
+    log_qz_product = tf.reduce_sum(tf.reduce_logsumexp(log_qz_prob,
+                                                       axis=1,
+                                                       keepdims=False),
+                                   axis=1,
+                                   keepdims=False)
     # Compute log(q(z(x_j))) as log(sum_i(q(z(x_j)|x_i))) + constant =
     # log(sum_i(prod_l q(z(x_j)_l|x_i))) + constant.
-    log_qz = tf.reduce_logsumexp(
-        tf.reduce_sum(log_qz_prob, axis=2, keepdims=False),
-        axis=1,
-        keepdims=False)
+    log_qz = tf.reduce_logsumexp(tf.reduce_sum(log_qz_prob,
+                                               axis=2,
+                                               keepdims=False),
+                                 axis=1,
+                                 keepdims=False)
     # return tf.reduce_mean(log_qz - log_qz_product)
     return log_qz - log_qz_product
 
-def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
-             latent_type='normal', hy_beta=1, recons_type='bernoulli_loss'):
+
+def beta_vae(E,
+             G,
+             opt,
+             training_set,
+             minibatch_size,
+             reals,
+             labels,
+             latent_type='normal',
+             hy_beta=1,
+             recons_type='bernoulli_loss'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = get_return_v(G.get_output_for(sampled, labels, is_training=True), 1)
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+    reconstructions = get_return_v(
+        G.get_output_for(sampled, labels, is_training=True), 1)
+    reconstruction_loss = make_reconstruction_loss(reals,
+                                                   reconstructions,
                                                    recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
@@ -174,15 +196,27 @@ def beta_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     elbo = autosummary('Loss/beta_vae_elbo', elbo)
     return loss
 
-def betatc_vae(E, G, opt, training_set, minibatch_size, reals, labels,
-             latent_type='normal', hy_beta=1, recons_type='bernoulli_loss'):
+
+def betatc_vae(E,
+               G,
+               opt,
+               training_set,
+               minibatch_size,
+               reals,
+               labels,
+               latent_type='normal',
+               hy_beta=1,
+               recons_type='bernoulli_loss'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = get_return_v(G.get_output_for(sampled, labels, is_training=True), 1)
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+    reconstructions = get_return_v(
+        G.get_output_for(sampled, labels, is_training=True), 1)
+    reconstruction_loss = make_reconstruction_loss(reals,
+                                                   reconstructions,
                                                    recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
@@ -195,17 +229,29 @@ def betatc_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     loss = autosummary('Loss/betatc_vae_loss', loss)
     return loss
 
-def dip_vae(E, G, opt, training_set, minibatch_size, reals, labels,
-            latent_type='normal', dip_type='dip_vae_i',
-            lambda_d_factor=10., lambda_od=1.,
+
+def dip_vae(E,
+            G,
+            opt,
+            training_set,
+            minibatch_size,
+            reals,
+            labels,
+            latent_type='normal',
+            dip_type='dip_vae_i',
+            lambda_d_factor=10.,
+            lambda_od=1.,
             recons_type='bernoulli_loss'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = get_return_v(G.get_output_for(sampled, labels, is_training=True), 1)
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+    reconstructions = get_return_v(
+        G.get_output_for(sampled, labels, is_training=True), 1)
+    reconstruction_loss = make_reconstruction_loss(reals,
+                                                   reconstructions,
                                                    recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
@@ -233,20 +279,34 @@ def dip_vae(E, G, opt, training_set, minibatch_size, reals, labels,
     loss = autosummary('Loss/dip_vae_loss', loss)
     return loss
 
-def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
-                 latent_type='normal', hy_gamma=1, recons_type='bernoulli_loss'):
+
+def factor_vae_G(E,
+                 G,
+                 D,
+                 opt,
+                 training_set,
+                 minibatch_size,
+                 reals,
+                 labels,
+                 latent_type='normal',
+                 hy_gamma=1,
+                 recons_type='bernoulli_loss'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = get_return_v(G.get_output_for(sampled, labels, is_training=True), 1)
+    reconstructions = get_return_v(
+        G.get_output_for(sampled, labels, is_training=True), 1)
 
-    logits, probs = get_return_v(D.get_output_for(sampled, is_training=True), 2)
+    logits, probs = get_return_v(D.get_output_for(sampled, is_training=True),
+                                 2)
     # tc = E[log(p_real)-log(p_fake)] = E[logit_real - logit_fake]
     tc_loss = logits[:, 0] - logits[:, 1]
     # tc_loss = tf.reduce_mean(tc_loss, axis=0)
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+    reconstruction_loss = make_reconstruction_loss(reals,
+                                                   reconstructions,
                                                    recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
@@ -256,36 +316,61 @@ def factor_vae_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
     loss = autosummary('Loss/fac_vae_loss', loss)
     return loss
 
-def factor_vae_D(E, D, opt, training_set, minibatch_size, reals, labels,
+
+def factor_vae_D(E,
+                 D,
+                 opt,
+                 training_set,
+                 minibatch_size,
+                 reals,
+                 labels,
                  latent_type='normal'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     sampled = sample_from_latent_distribution(means, log_var)
     shuffled = shuffle_codes(sampled)
-    logits, probs = get_return_v(D.get_output_for(sampled, is_training=True), 2)
-    _, probs_shuffled = get_return_v(D.get_output_for(shuffled, is_training=True), 2)
+    logits, probs = get_return_v(D.get_output_for(sampled, is_training=True),
+                                 2)
+    _, probs_shuffled = get_return_v(
+        D.get_output_for(shuffled, is_training=True), 2)
     loss = -(0.5 * tf.log(probs[:, 0]) + 0.5 * tf.log(probs_shuffled[:, 1]))
     # loss = -tf.add(
-        # 0.5 * tf.reduce_mean(tf.log(probs[:, 0])),
-        # 0.5 * tf.reduce_mean(tf.log(probs_shuffled[:, 1])),
-        # name="discriminator_loss")
+    # 0.5 * tf.reduce_mean(tf.log(probs[:, 0])),
+    # 0.5 * tf.reduce_mean(tf.log(probs_shuffled[:, 1])),
+    # name="discriminator_loss")
     loss = autosummary('Loss/fac_vae_discr_loss', loss)
     return loss
 
-def factor_vae_sindis_G(E, G, D, opt, training_set, minibatch_size, reals, labels,
-                 latent_type='normal', hy_gamma=1, recons_type='bernoulli_loss'):
+
+def factor_vae_sindis_G(E,
+                        G,
+                        D,
+                        opt,
+                        training_set,
+                        minibatch_size,
+                        reals,
+                        labels,
+                        latent_type='normal',
+                        hy_gamma=1,
+                        recons_type='bernoulli_loss'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
-    reconstructions = get_return_v(G.get_output_for(sampled, labels, is_training=True), 1)
+    reconstructions = get_return_v(
+        G.get_output_for(sampled, labels, is_training=True), 1)
 
-    fake_scores_out, _ = get_return_v(D.get_output_for(sampled, is_training=True), 2)
-    tc_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+    fake_scores_out, _ = get_return_v(
+        D.get_output_for(sampled, is_training=True), 2)
+    tc_loss = tf.nn.softplus(
+        -fake_scores_out)  # -log(sigmoid(fake_scores_out))
     # loss = tf.reduce_mean(loss)
 
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions,
+    reconstruction_loss = make_reconstruction_loss(reals,
+                                                   reconstructions,
                                                    recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
@@ -295,104 +380,207 @@ def factor_vae_sindis_G(E, G, D, opt, training_set, minibatch_size, reals, label
     loss = autosummary('Loss/fac_vae_loss', loss)
     return loss
 
-def factor_vae_sindis_D(E, D, opt, training_set, minibatch_size, reals, labels,
-                 latent_type='normal'):
+
+def factor_vae_sindis_D(E,
+                        D,
+                        opt,
+                        training_set,
+                        minibatch_size,
+                        reals,
+                        labels,
+                        latent_type='normal'):
     _ = opt, training_set
-    means, log_var = get_return_v(E.get_output_for(reals, labels, is_training=True), 2)
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
     sampled = sample_from_latent_distribution(means, log_var)
     shuffled = shuffle_codes(sampled)
-    real_scores_out, _ = get_return_v(D.get_output_for(shuffled, is_training=True), 2)
-    fake_scores_out, _ = get_return_v(D.get_output_for(sampled, is_training=True), 2)
+    real_scores_out, _ = get_return_v(
+        D.get_output_for(shuffled, is_training=True), 2)
+    fake_scores_out, _ = get_return_v(
+        D.get_output_for(sampled, is_training=True), 2)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)
     fake_scores_out = autosummary('Loss/scores/fake', fake_scores_out)
-    loss = tf.nn.softplus(fake_scores_out) # -log(1-sigmoid(fake_scores_out))
-    loss += tf.nn.softplus(-real_scores_out) # -log(sigmoid(real_scores_out)) # pylint: disable=invalid-unary-operand-type
+    loss = tf.nn.softplus(fake_scores_out)  # -log(1-sigmoid(fake_scores_out))
+    loss += tf.nn.softplus(-real_scores_out)  # -log(sigmoid(real_scores_out)) # pylint: disable=invalid-unary-operand-type
     loss = autosummary('Loss/fac_vae_discr_loss', loss)
     return loss
 
+
 def make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
-                         group_loss_type):
+                         group_loss_type, hy_rec, hy_mat, hy_gmat, hy_oth,
+                         hy_det):
     group_feats_G_ori = group_feats_G[:minibatch_size]
     group_feats_G_sum = group_feats_G[minibatch_size:]
     mat_dim = int(math.sqrt(group_feats_E.get_shape().as_list()[1]))
     assert mat_dim * mat_dim == group_feats_E.get_shape().as_list()[1]
     group_feats_E_mat = tf.reshape(group_feats_E,
                                    [minibatch_size, mat_dim, mat_dim])
-    group_feats_G_mat = tf.reshape(group_feats_G,
-                                   [minibatch_size+minibatch_size//2,
-                                    mat_dim, mat_dim])
+    group_feats_G_mat = tf.reshape(
+        group_feats_G,
+        [minibatch_size + minibatch_size // 2, mat_dim, mat_dim])
     group_feats_G_sum_mat = tf.reshape(group_feats_G_sum,
-                                   [minibatch_size//2, mat_dim, mat_dim])
-    group_feats_E_mul_mat = tf.matmul(group_feats_E_mat[:minibatch_size//2],
-                                      group_feats_E_mat[minibatch_size//2:])
-    group_feats_G_mul_mat = tf.matmul(group_feats_G_mat[:minibatch_size//2],
-                                      group_feats_G_mat[minibatch_size//2:minibatch_size])
+                                       [minibatch_size // 2, mat_dim, mat_dim])
+    group_feats_E_mul_mat = tf.matmul(group_feats_E_mat[:minibatch_size // 2],
+                                      group_feats_E_mat[minibatch_size // 2:])
+    group_feats_G_mul_mat = tf.matmul(
+        group_feats_G_mat[:minibatch_size // 2],
+        group_feats_G_mat[minibatch_size // 2:minibatch_size])
     assert group_feats_E_mul_mat.get_shape().as_list()[1] == mat_dim
     loss = 0
     if '_rec_' in group_loss_type:
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-                group_feats_E - group_feats_G_ori), axis=1))
+        loss += hy_rec * tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_E - group_feats_G_ori),
+                          axis=1))
     if '_mat_' in group_loss_type:
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-                group_feats_E_mul_mat - group_feats_G_sum_mat), axis=[1, 2]))
+        loss += hy_mat * tf.reduce_mean(
+            tf.reduce_sum(
+                tf.square(group_feats_E_mul_mat - group_feats_G_sum_mat),
+                axis=[1, 2]))
     if '_gmat_' in group_loss_type:
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-                group_feats_G_mul_mat - group_feats_G_sum_mat), axis=[1, 2]))
+        loss += hy_gmat * tf.reduce_mean(
+            tf.reduce_sum(
+                tf.square(group_feats_G_mul_mat - group_feats_G_sum_mat),
+                axis=[1, 2]))
     if '_oth_' in group_loss_type:
-        group_feats_G_mat2 = tf.matmul(group_feats_G_mat, group_feats_G_mat,
+        group_feats_G_mat2 = tf.matmul(group_feats_G_mat,
+                                       group_feats_G_mat,
                                        transpose_b=True)
-        G_mat_eye = tf.eye(mat_dim, dtype=group_feats_G_mat2.dtype,
-                           batch_shape=[minibatch_size+minibatch_size//2])
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-                group_feats_G_mat2 - G_mat_eye), axis=[1, 2]))
+        G_mat_eye = tf.eye(mat_dim,
+                           dtype=group_feats_G_mat2.dtype,
+                           batch_shape=[minibatch_size + minibatch_size // 2])
+        loss += hy_oth * tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_G_mat2 - G_mat_eye),
+                          axis=[1, 2]))
     if '_det_' in group_loss_type:
         group_feats_G_det = tf.linalg.det(group_feats_G_mat, name='G_mat_det')
         group_feats_one_det = tf.ones(tf.shape(group_feats_G_det),
                                       dtype=group_feats_G_det.dtype)
-        loss += tf.reduce_mean(tf.square(group_feats_G_det - group_feats_one_det))
+        loss += hy_det * tf.reduce_mean(
+            tf.square(group_feats_G_det - group_feats_one_det))
     return loss
 
-def split_latents(x, minibatch_size):
+
+def split_latents_1cut(x, minibatch_size):
     # x: [b, dim]
     b = minibatch_size
     dim = x.get_shape().as_list()[1]
-    split_idx = tf.random.uniform(shape=[b], maxval=dim+1, dtype=tf.int32)
+    split_idx = tf.random.uniform(shape=[b], maxval=dim + 1, dtype=tf.int32)
     idx_range = tf.tile(tf.range(dim)[tf.newaxis, :], [b, 1])
     mask_1 = tf.cast(idx_range < split_idx[:, tf.newaxis], tf.float32)
     mask_2 = 1. - mask_1
     return x * mask_1, x * mask_2
 
-def make_group_dcp_loss(group_feats_G_split, group_feats_G, minibatch_size):
+
+def split_latents(x, minibatch_size, hy_ncut=1):
+    # x: [b, dim]
+    b = minibatch_size
+    dim = x.get_shape().as_list()[1]
+    split_idx = tf.random.uniform(shape=[b, hy_ncut],
+                                  maxval=dim + 1,
+                                  dtype=tf.int32)
+    split_idx = tf.sort(split_idx, axis=-1)
+    idx_range = tf.tile(tf.range(dim)[tf.newaxis, :], [b, 1])
+    masks = []
+    mask_last = tf.zeros([b, dim], dtype=tf.float32)
+    for i in range(hy_ncut):
+        mask_tmp = tf.cast(idx_range < split_idx[:, i:i + 1], tf.float32)
+        masks.append(mask_tmp - mask_last)
+        masks_last = mask_tmp
+    mask_tmp = tf.cast(idx_range < split_idx[:, -1:], tf.float32)
+    masks.append(1. - mask_tmp)
+    x_split_ls = [x * mask for mask in masks]
+    # mask_1 = tf.cast(idx_range < split_idx[:, tf.newaxis], tf.float32)
+    # mask_2 = 1. - mask_1
+    # return x * mask_1, x * mask_2
+    return x_split_ls
+
+
+def make_group_dcp_loss_1cut(group_feats_G_split, group_feats_G,
+                             minibatch_size):
     mat_dim = int(math.sqrt(group_feats_G.get_shape().as_list()[1]))
-    group_feats_G_mat = tf.reshape(group_feats_G, [minibatch_size, mat_dim, mat_dim])
-    group_feats_G_split_mat = tf.reshape(group_feats_G_split, [2*minibatch_size, mat_dim, mat_dim])
-    group_feats_G_mul_split_mat = tf.matmul(group_feats_G_split_mat[:minibatch_size],
-                                            group_feats_G_split_mat[minibatch_size:])
-    loss = tf.reduce_mean(tf.reduce_sum(tf.square(
-        group_feats_G_mul_split_mat - group_feats_G_mat), axis=[1, 2]))
+    group_feats_G_mat = tf.reshape(group_feats_G,
+                                   [minibatch_size, mat_dim, mat_dim])
+    group_feats_G_split_mat = tf.reshape(
+        group_feats_G_split, [2 * minibatch_size, mat_dim, mat_dim])
+    group_feats_G_mul_split_mat = tf.matmul(
+        group_feats_G_split_mat[:minibatch_size],
+        group_feats_G_split_mat[minibatch_size:])
+    loss = tf.reduce_mean(
+        tf.reduce_sum(tf.square(group_feats_G_mul_split_mat -
+                                group_feats_G_mat),
+                      axis=[1, 2]))
     return loss
 
-def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
-              latent_type='normal', hy_beta=1, hy_gamma=1, group_loss_type='_rec_mat_',
-              recons_type='bernoulli_loss', use_group_decomp=False):
+
+def make_group_dcp_loss(group_feats_G_split,
+                        group_feats_G,
+                        minibatch_size,
+                        hy_ncut=1):
+    mat_dim = int(math.sqrt(group_feats_G.get_shape().as_list()[1]))
+    group_feats_G_mat = tf.reshape(group_feats_G,
+                                   [minibatch_size, mat_dim, mat_dim])
+    group_feats_G_split_mat = tf.reshape(
+        group_feats_G_split,
+        [(hy_ncut + 1) * minibatch_size, mat_dim, mat_dim])
+    group_feats_G_split_ls = [
+        group_feats_G_split_mat[i * minibatch_size:(i + 1) * minibatch_size]
+        for i in range(hy_ncut + 1)
+    ]
+    group_feats_G_mul_split_mat = group_feats_G_split_ls[0]
+    for i in range(1, hy_ncut + 1):
+        group_feats_G_mul_split_mat = tf.matmul(group_feats_G_mul_split_mat,
+                                                group_feats_G_split_ls[i])
+    # group_feats_G_mul_split_mat = tf.matmul(
+    # group_feats_G_split_mat[:minibatch_size],
+    # group_feats_G_split_mat[minibatch_size:])
+    loss = tf.reduce_mean(
+        tf.reduce_sum(tf.square(group_feats_G_mul_split_mat -
+                                group_feats_G_mat),
+                      axis=[1, 2]))
+    return loss
+
+
+def group_vae(E,
+              G,
+              opt,
+              training_set,
+              minibatch_size,
+              reals,
+              labels,
+              latent_type='normal',
+              hy_beta=1,
+              hy_dcp=40,
+              hy_ncut=1,
+              hy_rec=20,
+              hy_mat=80,
+              hy_gmat=0,
+              hy_oth=80,
+              hy_det=0,
+              group_loss_type='_rec_mat_',
+              recons_type='bernoulli_loss',
+              use_group_decomp=False):
     _ = opt, training_set
-    means, log_var, group_feats_E = get_return_v(E.get_output_for(reals, labels, is_training=True), 3)
+    means, log_var, group_feats_E = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 3)
     kl_loss = compute_gaussian_kl(means, log_var)
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
 
     sampled = sample_from_latent_distribution(means, log_var)
 
     # Group feat loss.
-    sampled_sum = sampled[:minibatch_size//2] + sampled[minibatch_size//2:]
+    sampled_sum = sampled[:minibatch_size // 2] + sampled[minibatch_size // 2:]
     sampled_all = tf.concat([sampled, sampled_sum], axis=0)
-    labels_all = tf.concat([labels, labels[:minibatch_size//2]], axis=0)
-    reconstructions, group_feats_G = get_return_v(G.get_output_for(sampled_all, labels_all, is_training=True), 2)
-    group_feat_loss = make_group_feat_loss(group_feats_E, group_feats_G, minibatch_size,
-                                           group_loss_type)
+    labels_all = tf.concat([labels, labels[:minibatch_size // 2]], axis=0)
+    reconstructions, group_feats_G = get_return_v(
+        G.get_output_for(sampled_all, labels_all, is_training=True), 2)
+    group_feat_loss = make_group_feat_loss(group_feats_E, group_feats_G,
+                                           minibatch_size, group_loss_type,
+                                           hy_rec, hy_mat, hy_gmat, hy_oth,
+                                           hy_det)
     group_feat_loss = autosummary('Loss/group_feat_loss', group_feat_loss)
 
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions[:minibatch_size],
-                                                   recons_type=recons_type)
+    reconstruction_loss = make_reconstruction_loss(
+        reals, reconstructions[:minibatch_size], recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
@@ -402,15 +590,27 @@ def group_vae(E, G, opt, training_set, minibatch_size, reals, labels,
 
     # Group decompose loss.
     if use_group_decomp:
-        sampled_1, sampled_2 = split_latents(sampled, minibatch_size)
-        sampled_split = tf.concat([sampled_1, sampled_2], axis=0)
-        labels_split = tf.concat([labels, labels], axis=0)
-        _, group_feats_G_split = get_return_v(G.get_output_for(sampled_split, labels_split, is_training=True), 2)
-        group_dcp_loss = make_group_dcp_loss(group_feats_G_split, group_feats_G[:minibatch_size], minibatch_size)
+        # sampled_1, sampled_2 = split_latents_1cut(sampled, minibatch_size)
+        sampled_split_ls = split_latents(sampled,
+                                         minibatch_size,
+                                         hy_ncut=hy_ncut)
+        # sampled_split = tf.concat([sampled_1, sampled_2], axis=0)
+        sampled_split = tf.concat(sampled_split_ls, axis=0)
+        labels_split = tf.concat([labels] * len(sampled_split_ls), axis=0)
+        _, group_feats_G_split = get_return_v(
+            G.get_output_for(sampled_split, labels_split, is_training=True), 2)
+        # group_dcp_loss = make_group_dcp_loss_1cut(group_feats_G_split,
+        # group_feats_G[:minibatch_size],
+        # minibatch_size)
+        group_dcp_loss = make_group_dcp_loss(group_feats_G_split,
+                                             group_feats_G[:minibatch_size],
+                                             minibatch_size,
+                                             hy_ncut=hy_ncut)
         group_dcp_loss = autosummary('Loss/group_dcp_loss', group_dcp_loss)
-        loss += hy_gamma * group_dcp_loss
+        loss += hy_dcp * group_dcp_loss
     loss = autosummary('Loss/group_vae_loss', loss)
     return loss
+
 
 def compute_cat_kl(cat_dist):
     assert len(cat_dist.get_shape()) == 2
@@ -421,12 +621,14 @@ def compute_cat_kl(cat_dist):
     kl_loss = tf.distributions.kl_divergence(cat_dist, uni_dist)
     return kl_loss
 
+
 def sample_from_cat_distribution(alpha, temp=0.67, eps=1e-12):
     unif = tf.random.uniform(shape=tf.shape(alpha), dtype=alpha.dtype)
     gumbel = -tf.log(-tf.log(unif + eps) + eps)
     log_alpha = tf.log(alpha + eps)
     logit = (log_alpha + gumbel) / temp
     return tf.nn.softmax(logit, axis=1)
+
 
 def cat_latent_sum(cat_1, cat_2):
     n_cat = cat_1.get_shape()[1]
@@ -436,11 +638,29 @@ def cat_latent_sum(cat_1, cat_2):
     cat_sum = tf.one_hot(argmax_mod_sum, depth=n_cat, dtype=cat_1.dtype)
     return cat_sum
 
-def group_vae_wc(E, G, opt, training_set, minibatch_size, reals, labels,
-              latent_type='normal', hy_beta=1, hy_gamma=1, group_loss_type='_rec_mat_',
-              temp=0.67, recons_type='bernoulli_loss', use_group_decomp=False):
+
+def group_vae_wc(E,
+                 G,
+                 opt,
+                 training_set,
+                 minibatch_size,
+                 reals,
+                 labels,
+                 latent_type='normal',
+                 hy_beta=1,
+                 hy_dcp=1,
+                 hy_ncut=1,
+                 hy_rec=1,
+                 hy_gmatcat=1,
+                 hy_gmatcon=1,
+                 hy_oth=1,
+                 group_loss_type='_rec_mat_',
+                 temp=0.67,
+                 recons_type='bernoulli_loss',
+                 use_group_decomp=False):
     _ = opt, training_set
-    means, log_var, group_feats_E, cat_dist = get_return_v(E.get_output_for(reals, labels, is_training=True), 4)
+    means, log_var, group_feats_E, cat_dist = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 4)
     kl_con_loss = compute_gaussian_kl(means, log_var)
     kl_con_loss = autosummary('Loss/kl_con_loss', kl_con_loss)
     kl_cat_loss = compute_cat_kl(cat_dist)
@@ -450,25 +670,30 @@ def group_vae_wc(E, G, opt, training_set, minibatch_size, reals, labels,
 
     # Continuous latents.
     sampled_con = sample_from_latent_distribution(means, log_var)
-    sampled_sum_con = sampled_con[:minibatch_size//2] + sampled_con[minibatch_size//2:]
+    sampled_sum_con = sampled_con[:minibatch_size //
+                                  2] + sampled_con[minibatch_size // 2:]
     sampled_all_con = tf.concat([sampled_con, sampled_sum_con], axis=0)
     # Category latents.
     sampled_cat = sample_from_cat_distribution(cat_dist, temp=temp)
-    sampled_sum_cat = cat_latent_sum(sampled_cat[:minibatch_size//2], sampled_cat[minibatch_size//2:])
+    sampled_sum_cat = cat_latent_sum(sampled_cat[:minibatch_size // 2],
+                                     sampled_cat[minibatch_size // 2:])
     sampled_all_cat = tf.concat([sampled_cat, sampled_sum_cat], axis=0)
 
     sampled_all = tf.concat([sampled_all_cat, sampled_all_con], axis=1)
 
-    labels_all = tf.concat([labels, labels[:minibatch_size//2]], axis=0)
+    labels_all = tf.concat([labels, labels[:minibatch_size // 2]], axis=0)
     reconstructions, group_feats_G, group_feats_G_cat_mat, group_feats_G_con_mat = get_return_v(
         G.get_output_for(sampled_all, labels_all, is_training=True), 4)
     group_feat_loss = make_group_feat_wc_loss(group_feats_E, group_feats_G,
-                                              group_feats_G_cat_mat, group_feats_G_con_mat,
-                                              minibatch_size, group_loss_type)
+                                              group_feats_G_cat_mat,
+                                              group_feats_G_con_mat,
+                                              minibatch_size, group_loss_type,
+                                              hy_rec, hy_gmatcat, hy_gmatcon,
+                                              hy_oth)
     group_feat_loss = autosummary('Loss/group_feat_loss', group_feat_loss)
 
-    reconstruction_loss = make_reconstruction_loss(reals, reconstructions[:minibatch_size],
-                                                   recons_type=recons_type)
+    reconstruction_loss = make_reconstruction_loss(
+        reals, reconstructions[:minibatch_size], recons_type=recons_type)
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
@@ -477,7 +702,8 @@ def group_vae_wc(E, G, opt, training_set, minibatch_size, reals, labels,
     loss = elbo + hy_beta * group_feat_loss
     # Group decompose loss.
     if use_group_decomp:
-        sampled_con_1, sampled_con_2 = split_latents(sampled_con, minibatch_size)
+        sampled_con_1, sampled_con_2 = split_latents_1cut(
+            sampled_con, minibatch_size)
         sampled_con_split = tf.concat([sampled_con_1, sampled_con_2], axis=0)
         sampled_cat_dup = tf.concat([sampled_cat, sampled_cat], axis=0)
         sampled_split = tf.concat([sampled_cat_dup, sampled_con_split], axis=1)
@@ -485,18 +711,27 @@ def group_vae_wc(E, G, opt, training_set, minibatch_size, reals, labels,
 
         _, _, _, group_feats_G_con_split_mat = get_return_v(
             G.get_output_for(sampled_split, labels_split, is_training=True), 4)
-        group_feats_G_con_split = tf.layers.flatten(group_feats_G_con_split_mat)
+        group_feats_G_con_split = tf.layers.flatten(
+            group_feats_G_con_split_mat)
         group_feats_G_con = tf.layers.flatten(group_feats_G_con_mat)
-        group_dcp_loss = make_group_dcp_loss(group_feats_G_con_split,
-                                             group_feats_G_con[:minibatch_size], minibatch_size)
+        # group_dcp_loss = make_group_dcp_loss_1cut(
+        # group_feats_G_con_split, group_feats_G_con[:minibatch_size],
+        # minibatch_size)
+        group_dcp_loss = make_group_dcp_loss(
+            group_feats_G_con_split,
+            group_feats_G_con[:minibatch_size],
+            minibatch_size,
+            hy_ncut=hy_ncut)
         group_dcp_loss = autosummary('Loss/group_dcp_loss', group_dcp_loss)
-        loss += hy_gamma * group_dcp_loss
+        loss += hy_dcp * group_dcp_loss
     loss = autosummary('Loss/group_vae_wc_loss', loss)
     return loss
 
+
 def make_group_feat_wc_loss(group_feats_E, group_feats_G,
                             group_feats_G_cat_mat, group_feats_G_con_mat,
-                            minibatch_size, group_loss_type):
+                            minibatch_size, group_loss_type, hy_rec,
+                            hy_gmatcat, hy_gmatcon, hy_oth):
     group_feats_G_ori = group_feats_G[:minibatch_size]
     group_feats_G_sum = group_feats_G[minibatch_size:]
     group_feats_G_cat_ori_mat = group_feats_G_cat_mat[:minibatch_size]
@@ -509,29 +744,39 @@ def make_group_feat_wc_loss(group_feats_E, group_feats_G,
 
     group_feats_E_mat = tf.reshape(group_feats_E,
                                    [minibatch_size, mat_dim, mat_dim])
-    group_feats_G_mat = tf.reshape(group_feats_G,
-                                   [minibatch_size+minibatch_size//2,
-                                    mat_dim, mat_dim])
-    group_feats_G_cat_mul_mat = tf.matmul(group_feats_G_cat_ori_mat[:minibatch_size//2],
-                                          group_feats_G_cat_ori_mat[minibatch_size//2:])
-    group_feats_G_con_mul_mat = tf.matmul(group_feats_G_con_ori_mat[:minibatch_size//2],
-                                          group_feats_G_con_ori_mat[minibatch_size//2:])
+    group_feats_G_mat = tf.reshape(
+        group_feats_G,
+        [minibatch_size + minibatch_size // 2, mat_dim, mat_dim])
+    group_feats_G_cat_mul_mat = tf.matmul(
+        group_feats_G_cat_ori_mat[:minibatch_size // 2],
+        group_feats_G_cat_ori_mat[minibatch_size // 2:])
+    group_feats_G_con_mul_mat = tf.matmul(
+        group_feats_G_con_ori_mat[:minibatch_size // 2],
+        group_feats_G_con_ori_mat[minibatch_size // 2:])
     assert group_feats_G_con_mul_mat.get_shape().as_list()[1] == mat_dim
     loss = 0
     if '_rec_' in group_loss_type:
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-            group_feats_E - group_feats_G_ori), axis=1))
+        loss += hy_rec * tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_E - group_feats_G_ori),
+                          axis=1))
     if '_gmatcat_' in group_loss_type:
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-            group_feats_G_cat_mul_mat - group_feats_G_cat_sum_mat), axis=[1, 2]))
+        loss += hy_gmatcat * tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_G_cat_mul_mat -
+                                    group_feats_G_cat_sum_mat),
+                          axis=[1, 2]))
     if '_gmatcon_' in group_loss_type:
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-            group_feats_G_con_mul_mat - group_feats_G_con_sum_mat), axis=[1, 2]))
+        loss += hy_gmatcon * tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_G_con_mul_mat -
+                                    group_feats_G_con_sum_mat),
+                          axis=[1, 2]))
     if '_oth_' in group_loss_type:
-        group_feats_G_mat2 = tf.matmul(group_feats_G_mat, group_feats_G_mat,
+        group_feats_G_mat2 = tf.matmul(group_feats_G_mat,
+                                       group_feats_G_mat,
                                        transpose_b=True)
-        G_mat_eye = tf.eye(mat_dim, dtype=group_feats_G_mat2.dtype,
-                           batch_shape=[minibatch_size+minibatch_size//2])
-        loss += tf.reduce_mean(tf.reduce_sum(tf.square(
-            group_feats_G_mat2 - G_mat_eye), axis=[1, 2]))
+        G_mat_eye = tf.eye(mat_dim,
+                           dtype=group_feats_G_mat2.dtype,
+                           batch_shape=[minibatch_size + minibatch_size // 2])
+        loss += hy_oth * tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_G_mat2 - G_mat_eye),
+                          axis=[1, 2]))
     return loss
