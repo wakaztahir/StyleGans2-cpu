@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_lie.py
 # --- Creation Date: 21-09-2020
-# --- Last Modified: Thu 24 Sep 2020 17:49:37 AEST
+# --- Last Modified: Sat 26 Sep 2020 02:52:06 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -136,7 +136,7 @@ def lie_vae_with_split(E,
     return loss
 
 
-def make_lie_group_loss(group_feats_E, group_feats_G, lie_alg_feats, lie_alg_basis,
+def make_lie_group_loss_all(group_feats_E, group_feats_G, lie_alg_feats, lie_alg_basis,
                         minibatch_size, hy_rec, hy_dcp, hy_hes, hy_lin,
                         hy_ncut):
     mat_dim = group_feats_G.get_shape().as_list()[1]
@@ -165,6 +165,29 @@ def make_lie_group_loss(group_feats_E, group_feats_G, lie_alg_feats, lie_alg_bas
     linear_loss = autosummary('Loss/lie_vae_linear_loss', linear_loss)
     loss = hy_rec * rec_loss + hy_dcp * spl_loss + \
         hy_hes * hessian_loss + hy_lin * linear_loss
+    return loss
+
+
+def make_lie_group_loss(group_feats_E, group_feats_G, lie_alg_feats, lie_alg_basis,
+                        minibatch_size, hy_rec, hy_dcp, hy_hes, hy_lin,
+                        hy_ncut):
+    mat_dim = group_feats_G.get_shape().as_list()[1]
+
+    # [1, lat_dim, mat_dim, mat_dim]
+    _, lat_dim, mat_dim, _ = lie_alg_basis.get_shape().as_list()
+    lie_alg_basis_col = tf.reshape(lie_alg_basis, [lat_dim, 1, mat_dim, mat_dim])
+    lie_alg_basis_mul = tf.matmul(lie_alg_basis, lie_alg_basis_col)
+    lie_alg_basis_mask = 1. - tf.eye(lat_dim, dtype=lie_alg_basis_mul.dtype)[:, :, tf.newaxis, tf.newaxis]
+    lie_alg_basis_mul = lie_alg_basis_mul * lie_alg_basis_mask
+
+    lie_alg_basis_linear = lie_alg_basis * lie_alg_basis_col
+    lie_alg_basis_linear = lie_alg_basis_linear * (1. - lie_alg_basis_mask)
+
+    hessian_loss = tf.reduce_sum(tf.square(lie_alg_basis_mul))
+    hessian_loss = autosummary('Loss/lie_vae_hessian_loss', hessian_loss)
+    linear_loss = tf.reduce_sum(tf.square(lie_alg_basis_linear))
+    linear_loss = autosummary('Loss/lie_vae_linear_loss', linear_loss)
+    loss = hy_hes * hessian_loss + hy_lin * linear_loss
     return loss
 
 
