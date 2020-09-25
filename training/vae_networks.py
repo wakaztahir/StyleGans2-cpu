@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 25 Sep 2020 17:52:23 AEST
+# --- Last Modified: Fri 25 Sep 2020 23:46:10 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,6 +43,8 @@ from training.vae_group_networks import build_group_sim_prior_G_wc
 from training.vae_group_networks import build_group_sim_prior_down_G
 from training.vae_lie_networks import build_lie_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G_oth
+from training.vae_lie_networks import build_lie_sim_prior_G_oth_l2
+from training.vae_lie_networks import build_lie_sim_prior_G_oth_nogroup
 from training.vae_lie_networks import build_lie_sim_prior_G_oth_squash
 from training.utils import get_return_v
 
@@ -234,6 +236,14 @@ def G_main_modular(
                                                                   is_validation=is_validation)
         elif k == 'Lie_prior_sim_G_oth':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth(latents_in=x, name=k, scope_idx=scope_idx,
+                                                                  group_feats_size=group_feats_size,
+                                                                  is_validation=is_validation)
+        elif k == 'Lie_prior_sim_G_oth_l2':
+            x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth_l2(latents_in=x, name=k, scope_idx=scope_idx,
+                                                                  group_feats_size=group_feats_size,
+                                                                  is_validation=is_validation)
+        elif k == 'Lie_prior_sim_G_oth_nogroup':
+            x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth_nogroup(latents_in=x, name=k, scope_idx=scope_idx,
                                                                   group_feats_size=group_feats_size,
                                                                   is_validation=is_validation)
         elif k == 'Lie_prior_sim_G_oth_squash':
