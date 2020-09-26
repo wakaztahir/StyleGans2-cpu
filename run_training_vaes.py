@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Wed 23 Sep 2020 16:33:29 AEST
+# --- Last Modified: Sun 27 Sep 2020 02:55:15 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -69,6 +69,7 @@ def run(dataset,
         hy_gmat=0,
         hy_oth=80,
         hy_det=0,
+        lie_alg_init_scale=0.1,
         G_lrate_base=0.002,
         D_lrate_base=None,
         lambda_d_factor=10.,
@@ -119,6 +120,7 @@ def run(dataset,
                  nf_scale=G_nf_scale,
                  n_discrete=n_discrete,
                  recons_type=recons_type,
+                 lie_alg_init_scale=lie_alg_init_scale,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -493,6 +495,11 @@ def main():
                         metavar='HY_NCUT',
                         default=1,
                         type=int)
+    parser.add_argument('--lie_alg_init_scale',
+                        help='Hyper-param for lie_alg_init_scale.',
+                        metavar='LIE_ALG_INIT_SCALE',
+                        default=0.1,
+                        type=float)
     parser.add_argument(
         '--hy_rec',
         help='Hyper-param for gfeats reconstruction in GroupVAE and LieVAE.',

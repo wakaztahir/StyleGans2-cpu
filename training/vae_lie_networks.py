@@ -8,7 +8,7 @@
 
 # --- File Name: vae_lie_networks.py
 # --- Creation Date: 21-09-2020
-# --- Last Modified: Fri 25 Sep 2020 23:45:39 AEST
+# --- Last Modified: Sun 27 Sep 2020 02:52:20 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,13 +22,14 @@ def build_lie_sim_prior_G(latents_in,
                           name,
                           scope_idx,
                           group_feats_size,
+                          lie_alg_init_scale=0.1,
                           is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_ls = []
         latent_dim = latents_in.get_shape().as_list()[-1]
         mat_dim = int(math.sqrt(group_feats_size))
         for i in range(latent_dim):
-            init = tf.initializers.random_normal(0, 0.1)
+            init = tf.initializers.random_normal(0, lie_alg_init_scale)
             lie_alg_tmp = tf.get_variable('lie_alg_' + str(i),
                                           shape=[1, mat_dim, mat_dim],
                                           initializer=init)
@@ -59,13 +60,14 @@ def build_lie_sim_prior_G_oth(latents_in,
                           name,
                           scope_idx,
                           group_feats_size,
+                          lie_alg_init_scale=0.1,
                           is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_ls = []
         latent_dim = latents_in.get_shape().as_list()[-1]
         mat_dim = int(math.sqrt(group_feats_size))
         for i in range(latent_dim):
-            init = tf.initializers.random_normal(0, 0.01)
+            init = tf.initializers.random_normal(0, lie_alg_init_scale)
             lie_alg_tmp = tf.get_variable('lie_alg_' + str(i),
                                           shape=[1, mat_dim, mat_dim],
                                           initializer=init)
@@ -95,16 +97,17 @@ def build_lie_sim_prior_G_oth(latents_in,
     return d2_reshaped, lie_group, lie_alg, lie_alg_basis
 
 def build_lie_sim_prior_G_oth_l2(latents_in,
-                          name,
-                          scope_idx,
-                          group_feats_size,
-                          is_validation=False):
+                                 name,
+                                 scope_idx,
+                                 group_feats_size,
+                                 lie_alg_init_scale=0.1,
+                                 is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_ls = []
         latent_dim = latents_in.get_shape().as_list()[-1]
         mat_dim = int(math.sqrt(group_feats_size))
         for i in range(latent_dim):
-            init = tf.initializers.random_normal(0, 0.1)
+            init = tf.initializers.random_normal(0, lie_alg_init_scale)
             lie_alg_tmp = tf.get_variable('lie_alg_' + str(i),
                                           shape=[1, mat_dim, mat_dim],
                                           initializer=init)
@@ -134,16 +137,17 @@ def build_lie_sim_prior_G_oth_l2(latents_in,
     return d2_reshaped, lie_group, lie_alg, lie_alg_basis
 
 def build_lie_sim_prior_G_oth_squash(latents_in,
-                          name,
-                          scope_idx,
-                          group_feats_size,
-                          is_validation=False):
+                                     name,
+                                     scope_idx,
+                                     group_feats_size,
+                                     lie_alg_init_scale=0.1,
+                                     is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_ls = []
         latent_dim = latents_in.get_shape().as_list()[-1]
         mat_dim = int(math.sqrt(group_feats_size))
         for i in range(latent_dim):
-            init = tf.initializers.random_normal(0, 0.1)
+            init = tf.initializers.random_normal(0, lie_alg_init_scale)
             lie_alg_tmp = tf.get_variable('lie_alg_' + str(i),
                                           shape=[1, mat_dim, mat_dim],
                                           initializer=init)
@@ -176,16 +180,17 @@ def build_lie_sim_prior_G_oth_squash(latents_in,
     return d2_reshaped, lie_group, lie_alg, lie_alg_basis
 
 def build_lie_sim_prior_G_oth_nogroup(latents_in,
-                          name,
-                          scope_idx,
-                          group_feats_size,
-                          is_validation=False):
+                                      name,
+                                      scope_idx,
+                                      group_feats_size,
+                                      lie_alg_init_scale=0.1,
+                                      is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_ls = []
         latent_dim = latents_in.get_shape().as_list()[-1]
         mat_dim = int(math.sqrt(group_feats_size))
         for i in range(latent_dim):
-            init = tf.initializers.random_normal(0, 0.1)
+            init = tf.initializers.random_normal(0, lie_alg_init_scale)
             lie_alg_tmp = tf.get_variable('lie_alg_' + str(i),
                                           shape=[1, mat_dim, mat_dim],
                                           initializer=init)

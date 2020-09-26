@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 25 Sep 2020 23:46:10 AEST
+# --- Last Modified: Sun 27 Sep 2020 02:57:17 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -167,6 +167,7 @@ def G_main_modular(
         dtype='float32',  # Data type to use for activations and outputs.
         n_discrete=0,  # Number of discrete categories.
         recons_type='bernoulli_loss',  # Reconstruction type.
+        lie_alg_init_scale=0.1,
         fmap_min=16,
         fmap_max=512,
         fmap_decay=0.15,
@@ -232,24 +233,29 @@ def G_main_modular(
                                                      is_validation=is_validation)
         elif k == 'Lie_prior_sim_G':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
-                                                                  group_feats_size=group_feats_size,
-                                                                  is_validation=is_validation)
+                                                                                 group_feats_size=group_feats_size,
+                                                                                 lie_alg_init_scale=lie_alg_init_scale,
+                                                                                 is_validation=is_validation)
         elif k == 'Lie_prior_sim_G_oth':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth(latents_in=x, name=k, scope_idx=scope_idx,
-                                                                  group_feats_size=group_feats_size,
-                                                                  is_validation=is_validation)
+                                                                                     group_feats_size=group_feats_size,
+                                                                                     lie_alg_init_scale=lie_alg_init_scale,
+                                                                                     is_validation=is_validation)
         elif k == 'Lie_prior_sim_G_oth_l2':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth_l2(latents_in=x, name=k, scope_idx=scope_idx,
-                                                                  group_feats_size=group_feats_size,
-                                                                  is_validation=is_validation)
+                                                                                        group_feats_size=group_feats_size,
+                                                                                        lie_alg_init_scale=lie_alg_init_scale,
+                                                                                        is_validation=is_validation)
         elif k == 'Lie_prior_sim_G_oth_nogroup':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth_nogroup(latents_in=x, name=k, scope_idx=scope_idx,
-                                                                  group_feats_size=group_feats_size,
-                                                                  is_validation=is_validation)
+                                                                                             group_feats_size=group_feats_size,
+                                                                                             lie_alg_init_scale=lie_alg_init_scale,
+                                                                                             is_validation=is_validation)
         elif k == 'Lie_prior_sim_G_oth_squash':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G_oth_squash(latents_in=x, name=k, scope_idx=scope_idx,
-                                                                  group_feats_size=group_feats_size,
-                                                                  is_validation=is_validation)
+                                                                                            group_feats_size=group_feats_size,
+                                                                                            lie_alg_init_scale=lie_alg_init_scale,
+                                                                                            is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(d2_reshaped=x, name=k, scope_idx=scope_idx,
                                          output_shape=[num_channels, resolution, resolution],
