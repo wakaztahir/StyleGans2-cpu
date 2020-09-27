@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sun 27 Sep 2020 02:57:17 AEST
+# --- Last Modified: Sun 27 Sep 2020 22:11:14 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -41,6 +41,7 @@ from training.vae_group_networks import build_group_sim_post_E_wc
 from training.vae_group_networks import build_group_sim_prior_G
 from training.vae_group_networks import build_group_sim_prior_G_wc
 from training.vae_group_networks import build_group_sim_prior_down_G
+from training.vae_group_networks_v2 import build_group_act_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G_oth
 from training.vae_lie_networks import build_lie_sim_prior_G_oth_l2
@@ -167,6 +168,8 @@ def G_main_modular(
         dtype='float32',  # Data type to use for activations and outputs.
         n_discrete=0,  # Number of discrete categories.
         recons_type='bernoulli_loss',  # Reconstruction type.
+        n_act_points=10,
+        lie_alg_init_type='oth',
         lie_alg_init_scale=0.1,
         fmap_min=16,
         fmap_max=512,
@@ -231,6 +234,13 @@ def G_main_modular(
             x, group_feats = build_group_sim_prior_down_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                      group_feats_size=group_feats_size,
                                                      is_validation=is_validation)
+        elif k == 'Group_act_prior_sim_G':
+            x, group_feats, lie_alg_feats, lie_alg_basis = build_group_act_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                                                                       group_feats_size=group_feats_size,
+                                                                                       n_act_points=n_act_points,
+                                                                                       lie_alg_init_type=lie_alg_init_type,
+                                                                                       lie_alg_init_scale=lie_alg_init_scale,
+                                                                                       is_validation=is_validation)
         elif k == 'Lie_prior_sim_G':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                                                  group_feats_size=group_feats_size,

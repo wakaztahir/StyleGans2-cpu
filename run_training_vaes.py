@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sun 27 Sep 2020 02:55:15 AEST
+# --- Last Modified: Sun 27 Sep 2020 22:12:17 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -69,6 +69,8 @@ def run(dataset,
         hy_gmat=0,
         hy_oth=80,
         hy_det=0,
+        n_act_points=10,
+        lie_alg_init_type='oth',
         lie_alg_init_scale=0.1,
         G_lrate_base=0.002,
         D_lrate_base=None,
@@ -120,6 +122,8 @@ def run(dataset,
                  nf_scale=G_nf_scale,
                  n_discrete=n_discrete,
                  recons_type=recons_type,
+                 n_act_points=n_act_points,
+                 lie_alg_init_type=lie_alg_init_type,
                  lie_alg_init_scale=lie_alg_init_scale,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
@@ -165,6 +169,17 @@ def run(dataset,
             func_name='training.loss_vae_lie.lie_vae_with_split',
             latent_type=latent_type,
             hy_rec=hy_rec,
+            hy_dcp=hy_dcp,
+            hy_hes=hy_hes,
+            hy_lin=hy_lin,
+            hy_ncut=hy_ncut,
+            recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'group_vae_v2':  # GroupVAE-v2
+        G_loss = EasyDict(
+            func_name='training.loss_vae_group_v2.group_act_vae',
+            latent_type=latent_type,
+            hy_rec=hy_rec,
+            hy_gmat=hy_gmat,
             hy_dcp=hy_dcp,
             hy_hes=hy_hes,
             hy_lin=hy_lin,
@@ -354,7 +369,8 @@ def main():
                         choices=[
                             'beta_vae', 'factor_vae', 'factor_sindis_vae',
                             'dip_vae_i', 'dip_vae_ii', 'betatc_vae',
-                            'group_vae', 'group_vae_wc', 'lie_vae', 'lie_vae_with_split'
+                            'group_vae', 'group_vae_wc', 'group_vae_v2',
+                            'lie_vae', 'lie_vae_with_split'
                         ])
     parser.add_argument('--resume_pkl',
                         help='Continue training using pretrained pkl.',
@@ -495,6 +511,16 @@ def main():
                         metavar='HY_NCUT',
                         default=1,
                         type=int)
+    parser.add_argument('--n_act_points',
+                        help='Hyper-param for number of points for act on in GroupVAEv2.',
+                        metavar='N_ACT_POINTS',
+                        default=10,
+                        type=int)
+    parser.add_argument('--lie_alg_init_type',
+                        help='Hyper-param for lie_alg_init_type.',
+                        metavar='LIE_ALG_INIT_TYPE',
+                        default='oth',
+                        type=str)
     parser.add_argument('--lie_alg_init_scale',
                         help='Hyper-param for lie_alg_init_scale.',
                         metavar='LIE_ALG_INIT_SCALE',

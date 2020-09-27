@@ -8,11 +8,11 @@
 
 # --- File Name: loss_vae_lie.py
 # --- Creation Date: 21-09-2020
-# --- Last Modified: Sat 26 Sep 2020 02:52:06 AEST
+# --- Last Modified: Sun 27 Sep 2020 18:05:08 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Loss of LieVAE. Some code borrowed from disentanglement_lib.
+Loss of LieVAE.
 """
 import numpy as np
 import math
