@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Fri 04 Sep 2020 16:51:00 AEST
+# --- Last Modified: Mon 28 Sep 2020 02:09:41 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,6 +45,8 @@ brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
          'factorvae_dsprites_all_hpc': 'fvm',
          'factorvae_dsprites_all_hpc_vae': 'fvm',
          'factorvae_shape3d_all_hpc_vae': 'fvm',
+         'factorvae_dsprites_all_devcube2_vae': 'fvm',
+         'factorvae_dsprites_all_devcube2': 'fvm',
          'factorvae_shape3d_all_hpc': 'fvm',
          'factorvae_shape3d_all_vae': 'fvm',
          'factorvae_shape3d_all': 'fvm',
