@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Sun 27 Sep 2020 22:11:14 AEST
+# --- Last Modified: Thu 01 Oct 2020 18:11:16 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,6 +42,7 @@ from training.vae_group_networks import build_group_sim_prior_G
 from training.vae_group_networks import build_group_sim_prior_G_wc
 from training.vae_group_networks import build_group_sim_prior_down_G
 from training.vae_group_networks_v2 import build_group_act_sim_prior_G
+from training.vae_group_networks_v2 import build_group_act_spl_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G_oth
 from training.vae_lie_networks import build_lie_sim_prior_G_oth_l2
@@ -205,6 +206,7 @@ def G_main_modular(
     group_feats_con_mat = tf.zeros([1], dtype=latents_in.dtype)
     lie_alg_feats = tf.zeros([1], dtype=latents_in.dtype)
     lie_alg_basis = tf.zeros([1], dtype=latents_in.dtype)
+    act_points = tf.zeros([1], dtype=latents_in.dtype)
     for scope_idx, k in enumerate(key_ls):
         if k == 'Standard_prior_G':
             x, group_feats = \
@@ -235,12 +237,19 @@ def G_main_modular(
                                                      group_feats_size=group_feats_size,
                                                      is_validation=is_validation)
         elif k == 'Group_act_prior_sim_G':
-            x, group_feats, lie_alg_feats, lie_alg_basis = build_group_act_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+            x, group_feats, lie_alg_feats, lie_alg_basis, act_points = build_group_act_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                                                        group_feats_size=group_feats_size,
                                                                                        n_act_points=n_act_points,
                                                                                        lie_alg_init_type=lie_alg_init_type,
                                                                                        lie_alg_init_scale=lie_alg_init_scale,
                                                                                        is_validation=is_validation)
+        elif k == 'Group_act_spl_prior_sim_G':
+            x, group_feats, lie_alg_feats, lie_alg_basis, act_points = build_group_act_spl_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
+                                                                                                       group_feats_size=group_feats_size,
+                                                                                                       n_act_points=n_act_points,
+                                                                                                       lie_alg_init_type=lie_alg_init_type,
+                                                                                                       lie_alg_init_scale=lie_alg_init_scale,
+                                                                                                       is_validation=is_validation)
         elif k == 'Lie_prior_sim_G':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                                                  group_feats_size=group_feats_size,
@@ -287,7 +296,7 @@ def G_main_modular(
         # return x, group_feats
     # else:
         # return x
-    return x, group_feats, group_feats_cat_mat, group_feats_con_mat, lie_alg_feats, lie_alg_basis
+    return x, group_feats, group_feats_cat_mat, group_feats_con_mat, lie_alg_feats, lie_alg_basis, act_points
 
 #----------------------------------------------------------------------------
 # Factor-VAE main Discriminator.

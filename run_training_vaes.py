@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sun 27 Sep 2020 22:12:17 AEST
+# --- Last Modified: Thu 01 Oct 2020 18:18:22 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -69,6 +69,7 @@ def run(dataset,
         hy_gmat=0,
         hy_oth=80,
         hy_det=0,
+        hessian_type='no_act_points',
         n_act_points=10,
         lie_alg_init_type='oth',
         lie_alg_init_scale=0.1,
@@ -184,6 +185,19 @@ def run(dataset,
             hy_hes=hy_hes,
             hy_lin=hy_lin,
             hy_ncut=hy_ncut,
+            hessian_type=hessian_type,
+            recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'group_vae_spl_v2':  # GroupVAE-v2
+        G_loss = EasyDict(
+            func_name='training.loss_vae_group_v2.group_act_spl_vae',
+            latent_type=latent_type,
+            hy_rec=hy_rec,
+            hy_gmat=hy_gmat,
+            hy_dcp=hy_dcp,
+            hy_hes=hy_hes,
+            hy_lin=hy_lin,
+            hy_ncut=hy_ncut,
+            hessian_type=hessian_type,
             recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'group_vae':  # Group-VAE
         G_loss = EasyDict(
@@ -369,7 +383,7 @@ def main():
                         choices=[
                             'beta_vae', 'factor_vae', 'factor_sindis_vae',
                             'dip_vae_i', 'dip_vae_ii', 'betatc_vae',
-                            'group_vae', 'group_vae_wc', 'group_vae_v2',
+                            'group_vae', 'group_vae_wc', 'group_vae_v2', 'group_vae_spl_v2',
                             'lie_vae', 'lie_vae_with_split'
                         ])
     parser.add_argument('--resume_pkl',
@@ -516,6 +530,11 @@ def main():
                         metavar='N_ACT_POINTS',
                         default=10,
                         type=int)
+    parser.add_argument('--hessian_type',
+                        help='Hessian type in GroupVAEv2.',
+                        metavar='HESSIAN_TYPE',
+                        default='no_act_points',
+                        type=str)
     parser.add_argument('--lie_alg_init_type',
                         help='Hyper-param for lie_alg_init_type.',
                         metavar='LIE_ALG_INIT_TYPE',
