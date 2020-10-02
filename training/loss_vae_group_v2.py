@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v2.py
 # --- Creation Date: 27-09-2020
-# --- Last Modified: Fri 02 Oct 2020 03:21:50 AEST
+# --- Last Modified: Fri 02 Oct 2020 18:37:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -284,7 +284,7 @@ def group_act_spl_vae(E,
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
-    elbo = reconstruction_loss + kl_loss
+    elbo = reconstruction_loss + 5 * kl_loss
     elbo = autosummary('Loss/lie_vae_elbo', elbo)
     loss = elbo + lie_group_loss
 

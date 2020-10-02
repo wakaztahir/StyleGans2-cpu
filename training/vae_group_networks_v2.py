@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks_v2.py
 # --- Creation Date: 27-09-2020
-# --- Last Modified: Fri 02 Oct 2020 03:02:30 AEST
+# --- Last Modified: Fri 02 Oct 2020 03:39:28 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -77,7 +77,7 @@ def build_group_act_spl_sim_prior_G(latents_in,
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_ls = []
         latent_dim = latents_in.get_shape().as_list()[-1]
-        latents_in_cut_ls = split_latents(latents_in, hy_ncut=2) # [x0, x1]
+        latents_in_cut_ls = split_latents(latents_in, hy_ncut=1) # [x0, x1]
 
         mat_dim = int(math.sqrt(group_feats_size))
         for i in range(latent_dim):
