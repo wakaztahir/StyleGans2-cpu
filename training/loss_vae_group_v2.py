@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v2.py
 # --- Creation Date: 27-09-2020
-# --- Last Modified: Fri 02 Oct 2020 18:58:03 AEST
+# --- Last Modified: Fri 02 Oct 2020 21:54:08 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -189,12 +189,12 @@ def make_lie_group_act_spl_loss(group_feats_E, group_feats_G, lie_alg_feats,
         lat_dim, dtype=lie_alg_basis_mul.dtype)[:, :, tf.newaxis, tf.newaxis]
     lie_alg_basis_mul = lie_alg_basis_mul * lie_alg_basis_mask
 
-    # if mat_dim_E != mat_dim:
-        # rec_loss = 0
-    # else:
-        # rec_loss = tf.reduce_mean(
-            # tf.reduce_sum(tf.square(group_feats_E - group_feats_G_ori), axis=[1, 2]))
-    # rec_loss = autosummary('Loss/lie_vae_rec_loss', rec_loss)
+    if mat_dim_E != mat_dim:
+        rec_loss = 0
+    else:
+        rec_loss = tf.reduce_mean(
+            tf.reduce_sum(tf.square(group_feats_E - group_feats_G_ori), axis=[1, 2]))
+    rec_loss = autosummary('Loss/lie_vae_rec_loss', rec_loss)
 
 
     gmat_loss = tf.reduce_mean(
