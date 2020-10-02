@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v2.py
 # --- Creation Date: 27-09-2020
-# --- Last Modified: Fri 02 Oct 2020 18:37:37 AEST
+# --- Last Modified: Fri 02 Oct 2020 18:58:03 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -228,21 +228,22 @@ def make_lie_group_act_spl_loss(group_feats_E, group_feats_G, lie_alg_feats,
     return loss
 
 def group_act_spl_vae(E,
-                  G,
-                  opt,
-                  training_set,
-                  minibatch_size,
-                  reals,
-                  labels,
-                  latent_type='normal',
-                  hy_dcp=0,
-                  hy_gmat=0,
-                  hy_hes=0,
-                  hy_lin=0,
-                  hy_ncut=0,
-                  hy_rec=0,
-                  hessian_type='no_act_points',
-                  recons_type='bernoulli_loss'):
+                      G,
+                      opt,
+                      training_set,
+                      minibatch_size,
+                      reals,
+                      labels,
+                      latent_type='normal',
+                      hy_beta=1,
+                      hy_dcp=0,
+                      hy_gmat=0,
+                      hy_hes=0,
+                      hy_lin=0,
+                      hy_ncut=0,
+                      hy_rec=0,
+                      hessian_type='no_act_points',
+                      recons_type='bernoulli_loss'):
     _ = opt, training_set
     means, log_var, group_feats_E = get_return_v(
         E.get_output_for(reals, labels, is_training=True), 3)
@@ -284,7 +285,7 @@ def group_act_spl_vae(E,
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
-    elbo = reconstruction_loss + 5 * kl_loss
+    elbo = reconstruction_loss + hy_beta * kl_loss
     elbo = autosummary('Loss/lie_vae_elbo', elbo)
     loss = elbo + lie_group_loss
 
