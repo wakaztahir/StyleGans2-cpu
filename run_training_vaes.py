@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Fri 02 Oct 2020 18:58:51 AEST
+# --- Last Modified: Fri 02 Oct 2020 21:34:56 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -192,6 +192,7 @@ def run(dataset,
         G_loss = EasyDict(
             func_name='training.loss_vae_group_v2.group_act_spl_vae',
             latent_type=latent_type,
+            hy_beta=hy_beta,
             hy_rec=hy_rec,
             hy_gmat=hy_gmat,
             hy_dcp=hy_dcp,
