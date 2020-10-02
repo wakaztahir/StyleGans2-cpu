@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v2.py
 # --- Creation Date: 27-09-2020
-# --- Last Modified: Fri 02 Oct 2020 21:54:08 AEST
+# --- Last Modified: Fri 02 Oct 2020 21:56:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -224,7 +224,7 @@ def make_lie_group_act_spl_loss(group_feats_E, group_feats_G, lie_alg_feats,
     hessian_loss = autosummary('Loss/lie_vae_hessian_loss', hessian_loss)
 
     # loss = hy_gmat * gmat_loss + hy_dcp * spl_loss + hy_hes * hessian_loss + hy_lin * lin_loss
-    loss = hy_gmat * gmat_loss + hy_hes * hessian_loss + hy_lin * lin_loss
+    loss = hy_gmat * gmat_loss + hy_hes * hessian_loss + hy_lin * lin_loss + hy_rec * rec_loss
     return loss
 
 def group_act_spl_vae(E,
