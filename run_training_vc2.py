@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 07 Sep 2020 21:05:38 AEST
+# --- Last Modified: Fri 09 Oct 2020 20:12:04 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,7 +43,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
         gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
         dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
-        loose_rate=0.2, topk_dims_to_show=20):
+        loose_rate=0.2, topk_dims_to_show=20, n_neg_samples=1, temperature=1.):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -197,7 +197,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      D_nf_scale=D_nf_scale)
         I_info = EasyDict()
         desc = 'vc2_gan_ownID'
-    elif model_type == 'vc2_gan_noI': # Just modular GAN
+    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_traversal_contrastive': # Just modular GAN or traversal contrastive
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -210,7 +210,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
             fmap_min=fmap_min, fmap_max=fmap_max)  # Options for discriminator network.
         I_info = EasyDict()
-        desc = 'vc2_gan_noI'
+        desc = model_type
     else:
         raise ValueError('Not supported model tyle: ' + model_type)
 
@@ -256,6 +256,13 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     elif model_type == 'vc2_gan_noI' or model_type == 'vc2_gan_style2_noI': # Just GANs (modular or StyleGAN2-style)
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns',
                           latent_type=latent_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
+            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
+    elif model_type == 'vc2_traversal_contrastive':  # With perceptual distance as guide.
+        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_vc2_traversal_contrastive',
+            D_global_size=D_global_size, C_lambda=C_lambda, n_neg_samples=n_neg_samples, temperature=temperature,
+            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
+            delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
 
@@ -308,6 +315,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                                model_type == 'vc2_gan_own_ID' or
                                model_type=='vc2_gan_byvae'),
                   use_vc2_info_gan=(model_type == 'vc2_info_gan'), # G1 and G2 version
+                  use_perdis=(model_type == 'vc2_traversal_contrastive'),
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
     if not(module_list is None):
@@ -392,7 +400,7 @@ def main():
                                                                  'vc2_gan_own_I', 'vc2_gan_own_ID',
                                                                  'vc2_info_gan',
                                                                  'vc2_gan_style2_noI', 'vc2_gan_byvae',
-                                                                 'vc2_info_gan2'])
+                                                                 'vc2_info_gan2', 'vc2_traversal_contrastive'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',
@@ -468,6 +476,10 @@ def main():
                         metavar='LOOSE_RATE', default=0.2, type=float)
     parser.add_argument('--topk_dims_to_show', help='Number of top disentant dimensions to show in a snapshot.',
                         metavar='TOPK_DIMS_TO_SHOW', default=20, type=int)
+    parser.add_argument('--n_neg_samples', help='Number of negative samples in contrastive loss.',
+                        metavar='N_NEG_SAMPLES', default=1, type=int)
+    parser.add_argument('--temperature', help='Temperature in contrastive loss.',
+                        metavar='TEMPERATURE', default=1, type=float)
 
     args = parser.parse_args()
 

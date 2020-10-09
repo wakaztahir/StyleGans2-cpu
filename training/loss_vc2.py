@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 09 Sep 2020 02:29:19 AEST
+# --- Last Modified: Fri 09 Oct 2020 21:55:53 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -20,7 +20,7 @@ import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
 
-def G_logistic_ns(G, D, opt, training_set, minibatch_size, latent_type='uniform'):
+def G_logistic_ns(G, D, opt, training_set, minibatch_size, DM=None, latent_type='uniform'):
     _ = opt
     # latents = tf.random_normal([minibatch_size] + G.input_shapes[0][1:])
     if latent_type == 'uniform':
@@ -57,7 +57,7 @@ def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_l
         I_loss = C_lambda * I_loss_C
     return I_loss
 
-def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
+def G_logistic_ns_vc2(G, D, I, opt, training_set, minibatch_size, DM, I_info=None, latent_type='uniform',
                      D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4,
                      random_eps=False, delta_type='onedim', own_I=False):
     _ = opt
@@ -148,7 +148,7 @@ def calc_vc_byvae_loss(latents, delta_latents, reg1_out, reg2_out, C_delta_laten
     I_loss = C_lambda * 0.5 * (I_loss1 + I_loss2)
     return I_loss
 
-def G_logistic_byvae_ns_vc2(G, D, I, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
+def G_logistic_byvae_ns_vc2(G, D, I, opt, training_set, minibatch_size, DM=None, I_info=None, latent_type='uniform',
                      D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4,
                      random_eps=False, delta_type='onedim', own_I=False):
     _ = opt
@@ -292,7 +292,7 @@ def calc_regress_and_att_loss(clatents, pred_outs, atts, gen_atts, D_global_size
 
     return G2_loss
 
-def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=None,
+def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, DM=None, I_info=None,
                                latent_type='uniform', D_global_size=0, D_lambda=0,
                                C_lambda=1, epsilon=0.4, random_eps=False, delta_type='onedim',
                                own_I=False, is_G2_loss=False, outlier_detector=False,
@@ -359,7 +359,7 @@ def G_logistic_ns_vc2_info_gan(G, D, opt, training_set, minibatch_size, I_info=N
         G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
         return G_loss, None
 
-def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size,
+def G_logistic_ns_vc2_info_gan2(G, D, I, opt, training_set, minibatch_size, DM=None,
                                latent_type='uniform', D_global_size=0, D_lambda=0,
                                C_lambda=1, norm_ord=2, n_dim_strict=0, loose_rate=0.2):
     _ = opt
@@ -496,3 +496,68 @@ def D_logistic_r1_vc2_info_gan2(G, D, opt, training_set, minibatch_size, reals, 
         gradient_penalty = autosummary('Loss/gradient_penalty', gradient_penalty)
         reg = gradient_penalty * (gamma * 0.5)
     return loss, reg
+
+def G_logistic_ns_vc2_traversal_contrastive(G, D, DM, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
+                     n_neg_samples=1, D_global_size=0, D_lambda=0, C_lambda=1, epsilon=0.4,
+                     random_eps=False, delta_type='onedim', own_I=False, temperature=1.):
+    _ = opt
+    discrete_latents = None
+    C_global_size = G.input_shapes[0][1]-D_global_size
+    if D_global_size > 0:
+        discrete_latents = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents = tf.one_hot(discrete_latents, D_global_size)
+        discrete_latents_2 = tf.random.uniform([minibatch_size], minval=0, maxval=D_global_size, dtype=tf.int32)
+        discrete_latents_2 = tf.one_hot(discrete_latents_2, D_global_size)
+
+    if latent_type == 'uniform':
+        latents = tf.random.uniform([minibatch_size] + [G.input_shapes[0][1]-D_global_size], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        latents = tf.random.normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size] + [G.input_shapes[0][1]-D_global_size])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+
+    # Sample delta latents
+    C_delta_latents = tf.random.uniform([minibatch_size], minval=0, maxval=C_global_size, dtype=tf.int32)
+    C_delta_latents = tf.cast(tf.one_hot(C_delta_latents, C_global_size), latents.dtype)
+    epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=2.0)
+    delta_target = C_delta_latents * epsilon
+    delta_latents = delta_target + latents
+
+    neg_latents_ls = []
+    for i in range(n_neg_samples):
+        delta_other_dir_free = tf.random.normal([minibatch_size, C_global_size])
+        delta_other_dir, _ = tf.linalg.normalize(delta_other_dir_free, axis=1)
+        delta_other_dir_target = delta_other_dir * epsilon
+        delta_other_dir_latents = delta_other_dir_target + latents
+        neg_latents_ls.append(delta_other_dir_latents)
+    neg_latents = tf.reshape(tf.concat(neg_latents_ls, axis=1), [-1, C_global_size])
+
+    labels = training_set.get_random_labels_tf(minibatch_size * (n_neg_samples + 2))
+    latents_all = tf.concat([latents, delta_latents, neg_latents], axis=0)
+    fake_all_out = G.get_output_for(latents_all, labels, is_training=True)
+
+    fake_scores_out = D.get_output_for(fake_all_out[:minibatch_size, ...], labels[:minibatch_size], is_training=True)
+    G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+
+    fake_all_out = (fake_all_out + 1) * (255 / 2) # Set dynamic_range for VGG.
+    fake_ori = fake_all_out[:minibatch_size, ...]
+    fake_pos = fake_all_out[minibatch_size: 2*minibatch_size, ...]
+    fake_negs = fake_all_out[2*minibatch_size:, ...]
+    # print('fake_ori.shape:', fake_ori.get_shape().as_list())
+    # print('fake_pos.shape:', fake_pos.get_shape().as_list())
+    # print('fake_negs.shape:', fake_negs.get_shape().as_list())
+
+    scores_pos = DM.get_output_for(fake_ori, fake_pos)[:, tf.newaxis] # [b, 1]
+    # print('scores_pos.shape:', scores_pos.get_shape().as_list())
+    scores_negs = DM.get_output_for(tf.tile(fake_ori, [n_neg_samples, 1, 1, 1]), fake_negs) # [b * n_negs]
+    # print('scores_negs.shape:', scores_negs.get_shape().as_list())
+    scores_negs = tf.reshape(scores_negs, [minibatch_size, n_neg_samples]) # [b, n_negs]
+    # print('after reshape scores_negs.shape:', scores_negs.get_shape().as_list())
+    scores_all = tf.concat([scores_pos, scores_negs], axis=1) # [b, n_negs + 1]
+    contrastive_loss = - tf.log(tf.exp((1. - scores_pos[:,0]) / temperature) / tf.reduce_sum(tf.exp((1. - scores_all) / temperature), axis=1))
+    contrastive_loss = autosummary('Loss/contrastive_loss', contrastive_loss)
+    G_loss += C_lambda * contrastive_loss
+
+    return G_loss, None

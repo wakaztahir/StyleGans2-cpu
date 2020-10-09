@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Tue 08 Sep 2020 23:23:12 AEST
+# --- Last Modified: Fri 09 Oct 2020 15:51:19 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -52,6 +52,7 @@ def training_loop_vc2(
         use_info_gan=False,  # Whether to use info-gan.
         use_vc_head=False,  # Whether to use vc-head.
         use_vc2_info_gan=False,  # Whether to use vc2 infogan.
+        use_perdis=False,  # Whether use perceptual distance network.
         data_dir=None,  # Directory to load datasets from.
         G_smoothing_kimg=10.0,  # Half-life of the running average of generator weights.
         minibatch_repeats=4,  # Number of minibatches to run before adjusting training parameters.
@@ -122,6 +123,8 @@ def training_loop_vc2(
                                   resolution=training_set.shape[1],
                                   label_size=training_set.label_size,
                                   **I_args)
+            elif use_perdis:
+                DM = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
             
             Gs = G.clone('Gs')
         if resume_pkl is not None:
@@ -148,6 +151,8 @@ def training_loop_vc2(
     D.print_layers()
     if include_I:
         I.print_layers()
+    if use_perdis:
+        DM.print_layers()
     # pdb.set_trace()
     sched = training_schedule(cur_nimg=total_kimg * 1000,
                               training_set=training_set,
@@ -252,6 +257,10 @@ def training_loop_vc2(
             D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
             if include_I:
                 I_gpu = I if gpu == 0 else I.clone(I.name + '_shadow')
+            if use_perdis:
+                DM_gpu = DM if gpu == 0 else DM.clone(DM.name + '_shadow')
+            else:
+                DM_gpu = None
 
             # Fetch training data via temporary variables.
             with tf.name_scope('DataFetch'):
@@ -292,14 +301,14 @@ def training_loop_vc2(
                 with tf.name_scope('G_loss'):
                     if include_I:
                         G_loss, G_reg = dnnlib.util.call_func_by_name(
-                            G=G_gpu, D=D_gpu, I=I_gpu, opt=G_opt,
-                            training_set=training_set,
+                            G=G_gpu, D=D_gpu, I=I_gpu, DM=DM_gpu,
+                            opt=G_opt, training_set=training_set,
                             minibatch_size=minibatch_gpu_in,
                             **G_loss_args)
                     else:
                         G_loss, G_reg = dnnlib.util.call_func_by_name(
-                            G=G_gpu, D=D_gpu, opt=G_opt,
-                            training_set=training_set,
+                            G=G_gpu, D=D_gpu, DM=DM_gpu,
+                            opt=G_opt, training_set=training_set,
                             minibatch_size=minibatch_gpu_in,
                             **G_loss_args)
                 with tf.name_scope('D_loss'):

@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 31 May 2020 18:18:24 AEST
+# --- Last Modified: Fri 09 Oct 2020 21:57:25 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -162,9 +162,9 @@ def G_synthesis_modular_vc2(
     # Note that module_list may include modules not containing latents,
     # e.g. Conv layers (size in this case means number of conv layers).
     key_ls, size_ls, count_dlatent_size = split_module_names(module_list)
-    print('In key_ls:', key_ls)
-    print('In size_ls:', size_ls)
-    print('In count_dlatent_size:', count_dlatent_size)
+    # print('In key_ls:', key_ls)
+    # print('In size_ls:', size_ls)
+    # print('In count_dlatent_size:', count_dlatent_size)
 
     # if label_size > 0:
         # key_ls.insert(0, 'Label')
@@ -499,9 +499,9 @@ def I_modular_vc2(
     # Note that module_I_list may include modules not containing latents,
     # e.g. Conv layers (size in this case means number of conv layers).
     key_ls, size_ls, count_dlatent_size = split_module_names(module_I_list)
-    print('In key_ls:', key_ls)
-    print('In size_ls:', size_ls)
-    print('In count_dlatent_size:', count_dlatent_size)
+    # print('In key_ls:', key_ls)
+    # print('In size_ls:', size_ls)
+    # print('In count_dlatent_size:', count_dlatent_size)
 
     # Primary inputs.
     fake1.set_shape([None, num_channels, resolution, resolution])
@@ -927,9 +927,9 @@ def D_modular_vc2(
     # Note that module_D_list may include modules not containing latents,
     # e.g. Conv layers (size in this case means number of conv layers).
     key_ls, size_ls, count_dlatent_size = split_module_names(module_D_list)
-    print('In key_ls:', key_ls)
-    print('In size_ls:', size_ls)
-    print('In count_dlatent_size:', count_dlatent_size)
+    # print('In key_ls:', key_ls)
+    # print('In size_ls:', size_ls)
+    # print('In count_dlatent_size:', count_dlatent_size)
 
     # Primary inputs.
     images_in.set_shape([None, num_channels, resolution, resolution])
@@ -999,9 +999,9 @@ def D_info_modular_vc2(
     # Note that module_D_list may include modules not containing latents,
     # e.g. Conv layers (size in this case means number of conv layers).
     key_ls, size_ls, count_dlatent_size = split_module_names(module_D_list)
-    print('In key_ls:', key_ls)
-    print('In size_ls:', size_ls)
-    print('In count_dlatent_size:', count_dlatent_size)
+    # print('In key_ls:', key_ls)
+    # print('In size_ls:', size_ls)
+    # print('In count_dlatent_size:', count_dlatent_size)
 
     # Primary inputs.
     images_in.set_shape([None, num_channels, resolution, resolution])
@@ -1101,9 +1101,9 @@ def infer_modular(
     # Note that module_list may include modules not containing latents,
     # e.g. Conv layers (size in this case means number of conv layers).
     key_ls, size_ls, count_dlatent_size = split_module_names(module_list)
-    print('In key_ls:', key_ls)
-    print('In size_ls:', size_ls)
-    print('In count_dlatent_size:', count_dlatent_size)
+    # print('In key_ls:', key_ls)
+    # print('In size_ls:', size_ls)
+    # print('In count_dlatent_size:', count_dlatent_size)
 
     # Primary inputs.
     images_in.set_shape([None, num_channels, resolution, resolution])
