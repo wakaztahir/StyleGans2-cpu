@@ -486,7 +486,7 @@ class Network:
 
             # Scope does not contain ops as immediate children => recurse deeper.
             contains_direct_ops = any("/" not in op.name[len(global_prefix):] and op.type not in ["Identity", "Cast", "Transpose"] for op in cur_ops)
-            if (level == 0 or not contains_direct_ops) and (len(cur_ops) + len(cur_vars)) > 1:
+            if (level == 0 or level == 1 or not contains_direct_ops) and (len(cur_ops) + len(cur_vars)) > 1:
                 visited = set()
                 for rel_name in [op.name[len(global_prefix):] for op in cur_ops] + [name[len(local_prefix):] for name, _var in cur_vars]:
                     token = rel_name.split("/")[0]
