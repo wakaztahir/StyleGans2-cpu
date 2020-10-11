@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 09 Oct 2020 20:12:04 AEDT
+# --- Last Modified: Sun 11 Oct 2020 16:25:09 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,6 +43,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G_nf_scale=4, I_nf_scale=4, D_nf_scale=4, outlier_detector=False,
         gen_atts_in_D=False, no_atts_in_D=False, att_lambda=0,
         dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
+        drop_extra_torgb=False, latent_split_ls_for_std_gen=[5,5,5,5],
         loose_rate=0.2, topk_dims_to_show=20, n_neg_samples=1, temperature=1.):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
@@ -134,7 +135,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, latent_size=count_dlatent_size,
             dlatent_size=count_dlatent_size, D_global_size=D_global_size,
             module_list=module_list, use_noise=True, return_atts=return_atts,
-            G_nf_scale=G_nf_scale
+            G_nf_scale=G_nf_scale, architecture=arch, drop_extra_torgb=drop_extra_torgb,
+            latent_split_ls_for_std_gen=latent_split_ls_for_std_gen,
         )  # Options for generator network.
         I = EasyDict(func_name='training.vc_networks2.vc2_head_byvae',
                      dlatent_size=count_dlatent_size, D_global_size=D_global_size,
@@ -480,6 +482,10 @@ def main():
                         metavar='N_NEG_SAMPLES', default=1, type=int)
     parser.add_argument('--temperature', help='Temperature in contrastive loss.',
                         metavar='TEMPERATURE', default=1, type=float)
+    parser.add_argument('--drop_extra_torgb', help='If drop the last torgb layer in modular generator.',
+                        default=False, metavar='DROP_EXTRA_TORGB', type=_str_to_bool)
+    parser.add_argument('--latent_split_ls_for_std_gen', help='How to split latents in modular generator.',
+                        default=[5,5,5,5], metavar='LATENT_SPLIT_LS_FOR_STD_GEN', type=_str_to_list_of_int)
 
     args = parser.parse_args()
 

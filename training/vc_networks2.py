@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 09 Oct 2020 21:57:25 AEDT
+# --- Last Modified: Sun 11 Oct 2020 19:07:46 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,6 +45,7 @@ from training.vc_modular_networks2 import build_C_spgroup_stn_layers
 from training.vc_modular_networks2 import build_C_spgroup_lcond_layers
 from training.vc_modular_networks2 import build_Cout_spgroup_layers
 from training.vc_modular_networks2 import build_Cout_genatts_spgroup_layers
+from training.vc2_subnets import build_std_gen, build_std_gen_sp
 from training.networks_stylegan import instance_norm, style_mod
 from stn.stn import spatial_transformer_network as transformer
 
@@ -133,6 +134,7 @@ def G_synthesis_modular_vc2(
         module_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
         num_channels=1,  # Number of output color channels.
         resolution=128,  # Output resolution.
+        architecture='skip', # Architecture: 'orig', 'skip', 'resnet'.
         fmap_base=16 <<
         10,  # Overall multiplier for the number of feature maps.
         fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
@@ -148,6 +150,8 @@ def G_synthesis_modular_vc2(
         randomize_noise=True,  # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
         return_atts=False,  # If return atts.
         G_nf_scale=4,
+        drop_extra_torgb=False,
+        latent_split_ls_for_std_gen=[5,5,5,5],  # The split list for std_gen subnets.
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized variation-consistent network2.
@@ -181,7 +185,9 @@ def G_synthesis_modular_vc2(
     subkwargs = EasyDict()
     subkwargs.update(dlatents_in=dlatents_in, act=act, dtype=dtype, resample_kernel=resample_kernel,
                      fused_modconv=fused_modconv, use_noise=use_noise, randomize_noise=randomize_noise,
-                     resolution=resolution, **kwargs)
+                     resolution=resolution, fmap_base=fmap_base, architecture=architecture,
+                     num_channels=num_channels, latent_split_ls_for_std_gen=latent_split_ls_for_std_gen,
+                     fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, **kwargs)
 
     # Build modules by module_dict.
     start_idx = 0
@@ -289,11 +295,30 @@ def G_synthesis_modular_vc2(
             # e.g. {'Conv-up': 2}, {'Conv-id': 1}
             x = build_conv_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                  fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
+        elif k == 'STD_gen':
+            x = build_std_gen(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                              scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k == 'STD_gen_sp':
+            n_subs = int(k.split('-')[-1])
+            if return_atts:
+                x, atts_tmp = build_std_gen_sp(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                           scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), 
+                                           return_atts=True, n_subs=n_subs, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = build_std_gen_sp(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                           scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), 
+                                           return_atts=False, n_subs=n_subs, **subkwargs)
+            start_idx += size_ls[scope_idx]
         else:
             raise ValueError('Unsupported module type: ' + k)
 
-    y = torgb(x, y, num_channels=num_channels)
-    images_out = y
+    if drop_extra_torgb:
+        images_out = x
+    else:
+        y = torgb(x, y, num_channels=num_channels)
+        images_out = y
     assert images_out.dtype == tf.as_dtype(dtype)
 
     if return_atts:
