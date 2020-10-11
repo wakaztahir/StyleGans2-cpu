@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 09 Oct 2020 15:51:19 AEDT
+# --- Last Modified: Sun 11 Oct 2020 13:26:38 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -158,7 +158,10 @@ def training_loop_vc2(
                               training_set=training_set,
                               **sched_args)
     if traversal_grid:
-        topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+        if topk_dims_to_show > 0:
+            topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+        else:
+            topk_dims = np.arange(n_continuous)
         print('topk_dims_to_show:', topk_dims_to_show)
         grid_size, grid_latents, grid_labels = get_grid_latents(
             n_discrete, n_continuous, n_samples_per, G, grid_labels, topk_dims)
@@ -513,11 +516,14 @@ def training_loop_vc2(
                                        tf_config=tf_config,
                                        include_I=include_I,
                                        Gs_kwargs=dict(is_validation=True, return_atts=False))
-                if 'tpl_per_dim' in met_outs:
-                    avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
-                    topk_dims = np.argsort(avg_distance_per_dim)[::-1][:topk_dims_to_show] # shape: (20)
+                if topk_dims_to_show > 0:
+                    if 'tpl_per_dim' in met_outs:
+                        avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
+                        topk_dims = np.argsort(avg_distance_per_dim)[::-1][:topk_dims_to_show] # shape: (20)
+                    else:
+                        topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
                 else:
-                    topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+                    topk_dims = np.arange(n_continuous)
 
             if image_snapshot_ticks is not None and (
                     cur_tick % image_snapshot_ticks == 0 or done):
