@@ -8,7 +8,7 @@
 
 # --- File Name: vc2_subnets.py
 # --- Creation Date: 11-10-2020
-# --- Last Modified: Sun 11 Oct 2020 19:39:24 AEDT
+# --- Last Modified: Mon 12 Oct 2020 03:42:08 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -157,7 +157,8 @@ def build_std_gen_sp(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     latents_ready_ls = []
     start_code = 0
     for i, seg in enumerate(latent_split_ls_for_std_gen):
-        x_tmp = tf.concat(latents_ready_spl_ls[start_code:start_code+seg], axis=1)
+        with tf.variable_scope('PreConvConcat-' + str(i)):
+            x_tmp = tf.concat(latents_ready_spl_ls[start_code:start_code+seg], axis=1)
         latents_ready_ls.append(x_tmp)
         start_code += seg
 
