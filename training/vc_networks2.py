@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 11 Oct 2020 19:07:46 AEDT
+# --- Last Modified: Sun 11 Oct 2020 19:23:27 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -299,7 +299,7 @@ def G_synthesis_modular_vc2(
             x = build_std_gen(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                               scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), **subkwargs)
             start_idx += size_ls[scope_idx]
-        elif k == 'STD_gen_sp':
+        elif k.startswith('STD_gen_sp-'):
             n_subs = int(k.split('-')[-1])
             if return_atts:
                 x, atts_tmp = build_std_gen_sp(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
