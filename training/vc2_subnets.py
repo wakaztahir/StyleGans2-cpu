@@ -8,7 +8,7 @@
 
 # --- File Name: vc2_subnets.py
 # --- Creation Date: 11-10-2020
-# --- Last Modified: Sun 11 Oct 2020 19:05:25 AEDT
+# --- Last Modified: Sun 11 Oct 2020 19:32:51 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -179,6 +179,7 @@ def build_std_gen_sp(x, name, n_latents, start_idx, scope_idx, dlatents_in,
             x, atts = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[layer_idx],
                                                                              layer_idx, latents_ready_ls[layer_idx], return_atts=return_atts,
                                                                              resolution=resolution, n_subs=n_subs, **kwargs), 2)
+            x = conv2d_layer(x, fmaps=fmaps, kernel=kernel, up=up)
             if randomize_noise:
                 noise = tf.random_normal([tf.shape(x)[0], 1, x.shape[2], x.shape[3]], dtype=x.dtype)
             else:
@@ -213,7 +214,7 @@ def build_std_gen_sp(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                 t, atts = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[res*2-3],
                                                                                  res*2-3, latents_ready_ls[res*2-3], return_atts=return_atts,
                                                                                  resolution=resolution, n_subs=n_subs, **kwargs), 2)
-                t = apply_bias_act(t)
+                t = apply_bias_act(conv2d_layer(t, fmaps=num_channels, kernel=1))
                 return t if y is None else y + t, atts
 
         # Early layers.
