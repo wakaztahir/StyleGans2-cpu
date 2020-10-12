@@ -8,7 +8,7 @@
 
 # --- File Name: vc2_subnets_pggan.py
 # --- Creation Date: 12-10-2020
-# --- Last Modified: Mon 12 Oct 2020 18:17:06 AEDT
+# --- Last Modified: Mon 12 Oct 2020 19:04:43 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -36,7 +36,7 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     assert resolution == 2**resolution_log2 and resolution >= 4
     def nf(stage): return min(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_max)
     def PN(x): return pixel_norm(x, epsilon=pixelnorm_epsilon) if use_pixelnorm else x
-    if latent_size is None: latent_size = nf(0)
+    act = leaky_relu if act == 'lrelu' else tf.nn.relu
     
     dtype = x.dtype
     # latents_in.set_shape([None, latent_size])
@@ -46,7 +46,7 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     # lod_in = tf.cast(tf.get_variable('lod', initializer=np.float32(0.0), trainable=False), dtype)
 
     assert n_latents == sum(latent_split_ls_for_std_gen)
-    # assert num_layers == len(latent_split_ls_for_std_gen)
+    # assert 12 == len(latent_split_ls_for_std_gen)
     latents_ready_spl_ls = []
     for i in range(n_latents):
         with tf.variable_scope('PreConvDense-' + str(i) + '-0'):
@@ -68,18 +68,22 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
         with tf.variable_scope('%dx%d' % (2**res, 2**res)):
             with tf.variable_scope('Conv0_up'):
                 # x, atts_0 = sp_layer(x, layer_idx=res*2-4)
-                layer_idx_0 = res*2 - 4
+                layer_idx_0 = res*2 - 6
                 x, atts_0 = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[layer_idx_0],
                                                                                    layer_idx_0, latents_ready_ls[layer_idx_0], return_atts=return_atts,
                                                                                    resolution=resolution, n_subs=n_subs, **kwargs), 2)
                 x = PN(act(apply_bias(upscale2d_conv2d(x, fmaps=nf(res-1), kernel=3, use_wscale=use_wscale))))
             with tf.variable_scope('Conv1'):
-                layer_idx_1 = res*2 - 3
+                layer_idx_1 = res*2 - 5
                 x, atts_1 = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[layer_idx_1],
                                                                                    layer_idx_1, latents_ready_ls[layer_idx_1], return_atts=return_atts,
                                                                                    resolution=resolution, n_subs=n_subs, **kwargs), 2)
                 x = PN(act(apply_bias(conv2d(x, fmaps=nf(res-1), kernel=3, use_wscale=use_wscale))))
-        return x
+        if return_atts:
+            atts = tf.concat([atts_0, atts_1], axis=1)
+        else:
+            atts = None
+        return x, atts
     def torgb(x, res): # res = 2..resolution_log2
         lod = resolution_log2 - res
         with tf.variable_scope('ToRGB_lod%d' % lod):
@@ -92,9 +96,11 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
 
     # x = block(combo_in, 2)
     # images_out = torgb(x, 2)
-    for res in range(2, resolution_log2 + 1):
+    atts_out_ls = []
+    for res in range(3, resolution_log2 + 1):
         # lod = resolution_log2 - res
-        x = block(x, res)
+        x, atts_tmp = block(x, res)
+        atts_out_ls.append(atts_tmp)
         # img = torgb(x, res)
         # images_out = upscale2d(images_out)
         # with tf.variable_scope('Grow_lod%d' % lod):
@@ -102,9 +108,15 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
 
     images_out = torgb(x, resolution_log2)
 
-    assert images_out.dtype == tf.as_dtype(dtype)
-    images_out = tf.identity(images_out, name='images_out')
-    return images_out
+    # assert images_out.dtype == tf.as_dtype(dtype)
+    # images_out = tf.identity(images_out, name='images_out')
+    # return images_out
+    if return_atts:
+        with tf.variable_scope('ConcatAtts'):
+            atts_out = tf.concat(atts_out_ls, axis=1)
+            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
+    else:
+        return tf.identity(images_out, name='images_out')
 
 #----------------------------------------------------------------------------
 
