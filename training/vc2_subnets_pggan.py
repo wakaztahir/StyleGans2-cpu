@@ -8,7 +8,7 @@
 
 # --- File Name: vc2_subnets_pggan.py
 # --- Creation Date: 12-10-2020
-# --- Last Modified: Mon 12 Oct 2020 19:04:43 AEDT
+# --- Last Modified: Tue 13 Oct 2020 02:54:49 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,7 +26,7 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                     architecture='skip', randomize_noise=True,
                     resample_kernel=[1,3,3,1], num_channels=3,
                     latent_split_ls_for_std_gen=[5,5,5,5],
-                     n_subs=4, return_atts=True,
+                    n_subs=4, return_atts=True,
                     pixelnorm_epsilon=1e-8,  # Constant epsilon for pixelwise feature vector normalization.
                     use_pixelnorm=True,  # Enable pixelwise feature vector normalization?
                     use_wscale=True,  # Enable equalized learning rate?
@@ -63,22 +63,42 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
         latents_ready_ls.append(x_tmp)
         start_code += seg
 
+    # Noise inputs.
+    noise_inputs = []
+    for layer_idx in range(len(latents_ready_ls) * 2):
+        res = (layer_idx + 6) // 2
+        shape = [1, 1, 2**res, 2**res]
+        noise_inputs.append(tf.get_variable('noise%d' % layer_idx, shape=shape, initializer=tf.initializers.random_normal(), trainable=False))
+
+    def layer(x, layer_idx, up):
+        x, atts = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[layer_idx],
+                                                                         layer_idx, latents_ready_ls[layer_idx], return_atts=return_atts,
+                                                                         resolution=resolution, n_subs=n_subs, **kwargs), 2)
+        if up:
+            x = upscale2d_conv2d(x, fmaps=nf(res-1), kernel=3, use_wscale=use_wscale)
+        else:
+            x = conv2d(x, fmaps=nf(res-1), kernel=3, use_wscale=use_wscale)
+
+        if randomize_noise:
+            noise = tf.random_normal([tf.shape(x)[0], 1, x.shape[2], x.shape[3]], dtype=x.dtype)
+        else:
+            noise = tf.cast(noise_inputs[layer_idx], x.dtype)
+        noise_strength = tf.get_variable('noise_strength', shape=[], initializer=tf.initializers.zeros())
+        x += noise * tf.cast(noise_strength, x.dtype)
+
+        x = PN(act(apply_bias(x)))
+        return x, atts
+
     # Building blocks.
     def block(x, res): # res = 2..resolution_log2
         with tf.variable_scope('%dx%d' % (2**res, 2**res)):
             with tf.variable_scope('Conv0_up'):
                 # x, atts_0 = sp_layer(x, layer_idx=res*2-4)
                 layer_idx_0 = res*2 - 6
-                x, atts_0 = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[layer_idx_0],
-                                                                                   layer_idx_0, latents_ready_ls[layer_idx_0], return_atts=return_atts,
-                                                                                   resolution=resolution, n_subs=n_subs, **kwargs), 2)
-                x = PN(act(apply_bias(upscale2d_conv2d(x, fmaps=nf(res-1), kernel=3, use_wscale=use_wscale))))
+                x, atts_0 = layer(x, layer_idx_0, True)
             with tf.variable_scope('Conv1'):
                 layer_idx_1 = res*2 - 5
-                x, atts_1 = get_return_v(build_C_spgroup_layers_with_latents_ready(x, 'SP_latents', latent_split_ls_for_std_gen[layer_idx_1],
-                                                                                   layer_idx_1, latents_ready_ls[layer_idx_1], return_atts=return_atts,
-                                                                                   resolution=resolution, n_subs=n_subs, **kwargs), 2)
-                x = PN(act(apply_bias(conv2d(x, fmaps=nf(res-1), kernel=3, use_wscale=use_wscale))))
+                x, atts_1 = layer(x, layer_idx_1, False)
         if return_atts:
             atts = tf.concat([atts_0, atts_1], axis=1)
         else:
