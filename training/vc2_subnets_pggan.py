@@ -8,7 +8,7 @@
 
 # --- File Name: vc2_subnets_pggan.py
 # --- Creation Date: 12-10-2020
-# --- Last Modified: Tue 13 Oct 2020 02:54:49 AEDT
+# --- Last Modified: Tue 13 Oct 2020 03:10:07 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,7 +34,8 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
     '''A PGGAN-style network.'''
     resolution_log2 = int(np.log2(resolution))
     assert resolution == 2**resolution_log2 and resolution >= 4
-    def nf(stage): return min(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_max)
+    # def nf(stage): return min(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_max)
+    def nf(stage): return np.clip(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_min, fmap_max)
     def PN(x): return pixel_norm(x, epsilon=pixelnorm_epsilon) if use_pixelnorm else x
     act = leaky_relu if act == 'lrelu' else tf.nn.relu
     
