@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 11 Oct 2020 19:23:27 AEDT
+# --- Last Modified: Mon 12 Oct 2020 18:19:12 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,6 +46,7 @@ from training.vc_modular_networks2 import build_C_spgroup_lcond_layers
 from training.vc_modular_networks2 import build_Cout_spgroup_layers
 from training.vc_modular_networks2 import build_Cout_genatts_spgroup_layers
 from training.vc2_subnets import build_std_gen, build_std_gen_sp
+from training.vc2_subnets_pggan import build_pggan_gen
 from training.networks_stylegan import instance_norm, style_mod
 from stn.stn import spatial_transformer_network as transformer
 
@@ -310,6 +311,18 @@ def G_synthesis_modular_vc2(
                 x = build_std_gen_sp(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                            scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), 
                                            return_atts=False, n_subs=n_subs, **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k.startswith('PG_gen_sp-'):
+            n_subs = int(k.split('-')[-1])
+            if return_atts:
+                x, atts_tmp = build_pggan_gen(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                              scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), 
+                                              return_atts=True, n_subs=n_subs, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = build_pggan_gen(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                    scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), 
+                                    return_atts=False, n_subs=n_subs, **subkwargs)
             start_idx += size_ls[scope_idx]
         else:
             raise ValueError('Unsupported module type: ' + k)
