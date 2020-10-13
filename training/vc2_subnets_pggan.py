@@ -8,7 +8,7 @@
 
 # --- File Name: vc2_subnets_pggan.py
 # --- Creation Date: 12-10-2020
-# --- Last Modified: Tue 13 Oct 2020 03:10:07 AEDT
+# --- Last Modified: Tue 13 Oct 2020 14:44:21 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,7 +28,7 @@ def build_pggan_gen(x, name, n_latents, start_idx, scope_idx, dlatents_in,
                     latent_split_ls_for_std_gen=[5,5,5,5],
                     n_subs=4, return_atts=True,
                     pixelnorm_epsilon=1e-8,  # Constant epsilon for pixelwise feature vector normalization.
-                    use_pixelnorm=True,  # Enable pixelwise feature vector normalization?
+                    use_pixelnorm=False,  # Enable pixelwise feature vector normalization?
                     use_wscale=True,  # Enable equalized learning rate?
                     **kwargs):
     '''A PGGAN-style network.'''
