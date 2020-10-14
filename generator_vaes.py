@@ -8,7 +8,7 @@
 
 # --- File Name: generator_vaes.py
 # --- Creation Date: 05-10-2020
-# --- Last Modified: Mon 05 Oct 2020 19:12:09 AEDT
+# --- Last Modified: Tue 13 Oct 2020 17:17:26 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -54,6 +54,7 @@ def sample_grid_z(rnd, G, latent_pair, n_samples_per, bound, rot):
 
 def measure_distance(images, n_samples_per):
     assert images.shape[0] == n_samples_per * n_samples_per
+    images = (images + 1) * (255 / 2)  # [-1, -1] -> [0, 255]
     distance_measure = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
     dis_sum = 0
     for i in range(n_samples_per):
