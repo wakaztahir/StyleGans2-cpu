@@ -650,6 +650,8 @@ def create_from_images(tfrecord_dir, image_dir, shuffle):
             if channels == 1:
                 img = img[np.newaxis, :, :]  # HW => CHW
             else:
+                if len(img.shape) == 2:
+                    img = np.tile(img[:, :, np.newaxis], [1, 1, 3])
                 img = img.transpose([2, 0, 1])  # HWC => CHW
             tfr.add_image(img)
 
