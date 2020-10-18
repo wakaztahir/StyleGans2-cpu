@@ -6,13 +6,13 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: run_training_vaes.py
-# --- Creation Date: 13-08-2020
-# --- Last Modified: Fri 16 Oct 2020 21:47:38 AEDT
+# --- File Name: run_training_vaes_wI.py
+# --- Creation Date: 16-10-2020
+# --- Last Modified: Fri 16 Oct 2020 21:04:39 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Run training file Variational Autoencoders.
+Run training file Variational Autoencoders with I.
 Code borrowed from run_training.py from NVIDIA.
 """
 
@@ -52,11 +52,13 @@ def run(dataset,
         D_fmap_base=9,
         module_D_list=None,
         D_nf_scale=4,
+        I_fmap_base=9,
+        module_I_list=None,
+        I_nf_scale=4,
         fmap_decay=0.15,
         fmap_min=16,
         fmap_max=512,
         n_samples_per=10,
-        arch='resnet',
         topk_dims_to_show=20,
         hy_beta=1,
         hy_gamma=0,
@@ -81,7 +83,6 @@ def run(dataset,
         group_feats_size=400,
         temp=0.67,
         n_discrete=0,
-        epsilon=1,
         drange_net=[-1, 1],
         recons_type='bernoulli_loss',
         use_group_decomp=False,
@@ -102,6 +103,10 @@ def run(dataset,
         module_D_list = _str_to_list(module_D_list)
         key_D_ls, size_D_ls, count_dlatent_D_size = split_module_names(
             module_D_list)
+    if not (module_I_list is None):
+        module_I_list = _str_to_list(module_I_list)
+        key_I_ls, size_I_ls, count_dlatent_I_size = split_module_names(
+            module_I_list)
 
     D = D_opt = D_loss = None
     E = EasyDict(func_name='training.vae_networks.E_main_modular',
@@ -128,6 +133,14 @@ def run(dataset,
                  lie_alg_init_type=lie_alg_init_type,
                  lie_alg_init_scale=lie_alg_init_scale,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
+    I = EasyDict(func_name='training.vae_I_networks.I_main_modular',
+                 fmap_min=fmap_min,
+                 fmap_max=fmap_max,
+                 fmap_decay=fmap_decay,
+                 latent_size=count_dlatent_I_size,
+                 module_I_list=module_I_list,
+                 nf_scale=I_nf_scale,
+                 fmap_base=2 << I_fmap_base)  # Options for I network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
     if model_type == 'factor_vae' or model_type == 'factor_sindis_vae':  # Factor-VAE
@@ -155,13 +168,6 @@ def run(dataset,
             func_name='training.loss_vae.betatc_vae',
             latent_type=latent_type,
             hy_beta=hy_beta,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'coma_vae':  # COMA-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.coma_vae',
-            latent_type=latent_type,
-            hy_gamma=hy_gamma,
-            epsilon=epsilon,
             recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'lie_vae':  # LieVAE
         G_loss = EasyDict(
@@ -394,7 +400,7 @@ def main():
                             'beta_vae', 'factor_vae', 'factor_sindis_vae',
                             'dip_vae_i', 'dip_vae_ii', 'betatc_vae',
                             'group_vae', 'group_vae_wc', 'group_vae_v2', 'group_vae_spl_v2',
-                            'lie_vae', 'lie_vae_with_split', 'coma_vae'
+                            'lie_vae', 'lie_vae_with_split'
                         ])
     parser.add_argument('--resume_pkl',
                         help='Continue training using pretrained pkl.',
@@ -514,11 +520,6 @@ def main():
                         help='Hyper-param for factor-vae.',
                         metavar='HY_GAMMA',
                         default=0,
-                        type=float)
-    parser.add_argument('--epsilon',
-                        help='Hyper-param for coma-vae.',
-                        metavar='EPSILON',
-                        default=1,
                         type=float)
     parser.add_argument('--hy_dcp',
                         help='Hyper-param for decompose in GroupVAE and LieVAE.',

@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Thu 01 Oct 2020 23:39:12 AEST
+# --- Last Modified: Fri 16 Oct 2020 21:59:43 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -227,6 +227,76 @@ def betatc_vae(E,
     elbo = autosummary('Loss/betatc_vae_elbo', elbo)
     loss = elbo + tc
     loss = autosummary('Loss/betatc_vae_loss', loss)
+    return loss
+
+def get_delta_mask(sampled):
+    minibatch_size = tf.shape(sampled)[0]
+    latent_size = tf.shape(sampled)[1]
+    delta_idx = tf.random.uniform([minibatch_size], minval=0, maxval=latent_size, dtype=tf.int32)
+    delta_mask = tf.cast(tf.one_hot(delta_idx, latent_size), sampled.dtype)
+    return delta_mask
+
+def get_delta_sampled(sampled, delta_mask, epsilon):
+    minibatch_size = tf.shape(sampled)[0]
+    latent_size = tf.shape(sampled)[1]
+    epsilon = epsilon * tf.random.normal([minibatch_size, 1], mean=0.0, stddev=1.0)
+    delta_v = delta_mask * epsilon
+    delta_sampled = delta_v + sampled
+    return delta_sampled
+
+def get_coma_loss(sampled, delta_sampled, reg_1, reg_2, delta_mask):
+    reg_avg = 0.5 * (reg_1 + reg_2)
+    delta_mask = delta_mask > 0
+    reg1_out_hat = tf.where(delta_mask, reg_1, reg_avg)
+    reg2_out_hat = tf.where(delta_mask, reg_2, reg_avg)
+    I_loss1 = tf.reduce_sum(tf.math.squared_difference(sampled, reg1_out_hat), axis=1)
+    I_loss2 = tf.reduce_sum(tf.math.squared_difference(delta_sampled, reg2_out_hat), axis=1)
+    I_loss = 0.5 * (I_loss1 + I_loss2)
+    return I_loss
+
+def coma_vae(E,
+             G,
+             opt,
+             training_set,
+             minibatch_size,
+             reals,
+             labels,
+             latent_type='normal',
+             hy_gamma=1,
+             epsilon=1,
+             recons_type='bernoulli_loss'):
+    _ = opt, training_set
+    means, log_var = get_return_v(
+        E.get_output_for(reals, labels, is_training=True), 2)
+    kl_loss = compute_gaussian_kl(means, log_var)
+    kl_loss = autosummary('Loss/kl_loss', kl_loss)
+    sampled = sample_from_latent_distribution(means, log_var)
+    delta_mask = get_delta_mask(sampled)
+    delta_sampled = get_delta_sampled(sampled, delta_mask, epsilon)
+    sampled_all = tf.concat([sampled, delta_sampled], axis=0)
+    labels_all = tf.concat([labels, labels], axis=0)
+    fakes_all = get_return_v(
+        G.get_output_for(sampled_all, labels_all, is_training=True), 1)
+    reconstructions, _ = tf.split(fakes_all, 2, axis=0)
+    reconstruction_loss = make_reconstruction_loss(reals,
+                                                   reconstructions,
+                                                   recons_type=recons_type)
+    # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
+    reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
+
+    # tc = (hy_beta - 1.) * total_correlation(sampled, means, log_var)
+    # return tc + kl_loss
+    means_all, log_var_all = get_return_v(
+        E.get_output_for(fakes_all, labels_all, is_training=True), 2)
+    reg_sampled_all = sample_from_latent_distribution(means_all, log_var_all)
+    reg_1, reg_2 = tf.split(reg_sampled_all, 2, axis=0)
+    coma_loss = get_coma_loss(sampled, delta_sampled, reg_1, reg_2, delta_mask)
+    elbo = reconstruction_loss + kl_loss
+    elbo = autosummary('Loss/coma_vae_elbo', elbo)
+    # loss = elbo + tc
+    # loss = autosummary('Loss/betatc_vae_loss', loss)
+    loss = elbo + hy_gamma * coma_loss
+    loss = autosummary('Loss/coma_vae_loss', loss)
     return loss
 
 

@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Mon 12 Oct 2020 18:19:12 AEDT
+# --- Last Modified: Sat 17 Oct 2020 17:36:58 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -49,6 +49,7 @@ from training.vc2_subnets import build_std_gen, build_std_gen_sp
 from training.vc2_subnets_pggan import build_pggan_gen
 from training.networks_stylegan import instance_norm, style_mod
 from stn.stn import spatial_transformer_network as transformer
+from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
 # Variation Consistenecy main Generator
@@ -333,6 +334,123 @@ def G_synthesis_modular_vc2(
         y = torgb(x, y, num_channels=num_channels)
         images_out = y
     assert images_out.dtype == tf.as_dtype(dtype)
+
+    if return_atts:
+        with tf.variable_scope('ConcatAtts'):
+            atts_out = tf.concat(atts, axis=1)
+            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
+    else:
+        return tf.identity(images_out, name='images_out')
+
+def G_synthesis_simple_vc2(
+        dlatents_in,  # Input: Disentangled latents (W) [minibatch, label_size+dlatent_size].
+        dlatent_size=7,  # Disentangled latent (W) dimensionality. Including discrete info, rotation, scaling, xy shearing, and xy translation.
+        label_size=0,  # Label dimensionality, 0 if no labels.
+        module_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
+        num_channels=1,  # Number of output color channels.
+        resolution=128,  # Output resolution.
+        architecture='skip', # Architecture: 'orig', 'skip', 'resnet'.
+        fmap_base=16 <<
+        10,  # Overall multiplier for the number of feature maps.
+        fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
+        fmap_min=1,  # Minimum number of feature maps in any layer.
+        fmap_max=512,  # Maximum number of feature maps in any layer.
+        nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        dtype='float32',  # Data type to use for activations and outputs.
+        resample_kernel=[
+            1, 3, 3, 1
+        ],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        fused_modconv=True,  # Implement modulated_conv2d_layer() as a single fused op?
+        use_noise=False,  # If noise is used in this dataset.
+        randomize_noise=True,  # True = randomize noise inputs every time (non-deterministic), False = read noise inputs from variables.
+        return_atts=False,  # If return atts.
+        G_nf_scale=4,
+        drop_extra_torgb=False,
+        latent_split_ls_for_std_gen=[5,5,5,5],  # The split list for std_gen subnets.
+        is_training=True,
+        **kwargs):  # Ignore unrecognized keyword args.
+    '''
+    Modularized variation-consistent network2.
+    '''
+    atts = []
+    latent_size = dlatent_size
+    dlatents_in.set_shape([None, dlatent_size])
+    dlatents_in = tf.cast(dlatents_in, dtype)
+    with tf.variable_scope('4x4Const'):
+        x = tf.get_variable('const', shape=[1, 128, 4, 4], initializer=tf.initializers.random_normal())
+        x = tf.tile(tf.cast(x, dlatents_in.dtype), [tf.shape(dlatents_in)[0], 1, 1, 1])
+
+    with tf.variable_scope('FAIN1'):
+        # print('x.shape:', x.get_shape().as_list())
+        x, atts_tmp = get_return_v(build_C_spgroup_layers(
+            x, 'SP_latents', latent_size // 3,
+            0, 1, dlatents_in, None, None, return_atts=True,
+            resolution=resolution, n_subs=4), 2)
+        atts.append(atts_tmp)
+
+    x = tf.layers.conv2d_transpose(
+        inputs=x,
+        filters=64,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+    )
+
+    with tf.variable_scope('FAIN2'):
+        x, atts_tmp = get_return_v(build_C_spgroup_layers(
+            x, 'SP_latents', latent_size // 3,
+            latent_size // 3, 2, dlatents_in, None, None, return_atts=True,
+            resolution=resolution, n_subs=4), 2)
+        atts.append(atts_tmp)
+
+    x = tf.layers.conv2d_transpose(
+        inputs=x,
+        filters=64,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+    )
+
+    with tf.variable_scope('FAIN3'):
+        x, atts_tmp = get_return_v(build_C_spgroup_layers(
+            x, 'SP_latents', latent_size - latent_size // 3 * 2,
+            latent_size // 3 * 2, 3, dlatents_in, None, None, return_atts=True,
+            resolution=resolution, n_subs=4), 2)
+        atts.append(atts_tmp)
+
+    x = tf.layers.conv2d_transpose(
+        inputs=x,
+        filters=32,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+    )
+
+    x = tf.layers.conv2d_transpose(
+        inputs=x,
+        filters=32,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+    )
+
+    x = tf.layers.conv2d_transpose(
+        inputs=x,
+        filters=num_channels,
+        kernel_size=4,
+        strides=1,
+        padding="same",
+        data_format='channels_first',
+    )
+    images_out = x
 
     if return_atts:
         with tf.variable_scope('ConcatAtts'):
@@ -910,6 +1028,85 @@ def vc2_head_byvae(
     assert x.dtype == tf.as_dtype(dtype)
     return x
 
+
+#----------------------------------------------------------------------------
+# Simple I network to fit infogan.
+
+def I_byvae_simple(
+        fake1,  # First input: generated image from z [minibatch, channel, height, width].
+        num_channels=3,  # Number of input color channels. Overridden based on dataset.
+        resolution=1024,  # Input resolution. Overridden based on dataset.
+        dlatent_size=10,
+        D_global_size=0,
+        fmap_base=16 <<
+        10,  # Overall multiplier for the number of feature maps.
+        fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
+        fmap_min=1,  # Minimum number of feature maps in any layer.
+        fmap_max=512,  # Maximum number of feature maps in any layer.
+        architecture='resnet',  # Architecture: 'orig', 'skip', 'resnet'.
+        nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        mbstd_group_size=4,  # Group size for the minibatch standard deviation layer, 0 = disable.
+        mbstd_num_features=1,  # Number of features for the minibatch standard deviation layer.
+        dtype='float32',  # Data type to use for activations and outputs.
+        resample_kernel=[
+            1, 3, 3, 1
+        ],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        is_training=True,
+        **_kwargs):  # Ignore unrecognized keyword args.
+
+    fake1.set_shape([None, num_channels, resolution, resolution])
+    fake1 = tf.cast(fake1, dtype)
+    e1 = tf.layers.conv2d(
+        inputs=fake1,
+        filters=32,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e1",
+    )
+    # e1 = tf.layers.batch_normalization(e1, training=is_training)
+    e2 = tf.layers.conv2d(
+        inputs=e1,
+        filters=32,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e2",
+    )
+    # e2 = tf.layers.batch_normalization(e2, training=is_training)
+    e3 = tf.layers.conv2d(
+        inputs=e2,
+        filters=64,
+        kernel_size=2,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e3",
+    )
+    # e3 = tf.layers.batch_normalization(e3, training=is_training)
+    e4 = tf.layers.conv2d(
+        inputs=e3,
+        filters=64,
+        kernel_size=2,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e4",
+    )
+    # e4 = tf.layers.batch_normalization(e4, training=is_training)
+    with tf.variable_scope('post_encoder'):
+        flat_e4 = tf.layers.flatten(e4)
+        e5 = tf.layers.dense(flat_e4, 256, activation=tf.nn.leaky_relu, name="e5")
+        x = tf.layers.dense(e5, dlatent_size, activation=None, name="means")
+    return x
+
+
 #----------------------------------------------------------------------------
 # Empty VC Head network.
 
@@ -1107,6 +1304,81 @@ def D_info_modular_vc2(
             return scores_out, pred_outs
     else:
         return scores_out
+
+def D_stylegan2_simple(
+        images_in,  # First input: Images [minibatch, channel, height, width].
+        labels_in,  # Second input: Labels [minibatch, label_size].
+        module_D_list=None,  # A list containing module names, which represent semantic latents (exclude labels).
+        num_channels=3,  # Number of input color channels. Overridden based on dataset.
+        resolution=1024,  # Input resolution. Overridden based on dataset.
+        label_size=0,  # Dimensionality of the labels, 0 if no labels. Overridden based on dataset.
+        fmap_base=16 << 10,  # Overall multiplier for the number of feature maps.
+        fmap_decay=1.0,  # log2 feature map reduction when doubling the resolution.
+        fmap_min= 1,  # Minimum number of feature maps in any layer.
+        fmap_max=512,  # Maximum number of feature maps in any layer.
+        nonlinearity='lrelu',  # Activation function: 'relu', 'lrelu', etc.
+        dtype='float32',  # Data type to use for activations and outputs.
+        resample_kernel=[1,3,3,1],  # Low-pass filter to apply when resampling activations. None = no filtering.
+        D_nf_scale=4,
+        is_training=True,
+        **kwargs):
+    '''
+    Simple D.
+    '''
+    images_in.set_shape([None, num_channels, resolution, resolution])
+    images_in = tf.cast(images_in, dtype)
+    labels_in.set_shape([None, label_size])
+    labels_in = tf.cast(labels_in, dtype)
+    e1 = tf.layers.conv2d(
+        inputs=images_in,
+        filters=32,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e1",
+    )
+    e1 = tf.layers.batch_normalization(e1, training=is_training)
+    e2 = tf.layers.conv2d(
+        inputs=e1,
+        filters=32,
+        kernel_size=4,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e2",
+    )
+    e2 = tf.layers.batch_normalization(e2, training=is_training)
+    e3 = tf.layers.conv2d(
+        inputs=e2,
+        filters=64,
+        kernel_size=2,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e3",
+    )
+    e3 = tf.layers.batch_normalization(e3, training=is_training)
+    e4 = tf.layers.conv2d(
+        inputs=e3,
+        filters=64,
+        kernel_size=2,
+        strides=2,
+        activation=tf.nn.leaky_relu,
+        padding="same",
+        data_format='channels_first',
+        name="e4",
+    )
+    e4 = tf.layers.batch_normalization(e4, training=is_training)
+    with tf.variable_scope('post_discriminator'):
+        flat_e4 = tf.layers.flatten(e4)
+        e5 = tf.layers.dense(flat_e4, 256, activation=tf.nn.leaky_relu, name="e5")
+        x = tf.layers.dense(e5, 1, activation=None, name="means")
+    return x
+
 
 def infer_modular(
         images_in,  # First input: Images [minibatch, channel, height, width].

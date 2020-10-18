@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Thu 01 Oct 2020 18:11:16 AEST
+# --- Last Modified: Fri 16 Oct 2020 22:42:02 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,6 +32,7 @@ from training.vae_standard_networks import build_standard_fc_D_64
 from training.vae_standard_networks import build_standard_fc_D_128
 from training.vae_standard_networks import build_standard_fc_sindis_D_64
 from training.vae_standard_networks import build_simple_fc_sindis_D_64
+from training.vae_standard_networks import build_fain_conv_G_64
 from training.vae_group_networks import build_group_post_E
 from training.vae_group_networks import build_group_post_E_wc
 from training.vae_group_networks import build_group_prior_G
@@ -201,7 +202,7 @@ def G_main_modular(
     # Generator network.
     key_ls, size_ls, count_dlatent_size = split_module_names(module_G_list)
     x = latents_in
-    group_feats = None
+    group_feats = tf.zeros([1], dtype=latents_in.dtype)
     group_feats_cat_mat = tf.zeros([1], dtype=latents_in.dtype)
     group_feats_con_mat = tf.zeros([1], dtype=latents_in.dtype)
     lie_alg_feats = tf.zeros([1], dtype=latents_in.dtype)
@@ -216,6 +217,10 @@ def G_main_modular(
             x, group_feats = \
                 build_standard_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                        use_relu=False, is_validation=is_validation)
+        elif k == 'COMA_G':
+            x = build_fain_conv_G_64(latents_in=x, name=k, scope_idx=scope_idx,
+                                     output_shape=[num_channels, resolution, resolution],
+                                     recons_type=recons_type, is_validation=is_validation)
         elif k == 'Group_prior_G':
             x, group_feats = build_group_prior_G(latents_in=x, name=k, scope_idx=scope_idx,
                                                  group_feats_size=group_feats_size,
