@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 11 Oct 2020 13:26:38 AEDT
+# --- Last Modified: Fri 23 Oct 2020 21:25:37 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -79,6 +79,7 @@ def training_loop_vc2(
         n_continuous=4,  # Number of continuous latents in model.
         return_atts=False,  # If return attention maps.
         return_I_atts=False,  # If return I_attention maps of vpex.
+        avg_mv_for_I=False,  # If use average moving for I.
         opt_reset_ls=None,  # Reset lr list for gradual latents.
         topk_dims_to_show=20, # Number of top disentant dimensions to show in a snapshot.
         n_samples_per=10):  # Number of samples for each line in traversal.
@@ -123,6 +124,8 @@ def training_loop_vc2(
                                   resolution=training_set.shape[1],
                                   label_size=training_set.label_size,
                                   **I_args)
+                if avg_mv_for_I:
+                    Is = I.clone('Is')
             elif use_perdis:
                 DM = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
             
@@ -130,7 +133,10 @@ def training_loop_vc2(
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)
             if include_I:
-                rG, rD, rI, rGs = misc.load_pkl(resume_pkl)
+                if avg_mv_for_I:
+                    rG, rD, rI, rGs, rIs = misc.load_pkl(resume_pkl)
+                else:
+                    rG, rD, rI, rGs = misc.load_pkl(resume_pkl)
             else:
                 rG, rD, rGs = misc.load_pkl(resume_pkl)
             if resume_with_new_nets:
@@ -138,12 +144,16 @@ def training_loop_vc2(
                 D.copy_vars_from(rD)
                 if include_I:
                     I.copy_vars_from(rI)
+                    if avg_mv_for_I:
+                        Is.copy_vars_from(rIs)
                 Gs.copy_vars_from(rGs)
             else:
                 G = rG
                 D = rD
                 if include_I:
                     I = rI
+                    if avg_mv_for_I:
+                        Is = rIs
                 Gs = rGs
 
     # Print layers and generate initial image snapshot.
@@ -200,7 +210,11 @@ def training_loop_vc2(
                          grid_size=grid_size)
 
     if include_I and return_I_atts:
-        _, atts = I.run(grid_fakes,
+        if avg_mv_for_I:
+            I_tmp = Is
+        else:
+            I_tmp = I
+        _, atts = I_tmp.run(grid_fakes,
                         grid_fakes,
                         grid_latents,
                         is_validation=True,
@@ -375,6 +389,8 @@ def training_loop_vc2(
     G_reg_op = G_reg_opt.apply_updates(allow_no_op=True)
     D_reg_op = D_reg_opt.apply_updates(allow_no_op=True)
     Gs_update_op = Gs.setup_as_moving_average_of(G, beta=Gs_beta)
+    if avg_mv_for_I:
+        Is_update_op = Is.setup_as_moving_average_of(I, beta=Gs_beta)
     if use_vc2_info_gan:
         G2_train_op = G2_opt.apply_updates()
 
@@ -449,7 +465,7 @@ def training_loop_vc2(
                 tflib.run([G_train_op, data_fetch_op], feed_dict)
                 if run_G_reg:
                     tflib.run(G_reg_op, feed_dict)
-                tflib.run([D_train_op, Gs_update_op], feed_dict)
+                tflib.run([D_train_op, Gs_update_op, Is_update_op], feed_dict)
                 if run_D_reg:
                     tflib.run(D_reg_op, feed_dict)
                 if use_vc2_info_gan:
@@ -462,7 +478,7 @@ def training_loop_vc2(
                 if run_G_reg:
                     for _round in rounds:
                         tflib.run(G_reg_op, feed_dict)
-                tflib.run(Gs_update_op, feed_dict)
+                tflib.run([Gs_update_op, Is_update_op], feed_dict)
                 for _round in rounds:
                     tflib.run(data_fetch_op, feed_dict)
                     tflib.run(D_train_op, feed_dict)
@@ -506,7 +522,10 @@ def training_loop_vc2(
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' %
                                                (cur_nimg // 1000))
                 if include_I:
-                    misc.save_pkl((G, D, I, Gs), pkl)
+                    if avg_mv_for_I:
+                        misc.save_pkl((G, D, I, Gs, Is), pkl)
+                    else:
+                        misc.save_pkl((G, D, I, Gs), pkl)
                 else:
                     misc.save_pkl((G, D, Gs), pkl)
                 met_outs = metrics.run(pkl,
@@ -515,6 +534,7 @@ def training_loop_vc2(
                                        num_gpus=num_gpus,
                                        tf_config=tf_config,
                                        include_I=include_I,
+                                       avg_mv_for_I=avg_mv_for_I,
                                        Gs_kwargs=dict(is_validation=True, return_atts=False))
                 if topk_dims_to_show > 0:
                     if 'tpl_per_dim' in met_outs:
@@ -562,13 +582,17 @@ def training_loop_vc2(
                                      drange=drange_net,
                                      grid_size=grid_size)
                 if include_I and return_I_atts:
-                    _, atts = I.run(grid_fakes,
-                                    grid_fakes,
-                                    grid_latents,
-                                    is_validation=True,
-                                    minibatch_size=sched.minibatch_gpu,
-                                    return_atts=True,
-                                    resolution=training_set.shape[1])
+                    if avg_mv_for_I:
+                        I_tmp = Is
+                    else:
+                        I_tmp = I
+                    _, atts = I_tmp.run(grid_fakes,
+                                        grid_fakes,
+                                        grid_latents,
+                                        is_validation=True,
+                                        minibatch_size=sched.minibatch_gpu,
+                                        return_atts=True,
+                                        resolution=training_set.shape[1])
                     atts = atts[:, topk_dims]
                     save_atts(atts,
                               filename=dnnlib.make_run_dir_path('fakes_I_atts%06d.png' % (cur_nimg // 1000)),
@@ -588,8 +612,12 @@ def training_loop_vc2(
 
     # Save final snapshot.
     if include_I:
-        misc.save_pkl((G, D, I, Gs),
-                      dnnlib.make_run_dir_path('network-final.pkl'))
+        if avg_mv_for_I:
+            misc.save_pkl((G, D, I, Gs, Is),
+                          dnnlib.make_run_dir_path('network-final.pkl'))
+        else:
+            misc.save_pkl((G, D, I, Gs),
+                          dnnlib.make_run_dir_path('network-final.pkl'))
     else:
         misc.save_pkl((G, D, Gs),
                       dnnlib.make_run_dir_path('network-final.pkl'))

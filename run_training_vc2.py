@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 18 Oct 2020 19:17:16 AEDT
+# --- Last Modified: Fri 23 Oct 2020 21:09:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,7 +45,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
         drop_extra_torgb=False, latent_split_ls_for_std_gen=[5,5,5,5],
         loose_rate=0.2, topk_dims_to_show=20, n_neg_samples=1, temperature=1.,
-        learning_rate=0.002):
+        learning_rate=0.002, avg_mv_for_I=False):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -339,6 +339,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                                model_type=='vc2_gan_byvae_simple'),
                   use_vc2_info_gan=(model_type == 'vc2_info_gan'), # G1 and G2 version
                   use_perdis=(model_type == 'vc2_traversal_contrastive'),
+                  avg_mv_for_I=avg_mv_for_I,
                   traversal_grid=True, return_atts=return_atts)
     n_continuous = 0
     if not(module_list is None):
@@ -510,6 +511,8 @@ def main():
                         default=[5,5,5,5], metavar='LATENT_SPLIT_LS_FOR_STD_GEN', type=_str_to_list_of_int)
     parser.add_argument('--learning_rate', help='Learning rate.',
                         metavar='LEARNING_RATE', default=0.002, type=float)
+    parser.add_argument('--avg_mv_for_I', help='If use average moving for I.',
+                        default=False, metavar='AVG_MV_FOR_I', type=_str_to_bool)
 
     args = parser.parse_args()
 
