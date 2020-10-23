@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 09 Oct 2020 21:55:53 AEDT
+# --- Last Modified: Fri 23 Oct 2020 16:36:20 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -145,7 +145,9 @@ def calc_vc_byvae_loss(latents, delta_latents, reg1_out, reg2_out, C_delta_laten
     reg2_out_hat = tf.where(var_mask, reg2_out, reg12_avg)
     I_loss1 = tf.reduce_sum(tf.math.squared_difference(latents, reg1_out_hat), axis=1)
     I_loss2 = tf.reduce_sum(tf.math.squared_difference(delta_latents, reg2_out_hat), axis=1)
-    I_loss = C_lambda * 0.5 * (I_loss1 + I_loss2)
+    I_loss = 0.5 * (I_loss1 + I_loss2)
+    I_loss = autosummary('Loss/I_loss', I_loss)
+    I_loss *= C_lambda
     return I_loss
 
 def G_logistic_byvae_ns_vc2(G, D, I, opt, training_set, minibatch_size, DM=None, I_info=None, latent_type='uniform',
