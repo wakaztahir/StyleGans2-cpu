@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 24 Oct 2020 16:42:29 AEDT
+# --- Last Modified: Sun 25 Oct 2020 15:48:36 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -465,7 +465,10 @@ def training_loop_vc2(
                 tflib.run([G_train_op, data_fetch_op], feed_dict)
                 if run_G_reg:
                     tflib.run(G_reg_op, feed_dict)
-                tflib.run([D_train_op, Gs_update_op, Is_update_op], feed_dict)
+                if avg_mv_for_I:
+                    tflib.run([D_train_op, Gs_update_op, Is_update_op], feed_dict)
+                else:
+                    tflib.run([D_train_op, Gs_update_op], feed_dict)
                 if run_D_reg:
                     tflib.run(D_reg_op, feed_dict)
                 if use_vc2_info_gan:
