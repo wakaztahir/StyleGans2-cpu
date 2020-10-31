@@ -1,9 +1,9 @@
 *.swp
 *.swo
+*.swn
+*.swm
 *.pkl
 *.pyc
 *.pbs
-*/*.pyc
-run_*.sh
 *.sh
 *.so

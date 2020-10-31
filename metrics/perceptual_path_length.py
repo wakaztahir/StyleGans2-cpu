@@ -12,6 +12,7 @@ import dnnlib.tflib as tflib
 
 from metrics import metric_base
 from training import misc
+from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
 
@@ -44,7 +45,7 @@ class PPL(metric_base.MetricBase):
         self.minibatch_per_gpu = minibatch_per_gpu
         self.Gs_overrides = Gs_overrides
 
-    def _evaluate(self, Gs, Gs_kwargs, num_gpus):
+    def _evaluate(self, Gs, Gs_kwargs, num_gpus, mapping_nodup=False, **kwargs):
         Gs_kwargs = dict(Gs_kwargs)
         Gs_kwargs.update(self.Gs_overrides)
         minibatch_size = num_gpus * self.minibatch_per_gpu
@@ -66,9 +67,16 @@ class PPL(metric_base.MetricBase):
                     dlat_t01 = Gs_clone.components.mapping.get_output_for(lat_t01, labels, **Gs_kwargs)
                     dlat_t01 = tf.cast(dlat_t01, tf.float32)
                     dlat_t0, dlat_t1 = dlat_t01[0::2], dlat_t01[1::2]
-                    dlat_e0 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis, np.newaxis])
-                    dlat_e1 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis, np.newaxis] + self.epsilon)
-                    dlat_e01 = tf.reshape(tf.stack([dlat_e0, dlat_e1], axis=1), dlat_t01.shape)
+                    if mapping_nodup:
+                        dlat_e0 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis])
+                        dlat_e1 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis] + self.epsilon)
+                        print('dlat_e0.shape:', dlat_e0.shape)
+                        print('dlat_e1.shape:', dlat_e1.shape)
+                        dlat_e01 = tf.reshape(tf.stack([dlat_e0, dlat_e1], axis=1), dlat_t01.shape)
+                    else:
+                        dlat_e0 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis, np.newaxis])
+                        dlat_e1 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis, np.newaxis] + self.epsilon)
+                        dlat_e01 = tf.reshape(tf.stack([dlat_e0, dlat_e1], axis=1), dlat_t01.shape)
                 else: # space == 'z'
                     lat_t0, lat_t1 = lat_t01[0::2], lat_t01[1::2]
                     lat_e0 = slerp(lat_t0, lat_t1, lerp_t[:, np.newaxis])
@@ -78,7 +86,8 @@ class PPL(metric_base.MetricBase):
 
                 # Synthesize images.
                 with tf.control_dependencies([var.initializer for var in noise_vars]): # use same noise inputs for the entire minibatch
-                    images = Gs_clone.components.synthesis.get_output_for(dlat_e01, randomize_noise=False, **Gs_kwargs)
+                    print('dlat_e01.shape:', dlat_e01.shape)
+                    images = get_return_v(Gs_clone.components.synthesis.get_output_for(dlat_e01, randomize_noise=False, **Gs_kwargs), 1)
                     images = tf.cast(images, tf.float32)
 
                 # Crop only the face region.

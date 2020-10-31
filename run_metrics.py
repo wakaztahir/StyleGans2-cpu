@@ -17,7 +17,7 @@ from metrics.metric_defaults import metric_defaults
 
 #----------------------------------------------------------------------------
 
-def run(network_pkl, metrics, dataset, data_dir, mirror_augment, include_I=False, is_vae=False):
+def run(network_pkl, metrics, dataset, data_dir, mirror_augment, include_I=False, is_vae=False, mapping_nodup=False):
     print('Evaluating metrics "%s" for "%s"...' % (','.join(metrics), network_pkl))
     tflib.init_tf()
     network_pkl = pretrained_networks.get_path_or_url(network_pkl)
@@ -25,7 +25,7 @@ def run(network_pkl, metrics, dataset, data_dir, mirror_augment, include_I=False
     num_gpus = dnnlib.submit_config.num_gpus
     metric_group = metric_base.MetricGroup([metric_defaults[metric] for metric in metrics])
     metric_group.run(network_pkl, data_dir=data_dir, dataset_args=dataset_args, mirror_augment=mirror_augment, num_gpus=num_gpus,
-                     include_I=include_I, is_vae=is_vae)
+                     include_I=include_I, is_vae=is_vae, mapping_nodup=mapping_nodup)
 
 #----------------------------------------------------------------------------
 
@@ -65,6 +65,7 @@ def main():
     parser.add_argument('--include_I', help='If include I for eval', default=False, type=_str_to_bool, metavar='INCLUDE_I')
     parser.add_argument('--is_vae', help='Is evaluating vae model', default=False, type=_str_to_bool, metavar='IS_VAE')
     parser.add_argument('--num-gpus', help='Number of GPUs to use', type=int, default=1, metavar='N')
+    parser.add_argument('--mapping_nodup', help='If the mapping layer in G has no duplication operation', default=False, type=_str_to_bool, metavar='MAPPING_NODUP')
 
     args = parser.parse_args()
 

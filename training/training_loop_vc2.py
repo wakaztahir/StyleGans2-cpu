@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sun 25 Oct 2020 15:48:36 AEDT
+# --- Last Modified: Wed 28 Oct 2020 21:50:07 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -541,7 +541,8 @@ def training_loop_vc2(
                                        tf_config=tf_config,
                                        include_I=include_I,
                                        avg_mv_for_I=avg_mv_for_I,
-                                       Gs_kwargs=dict(is_validation=True, return_atts=False))
+                                       Gs_kwargs=dict(is_validation=True, return_atts=False),
+                                       mapping_nodup=True)
                 if topk_dims_to_show > 0:
                     if 'tpl_per_dim' in met_outs:
                         avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
