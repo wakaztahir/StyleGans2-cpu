@@ -70,8 +70,6 @@ class PPL(metric_base.MetricBase):
                     if mapping_nodup:
                         dlat_e0 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis])
                         dlat_e1 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis] + self.epsilon)
-                        print('dlat_e0.shape:', dlat_e0.shape)
-                        print('dlat_e1.shape:', dlat_e1.shape)
                         dlat_e01 = tf.reshape(tf.stack([dlat_e0, dlat_e1], axis=1), dlat_t01.shape)
                     else:
                         dlat_e0 = tflib.lerp(dlat_t0, dlat_t1, lerp_t[:, np.newaxis, np.newaxis])
