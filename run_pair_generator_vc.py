@@ -8,7 +8,7 @@
 
 # --- File Name: run_pair_generator_vc.py
 # --- Creation Date: 27-02-2020
-# --- Last Modified: Thu 28 May 2020 00:15:13 AEST
+# --- Last Modified: Tue 03 Nov 2020 00:14:29 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,6 +26,7 @@ import sys
 
 import pretrained_networks
 from training import misc
+from training.utils import get_return_v
 from training.training_loop_dsp import get_grid_latents
 
 #----------------------------------------------------------------------------
@@ -90,16 +91,16 @@ def generate_image_pairs(network_pkl,
             z_1 = np.concatenate((cat_onehot, z_1), axis=1)
             z_2 = np.concatenate((cat_onehot, z_2), axis=1)
 
-        fakes_1 = Gs.run(z_1,
+        fakes_1 = get_return_v(Gs.run(z_1,
                          grid_labels,
                          is_validation=True,
                          minibatch_size=batch_size,
-                         **Gs_kwargs)
-        fakes_2 = Gs.run(z_2,
+                         **Gs_kwargs), 1)
+        fakes_2 = get_return_v(Gs.run(z_2,
                          grid_labels,
                          is_validation=True,
                          minibatch_size=batch_size,
-                         **Gs_kwargs)
+                         **Gs_kwargs), 1)
         print('fakes_1.shape:', fakes_1.shape)
         print('fakes_2.shape:', fakes_2.shape)
 
