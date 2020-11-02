@@ -8,7 +8,7 @@
 
 # --- File Name: run_pair_generator_vc.py
 # --- Creation Date: 27-02-2020
-# --- Last Modified: Tue 03 Nov 2020 00:14:29 AEDT
+# --- Last Modified: Tue 03 Nov 2020 00:20:32 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -54,7 +54,7 @@ def generate_image_pairs(network_pkl,
 
     Gs_kwargs = dnnlib.EasyDict()
     Gs_kwargs.randomize_noise = False
-    Gs_kwargs.return_atts = False
+    Gs_kwargs.return_atts = True
 
     n_batches = n_imgs // batch_size
 
