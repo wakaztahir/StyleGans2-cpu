@@ -8,7 +8,7 @@
 
 # --- File Name: factor_vae_metric.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 02 Nov 2020 13:23:20 AEDT
+# --- Last Modified: Mon 02 Nov 2020 13:25:01 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """FactorVAE metric."""
@@ -94,7 +94,7 @@ class FactorVAEMetric(metric_base.MetricBase):
         # return scores_dict
         print('scores_dict:', scores_dict)
 
-    def _prune_dims(self, variances, threshold=0.01):
+    def _prune_dims(self, variances, threshold=0.1):
         scale_z = np.sqrt(variances)
         print('scale_z:', scale_z)
         return scale_z >= threshold
