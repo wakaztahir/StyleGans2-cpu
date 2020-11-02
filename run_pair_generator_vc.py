@@ -8,7 +8,7 @@
 
 # --- File Name: run_pair_generator_vc.py
 # --- Creation Date: 27-02-2020
-# --- Last Modified: Tue 03 Nov 2020 00:20:32 AEDT
+# --- Last Modified: Tue 03 Nov 2020 00:41:56 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -39,6 +39,7 @@ def generate_image_pairs(network_pkl,
                          n_continuous,
                          result_dir,
                          batch_size=10,
+                         return_atts=True,
                          latent_type='onedim'):
     print('Loading networks from "%s"...' % network_pkl)
     tflib.init_tf()
@@ -54,7 +55,7 @@ def generate_image_pairs(network_pkl,
 
     Gs_kwargs = dnnlib.EasyDict()
     Gs_kwargs.randomize_noise = False
-    Gs_kwargs.return_atts = True
+    Gs_kwargs.return_atts = return_atts
 
     n_batches = n_imgs // batch_size
 
@@ -68,11 +69,11 @@ def generate_image_pairs(network_pkl,
             cat_onehot[np.arange(cat_dim.size), cat_dim] = 1
 
         # z_1 = np.random.uniform(low=-2,
-                                # high=2,
-                                # size=[batch_size, n_continuous])
+        # high=2,
+        # size=[batch_size, n_continuous])
         # z_2 = np.random.uniform(low=-2,
-                                # high=2,
-                                # size=[batch_size, n_continuous])
+        # high=2,
+        # size=[batch_size, n_continuous])
         z_1 = np.random.normal(size=[batch_size, n_continuous])
         z_2 = np.random.normal(size=[batch_size, n_continuous])
         if latent_type == 'onedim':
@@ -91,16 +92,18 @@ def generate_image_pairs(network_pkl,
             z_1 = np.concatenate((cat_onehot, z_1), axis=1)
             z_2 = np.concatenate((cat_onehot, z_2), axis=1)
 
-        fakes_1 = get_return_v(Gs.run(z_1,
-                         grid_labels,
-                         is_validation=True,
-                         minibatch_size=batch_size,
-                         **Gs_kwargs), 1)
-        fakes_2 = get_return_v(Gs.run(z_2,
-                         grid_labels,
-                         is_validation=True,
-                         minibatch_size=batch_size,
-                         **Gs_kwargs), 1)
+        fakes_1 = get_return_v(
+            Gs.run(z_1,
+                   grid_labels,
+                   is_validation=True,
+                   minibatch_size=batch_size,
+                   **Gs_kwargs), 1)
+        fakes_2 = get_return_v(
+            Gs.run(z_2,
+                   grid_labels,
+                   is_validation=True,
+                   minibatch_size=batch_size,
+                   **Gs_kwargs), 1)
         print('fakes_1.shape:', fakes_1.shape)
         print('fakes_2.shape:', fakes_2.shape)
 
@@ -116,6 +119,18 @@ def generate_image_pairs(network_pkl,
 
 
 #----------------------------------------------------------------------------
+
+
+def _str_to_bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 _examples = '''examples:
 
@@ -164,6 +179,11 @@ def main():
                         help='Root directory to store this dataset',
                         required=True,
                         metavar='DIR')
+    parser.add_argument('--return_atts',
+                        help='If return atts.',
+                        default=False,
+                        metavar='RETURN_ATTS',
+                        type=_str_to_bool)
 
     args = parser.parse_args()
     kwargs = vars(args)
