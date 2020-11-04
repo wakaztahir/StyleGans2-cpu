@@ -8,7 +8,7 @@
 
 # --- File Name: dsprites_data_helper.py
 # --- Creation Date: 24-05-2020
-# --- Last Modified: Mon 24 Aug 2020 22:21:11 AEST
+# --- Last Modified: Wed 04 Nov 2020 16:05:59 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -85,6 +85,11 @@ class DisentangleDataHelper:
     def batch_latents_to_data_indices(self, latents):
         idxs = np.sum(self.factor_bases * latents, axis=1)
         return idxs
+
+    def sample(self, num, random_state):
+        """Sample a batch of factors Y and observations X."""
+        factors = self.sample_factors(num, random_state)
+        return factors, self.sample_observations_from_factors(factors, random_state)
 
 
 class DspritesDataHelper(DisentangleDataHelper):
