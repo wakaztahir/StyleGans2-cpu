@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Fri 23 Oct 2020 21:09:05 AEDT
+# --- Last Modified: Thu 05 Nov 2020 02:38:58 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,7 +45,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
         drop_extra_torgb=False, latent_split_ls_for_std_gen=[5,5,5,5],
         loose_rate=0.2, topk_dims_to_show=20, n_neg_samples=1, temperature=1.,
-        learning_rate=0.002, avg_mv_for_I=False):
+        learning_rate=0.002, avg_mv_for_I=False, use_cascade=False, cascade_alt_freq_k=1):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -264,6 +264,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_byvae_ns_vc2',
             D_global_size=D_global_size, C_lambda=C_lambda,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
+            use_cascade=use_cascade,
             delta_type=delta_type)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
@@ -353,7 +354,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid, metric_arg_list=metrics,
                   tf_config=tf_config, resume_pkl=resume_pkl, n_discrete=D_global_size,
                   n_continuous=n_continuous, n_samples_per=n_samples_per,
-                  topk_dims_to_show=topk_dims_to_show)
+                  topk_dims_to_show=topk_dims_to_show, cascade_alt_freq_k=cascade_alt_freq_k)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -513,6 +514,10 @@ def main():
                         metavar='LEARNING_RATE', default=0.002, type=float)
     parser.add_argument('--avg_mv_for_I', help='If use average moving for I.',
                         default=False, metavar='AVG_MV_FOR_I', type=_str_to_bool)
+    parser.add_argument('--use_cascade', help='If use cascading for COMA loss.',
+                        default=False, metavar='USE_CASCADE', type=_str_to_bool)
+    parser.add_argument('--cascade_alt_freq_k', help='Frequency in k for cascade_dim altering.',
+                        metavar='CASCADE_ALT_FREQ_K', default=1, type=int)
 
     args = parser.parse_args()
 

@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 11 Sep 2020 22:44:16 AEST
+# --- Last Modified: Wed 04 Nov 2020 23:18:55 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -88,10 +88,13 @@ def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels, to
     grid_latents = np.tile(z, (n_continuous * n_samples_per * n_discrete, 1))
     for i in range(n_discrete):
         for j in range(n_continuous):
+            # grid_latents[(i * n_continuous + j) *
+                         # n_samples_per:(i * n_continuous + j + 1) *
+                         # n_samples_per, j] = np.arange(
+                             # -2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
             grid_latents[(i * n_continuous + j) *
                          n_samples_per:(i * n_continuous + j + 1) *
-                         n_samples_per, j] = np.arange(
-                             -2. + 4. / float(n_samples_per+1), 2., 4. / float(n_samples_per+1))
+                         n_samples_per, j] = np.linspace(-2., 2., num=n_samples_per)
     if real_has_discrete:
         grid_discrete_ls = []
         for i in range(n_discrete):

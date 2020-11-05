@@ -6,17 +6,18 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: dci.py
+# --- File Name: mig_metric.py
 # --- Creation Date: 04-11-2020
-# --- Last Modified: Wed 04 Nov 2020 16:59:10 AEDT
+# --- Last Modified: Wed 04 Nov 2020 17:13:10 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
-"""DCI metric."""
+"""MIG metric."""
 
 import numpy as np
 import pdb
 import tensorflow as tf
 import scipy
+import sklearn
 from sklearn import ensemble
 import dnnlib.tflib as tflib
 
@@ -29,14 +30,13 @@ from training.utils import get_return_v
 #----------------------------------------------------------------------------
 
 
-class DCIMetric(metric_base.MetricBase):
+class MIGMetric(metric_base.MetricBase):
     def __init__(self,
                  dataset_dir,
                  dataset_name,
                  use_latents,
                  batch_size,
                  num_train,
-                 num_eval,
                  has_label_place=False,
                  drange_net=[-1., 1.],
                  **kwargs):
@@ -51,90 +51,61 @@ class DCIMetric(metric_base.MetricBase):
             raise ValueError('Not recognized dataset:', dataset_name)
         self.batch_size = batch_size
         self.num_train = num_train
-        self.num_eval = num_eval
         self.has_label_place = has_label_place
         self.drange_net = drange_net
 
     def _evaluate(self, I_net, **kwargs):
         representation_model = I_net.clone(is_validation=True)
         random_state = np.random.RandomState(123)
-        # mus_train are of shape [num_codes, num_train], while ys_train are of shape
-        # [num_factors, num_train].
+
         mus_train, ys_train = self.generate_batch_factor_code(
             self.ground_truth_data, representation_model, self.num_train,
             random_state, self.batch_size)
         assert mus_train.shape[1] == self.num_train
-        assert ys_train.shape[1] == self.num_train
-        mus_test, ys_test = self.generate_batch_factor_code(
-            self.ground_truth_data, representation_model, self.num_eval,
-            random_state, self.batch_size)
-        scores = self._compute_dci(mus_train, ys_train, mus_test, ys_test)
-        self._report_result(scores["informativeness_train"], suffix='_train_inform')
-        self._report_result(scores["informativeness_test"], suffix='_test_inform')
-        self._report_result(scores["disentanglement"], suffix='_disentanglement')
-        self._report_result(scores["completeness"], suffix='_completeness')
+        scores = self._compute_mig(mus_train, ys_train)
+        self._report_result(scores["discrete_mig"], suffix='_discrete_mig')
         print('scores_dict:', scores)
 
-    def _compute_dci(self, mus_train, ys_train, mus_test, ys_test):
+    def _compute_mig(self, mus_train, ys_train):
         """Computes score based on both training and testing codes and factors."""
-        scores = {}
-        importance_matrix, train_err, test_err = self.compute_importance_gbt(
-            mus_train, ys_train, mus_test, ys_test)
-        assert importance_matrix.shape[0] == mus_train.shape[0]
-        assert importance_matrix.shape[1] == ys_train.shape[0]
-        scores["informativeness_train"] = train_err
-        scores["informativeness_test"] = test_err
-        scores["disentanglement"] = self.disentanglement(importance_matrix)
-        scores["completeness"] = self.completeness(importance_matrix)
-        return scores
+        score_dict = {}
+        # discretized_mus = utils.make_discretizer(mus_train)
+        discretized_mus = self._histogram_discretize(mus_train)
+        m = self.discrete_mutual_info(discretized_mus, ys_train)
+        assert m.shape[0] == mus_train.shape[0]
+        assert m.shape[1] == ys_train.shape[0]
+        # m is [num_latents, num_factors]
+        entropy = self.discrete_entropy(ys_train)
+        sorted_m = np.sort(m, axis=0)[::-1]
+        score_dict["discrete_mig"] = np.mean(
+            np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:]))
+        return score_dict
 
-    def compute_importance_gbt(self, x_train, y_train, x_test, y_test):
-        """Compute importance based on gradient boosted trees."""
-        num_factors = y_train.shape[0]
-        num_codes = x_train.shape[0]
-        importance_matrix = np.zeros(shape=[num_codes, num_factors],
-                                     dtype=np.float64)
-        train_loss = []
-        test_loss = []
-        for i in range(num_factors):
-            model = ensemble.GradientBoostingClassifier()
-            model.fit(x_train.T, y_train[i, :])
-            importance_matrix[:, i] = np.abs(model.feature_importances_)
-            train_loss.append(
-                np.mean(model.predict(x_train.T) == y_train[i, :]))
-            test_loss.append(np.mean(model.predict(x_test.T) == y_test[i, :]))
-        return importance_matrix, np.mean(train_loss), np.mean(test_loss)
+    def _histogram_discretize(self, target, num_bins=20):
+        """Discretization based on histograms."""
+        discretized = np.zeros_like(target)
+        for i in range(target.shape[0]):
+            discretized[i, :] = np.digitize(target[i, :], np.histogram(
+                target[i, :], num_bins)[1][:-1])
+        return discretized
 
-    def disentanglement_per_code(self, importance_matrix):
-        """Compute disentanglement score of each code."""
-        # importance_matrix is of shape [num_codes, num_factors].
-        return 1. - scipy.stats.entropy(importance_matrix.T + 1e-11,
-                                        base=importance_matrix.shape[1])
+    def discrete_entropy(self, ys):
+        """Compute discrete mutual information."""
+        num_factors = ys.shape[0]
+        h = np.zeros(num_factors)
+        for j in range(num_factors):
+            h[j] = sklearn.metrics.mutual_info_score(ys[j, :], ys[j, :])
+        return h
 
-    def disentanglement(self, importance_matrix):
-        """Compute the disentanglement score of the representation."""
-        per_code = self.disentanglement_per_code(importance_matrix)
-        if importance_matrix.sum() == 0.:
-            importance_matrix = np.ones_like(importance_matrix)
-        code_importance = importance_matrix.sum(
-            axis=1) / importance_matrix.sum()
-
-        return np.sum(per_code * code_importance)
-
-    def completeness_per_factor(self, importance_matrix):
-        """Compute completeness of each factor."""
-        # importance_matrix is of shape [num_codes, num_factors].
-        return 1. - scipy.stats.entropy(importance_matrix + 1e-11,
-                                        base=importance_matrix.shape[0])
-
-    def completeness(self, importance_matrix):
-        """"Compute completeness of the representation."""
-        per_factor = self.completeness_per_factor(importance_matrix)
-        if importance_matrix.sum() == 0.:
-            importance_matrix = np.ones_like(importance_matrix)
-        factor_importance = importance_matrix.sum(
-            axis=0) / importance_matrix.sum()
-        return np.sum(per_factor * factor_importance)
+    def discrete_mutual_info(self, mus, ys):
+        """Compute discrete mutual information."""
+        num_codes = mus.shape[0]
+        num_factors = ys.shape[0]
+        m = np.zeros([num_codes, num_factors])
+        for i in range(num_codes):
+            for j in range(num_factors):
+                m[i, j] = sklearn.metrics.mutual_info_score(ys[j, :], mus[i, :])
+        return m
 
     def generate_batch_factor_code(self, ground_truth_data,
                                    representation_function, num_points,

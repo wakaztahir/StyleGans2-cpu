@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 28 Oct 2020 21:50:07 AEDT
+# --- Last Modified: Thu 05 Nov 2020 02:37:37 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -82,6 +82,7 @@ def training_loop_vc2(
         avg_mv_for_I=False,  # If use average moving for I.
         opt_reset_ls=None,  # Reset lr list for gradual latents.
         topk_dims_to_show=20, # Number of top disentant dimensions to show in a snapshot.
+        cascade_alt_freq_k=1, # Frequency in k for cascade_dim altering.
         n_samples_per=10):  # Number of samples for each line in traversal.
 
     # Initialize dnnlib and TensorFlow.
@@ -244,6 +245,7 @@ def training_loop_vc2(
         Gs_beta = 0.5**tf.div(tf.cast(minibatch_size_in,
                                       tf.float32), G_smoothing_kimg *
                               1000.0) if G_smoothing_kimg > 0.0 else 0.0
+        cascade_dim = tf.placeholder(tf.int32, name='cascade_dim', shape=[])
 
     # Setup optimizers.
     G_opt_args = dict(G_opt_args)
@@ -321,6 +323,7 @@ def training_loop_vc2(
                             G=G_gpu, D=D_gpu, I=I_gpu, DM=DM_gpu,
                             opt=G_opt, training_set=training_set,
                             minibatch_size=minibatch_gpu_in,
+                            cascade_dim=cascade_dim,
                             **G_loss_args)
                     else:
                         G_loss, G_reg = dnnlib.util.call_func_by_name(
@@ -443,12 +446,17 @@ def training_loop_vc2(
                 # D_opt.reset_optimizer_state()
         prev_lod = sched.lod
 
+        # Calculate which cascade_dim is to use.
+        cur_nimg_k = cur_nimg // int(cascade_alt_freq_k * 1000)
+        sched_cascade_dim = cur_nimg_k % n_continuous
+
         # Run training ops.
         feed_dict = {
             lod_in: sched.lod,
             lrate_in: sched.G_lrate,
             minibatch_size_in: sched.minibatch_size,
-            minibatch_gpu_in: sched.minibatch_gpu
+            minibatch_gpu_in: sched.minibatch_gpu,
+            cascade_dim: sched_cascade_dim
         }
         for _repeat in range(minibatch_repeats):
             rounds = range(0, sched.minibatch_size,

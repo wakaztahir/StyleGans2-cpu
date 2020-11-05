@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Tue 02 Jun 2020 03:28:01 AEST
+# --- Last Modified: Thu 05 Nov 2020 00:05:46 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,9 +28,11 @@ import cv2
 
 import pretrained_networks
 from training import misc
+from training.utils import get_grid_latents, get_return_v, add_outline
 from run_editing_vc2 import image_to_ready
 from run_editing_vc2 import image_to_out
 from PIL import Image, ImageDraw, ImageFont
+from metrics.metric_defaults import metric_defaults
 
 #----------------------------------------------------------------------------
 
@@ -58,6 +60,74 @@ def generate_images(network_pkl, seeds, create_new_G, new_func_name):
         images = np.transpose(images, [0, 2, 3, 1])
         images = np.rint(images).clip(0, 255).astype(np.uint8)
         PIL.Image.fromarray(images[0], 'RGB').save(dnnlib.make_run_dir_path('seed%04d.png' % seed))
+
+def generate_domain_shift(network_pkl, seeds, domain_dim):
+    tflib.init_tf()
+    print('Loading networks from "%s"...' % network_pkl)
+    # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+
+    Gs_kwargs = dnnlib.EasyDict()
+    # Gs_kwargs.output_transform = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
+    Gs_kwargs.randomize_noise = True
+
+    for seed_idx, seed in enumerate(seeds):
+        print('Generating image for seed %d (%d/%d) ...' % (seed, seed_idx, len(seeds)))
+        rnd = np.random.RandomState(seed)
+        z = rnd.randn(1, *Gs.input_shape[1:]) # [minibatch, component]
+        # tflib.set_vars({var: rnd.randn(*var.shape.as_list()) for var in noise_vars}) # [height, width]
+        images_1, _ = Gs.run(z, None, **Gs_kwargs) # [minibatch, c, height, width]
+        z[:, domain_dim] = -z[:, domain_dim]
+        images_2, _ = Gs.run(z, None, **Gs_kwargs) # [minibatch, c, height, width]
+        images = np.concatenate((images_1, images_2), axis=3)
+        images = misc.adjust_dynamic_range(images, [-1, 1], [0, 255])
+        # np.clip(images, 0, 255, out=images)
+        images = np.transpose(images, [0, 2, 3, 1])
+        images = np.rint(images).clip(0, 255).astype(np.uint8)
+        PIL.Image.fromarray(images[0], 'RGB').save(dnnlib.make_run_dir_path('seed%04d.png' % seed))
+
+def generate_traversals(network_pkl, seeds, tpl_metric, n_samples_per, topk_dims_to_show, bound=2):
+    tflib.init_tf()
+    print('Loading networks from "%s"...' % network_pkl)
+    # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
+    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+    # noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
+
+    Gs_kwargs = dnnlib.EasyDict()
+    # Gs_kwargs.output_transform = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
+    Gs_kwargs.randomize_noise = True
+
+    n_continuous = Gs.input_shape[1]
+    grid_labels = np.zeros([1,0], dtype=np.float32)
+
+    # Eval tpl
+    if topk_dims_to_show > 0:
+        metric_args = metric_defaults[tpl_metric]
+        metric = dnnlib.util.call_func_by_name(**metric_args)
+        met_outs = metric._evaluate(Gs, {}, 1)
+        if 'tpl_per_dim' in met_outs:
+            avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
+            topk_dims = np.argsort(avg_distance_per_dim)[::-1][:topk_dims_to_show] # shape: (20)
+        else:
+            topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+    else:
+        topk_dims = np.arange(n_continuous)
+
+    for seed_idx, seed in enumerate(seeds):
+        grid_size, grid_latents, grid_labels = get_grid_latents(
+            0, n_continuous, n_samples_per, Gs, grid_labels, topk_dims)
+        # images, _ = Gs.run(z, None, **Gs_kwargs) # [minibatch, height, width, channel]
+        grid_fakes = get_return_v(Gs.run(grid_latents,
+                            grid_labels,
+                            is_validation=True,
+                            minibatch_size=4,
+                            randomize_noise=True), 1)
+        grid_fakes = add_outline(grid_fakes, width=1)
+        misc.save_image_grid(grid_fakes,
+                             dnnlib.make_run_dir_path(
+                                 'travs_seed%04d.png' % seed),
+                             drange=[-1., 1.],
+                             grid_size=grid_size)
 
 def expand_traversal(attr, attr_idx, traversal_frames):
     '''
@@ -265,6 +335,21 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     parser_style_mixing_example.add_argument('--truncation-psi', type=float, help='Truncation psi (default: %(default)s)', default=0.5)
     parser_style_mixing_example.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
 
+    parser_generate_travs = subparsers.add_parser('generate-traversals', help='Generate traversals')
+    parser_generate_travs.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
+    parser_generate_travs.add_argument('--seeds', type=_parse_num_range, help='List of random seeds', required=True)
+    parser_generate_travs.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    parser_generate_travs.add_argument('--tpl_metric', help='TPL to use', default='tpl', type=str)
+    parser_generate_travs.add_argument('--n_samples_per', help='N samplers per row', default=7, type=int)
+    parser_generate_travs.add_argument('--topk_dims_to_show', help='Top k dims to show', default=-1, type=int)
+    parser_generate_travs.add_argument('--bound', help='Traversal bound', default=2, type=float)
+
+    parser_generate_domain_shift = subparsers.add_parser('generate-domain-shift', help='Generate traversals')
+    parser_generate_domain_shift.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
+    parser_generate_domain_shift.add_argument('--seeds', type=_parse_num_range, help='List of random seeds', required=True)
+    parser_generate_domain_shift.add_argument('--result-dir', help='Root directory for run results (default: %(default)s)', default='results', metavar='DIR')
+    parser_generate_domain_shift.add_argument('--domain_dim', help='The dim denoting domain', default=0, type=int)
+
     parser_generate_gifs = subparsers.add_parser('generate-gifs', help='Generate gifs')
     parser_generate_gifs.add_argument('--network', help='Network pickle filename', dest='network_pkl', required=True)
     parser_generate_gifs.add_argument('--exist_imgs_dir', help='Dir for used input images', default='inputs', metavar='EXIST')
@@ -294,6 +379,8 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     func_name_map = {
         'generate-images': 'run_generator_vc2.generate_images',
         'style-mixing-example': 'run_generator_vc2.style_mixing_example',
+        'generate-traversals': 'run_generator_vc2.generate_traversals',
+        'generate-domain-shift': 'run_generator_vc2.generate_domain_shift',
         'generate-gifs': 'run_generator_vc2.generate_gifs'
     }
     dnnlib.submit_run(sc, func_name_map[subcmd], **kwargs)

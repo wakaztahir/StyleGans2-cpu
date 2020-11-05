@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Tue 13 Oct 2020 15:45:29 AEDT
+# --- Last Modified: Wed 04 Nov 2020 23:03:34 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -87,7 +87,8 @@ class TPL(metric_base.MetricBase):
                 lat_t1 = tf.where(eval_dim_mask, lat_t1_add2, lat_t1) # [b, n_continuous]
                 lat_e = tflib.lerp(lat_t0, lat_t1, lerp_t[:, tf.newaxis]) # [b, n_continuous]
 
-                labels = tf.reshape(self._get_random_labels_tf(minibatch_per_gpu), [minibatch_per_gpu, -1])
+                # labels = tf.reshape(self._get_random_labels_tf(minibatch_per_gpu), [minibatch_per_gpu, -1])
+                labels = tf.zeros([minibatch_per_gpu, 0], dtype=tf.float32)
                 if self.no_mapping:
                     dlat_e = lat_e
                 else:
