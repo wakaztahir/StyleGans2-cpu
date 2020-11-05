@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 05 Nov 2020 02:38:58 AEDT
+# --- Last Modified: Thu 05 Nov 2020 15:23:17 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -517,7 +517,7 @@ def main():
     parser.add_argument('--use_cascade', help='If use cascading for COMA loss.',
                         default=False, metavar='USE_CASCADE', type=_str_to_bool)
     parser.add_argument('--cascade_alt_freq_k', help='Frequency in k for cascade_dim altering.',
-                        metavar='CASCADE_ALT_FREQ_K', default=1, type=int)
+                        metavar='CASCADE_ALT_FREQ_K', default=1, type=float)
 
     args = parser.parse_args()
 
