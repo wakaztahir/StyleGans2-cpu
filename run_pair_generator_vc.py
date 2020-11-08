@@ -8,7 +8,7 @@
 
 # --- File Name: run_pair_generator_vc.py
 # --- Creation Date: 27-02-2020
-# --- Last Modified: Sun 08 Nov 2020 23:49:33 AEDT
+# --- Last Modified: Mon 09 Nov 2020 00:02:22 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -74,13 +74,13 @@ def generate_image_pairs(network_pkl,
             cat_onehot = np.zeros((batch_size, n_discrete))
             cat_onehot[np.arange(cat_dim.size), cat_dim] = 1
 
-        z_1 = np.random.normal(size=[batch_size, n_continuous])
-        z_2 = np.random.normal(size=[batch_size, n_continuous])
-        if latent_type == 'onedim':
-            delta_dim = np.random.randint(0, n_continuous, size=[batch_size])
-            delta_onehot = np.zeros((batch_size, n_continuous))
-            delta_onehot[np.arange(delta_dim.size), delta_dim] = 1
-            z_2 = np.where(delta_onehot > 0, z_2, z_1)
+        # z_1 = np.random.normal(size=[batch_size, n_continuous])
+        # z_2 = np.random.normal(size=[batch_size, n_continuous])
+        # if latent_type == 'onedim':
+            # delta_dim = np.random.randint(0, n_continuous, size=[batch_size])
+            # delta_onehot = np.zeros((batch_size, n_continuous))
+            # delta_onehot[np.arange(delta_dim.size), delta_dim] = 1
+            # z_2 = np.where(delta_onehot > 0, z_2, z_1)
 
 
         # New
