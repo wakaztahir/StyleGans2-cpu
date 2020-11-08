@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 28 Sep 2020 02:09:41 AEST
+# --- Last Modified: Sun 08 Nov 2020 16:14:11 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -150,6 +150,34 @@ def extract_this_results(dir_name, target_step):
                             cum_idx += 1
     return results
 
+def is_smaller(a, b):
+    return a < b
+
+def is_larger(a, b):
+    return b < a
+
+def get_max_metric_step(dir_name, metric, sub, compare_fn):
+    met_fname = os.path.join(dir_name, 'metric-' + metric + '.txt')
+    if compare_fn == is_smaller:
+        v_optimal = float('inf')
+    else:
+        v_optimal = -float('inf')
+    if os.path.exists(met_fname):
+        with open(met_fname, 'r') as f:
+            data = f.readlines()
+        target_step = 0
+        for line in data:
+            line_ls = re.split(' +', line)
+            metric_and_sub = '_'.join((metric, sub))
+            for i, item in enumerate(line_ls):
+                if item == metric_and_sub:
+                    v_i = float(line_ls[i+1])
+                    if compare_fn(v_i, v_optimal):
+                        v_optimal = v_i
+                        target_step = int(line_ls[0].split('-')[-1])
+    return target_step
+
+
 def main():
     parser = argparse.ArgumentParser(description='Collect results.')
     parser.add_argument('--in_dir', help='Parent directory of sub-result-dirs to collect results.',
@@ -173,7 +201,11 @@ def main():
 
     for dir_name in res_dirs:
         config = get_config(dir_name, args.config_variables)
-        this_results = extract_this_results(dir_name, args.target_step)
+        if args.max_metric:
+            target_step = get_max_metric_step(dir_name, args.max_metric, args.max_sub)
+        else:
+            target_step = args.target_step
+        this_results = extract_this_results(dir_name, target_step)
         if this_results != {}:
             if config not in config_ls:
                 config_ls.append(config)
