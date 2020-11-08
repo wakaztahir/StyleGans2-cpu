@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sun 08 Nov 2020 16:35:04 AEDT
+# --- Last Modified: Sun 08 Nov 2020 17:04:23 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -29,6 +29,7 @@ from metrics.metric_defaults import metric_defaults
 
 # Metrics entries of interest.
 # If not shown here, means all entries of the metrics are of interest.
+# moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim'], 'mig': ['discrete_mig']}
 moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim']}
 
 # Brief dict of names.
@@ -50,7 +51,8 @@ brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
          'factorvae_shape3d_all_hpc': 'fvm',
          'factorvae_shape3d_all_vae': 'fvm',
          'factorvae_shape3d_all': 'fvm',
-         'tpl_nomap': 'tpl'}
+         'tpl_nomap': 'tpl', 'mig_dsprites_all': 'mig'
+         }
 
 def extend_exist_metrics_for_new_config(results):
     for key in results:
@@ -130,6 +132,9 @@ def extract_this_results(dir_name, target_step):
     # moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim']}
     results = {}
     for metric in metric_defaults:
+        met_brief = brief.get(metric, metric)
+        if not met_brief in moi:
+            continue
         met_fname = os.path.join(dir_name, 'metric-' + metric + '.txt')
         if os.path.exists(met_fname):
             with open(met_fname, 'r') as f:
@@ -138,7 +143,6 @@ def extract_this_results(dir_name, target_step):
                 line_ls = re.split(' +', line)
                 if int(line_ls[0].split('-')[-1]) == target_step:
                     cum_idx = 0
-                    met_brief = brief.get(metric, metric)
                     for i, item in enumerate(line_ls):
                         if item.startswith(metric):
                             if met_brief in moi:
@@ -163,6 +167,8 @@ def get_max_metric_step(dir_name, metric, sub, compare_fn):
         v_optimal = float('inf')
     else:
         v_optimal = -float('inf')
+    # print('met_fname:', met_fname)
+    target_step = 0
     if os.path.exists(met_fname):
         with open(met_fname, 'r') as f:
             data = f.readlines()
@@ -199,6 +205,7 @@ def main():
 
     args.config_variables = parse_config_v(args.config_variables)
     res_dirs = glob.glob(os.path.join(args.in_dir, '0*/'))
+    # print('res_dirs:', res_dirs)
     res_dirs.sort()
     results = {}
     # results: {'fvm.eval_acc': [[0.7, 0.8], [0.4, 0.8]],
@@ -215,13 +222,14 @@ def main():
             target_step = get_max_metric_step(dir_name, args.optimal_metric, args.optimal_sub, compare_fn)
         else:
             target_step = args.target_step
-        print('target_step:', target_step)
+        # print('target_step:', target_step)
         this_results = extract_this_results(dir_name, target_step)
         if this_results != {}:
             if config not in config_ls:
                 config_ls.append(config)
                 results = extend_exist_metrics_for_new_config(results)
             idx_config = config_ls.index(config)
+        print('this_results:', this_results)
         # this_results: {'fvm.eval_acc': 0.5, 'fvm.n_dim': 4, ...}
         for k, v in this_results.items():
             if k not in results.keys():
