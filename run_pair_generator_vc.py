@@ -8,7 +8,7 @@
 
 # --- File Name: run_pair_generator_vc.py
 # --- Creation Date: 27-02-2020
-# --- Last Modified: Mon 09 Nov 2020 00:02:22 AEDT
+# --- Last Modified: Mon 09 Nov 2020 00:06:38 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -92,9 +92,9 @@ def generate_image_pairs(network_pkl,
             delta_onehot = np.zeros((batch_size, n_continuous))
             delta_onehot[np.arange(delta_dim.size), delta_dim] = 1
             z_2 = np.where(delta_onehot > 0, z_2, z_1)
-        print('z1:', z_1)
-        print('z2:', z_2)
-        pdb.set_trace()
+        # print('z1:', z_1)
+        # print('z2:', z_2)
+        # pdb.set_trace()
 
         delta_z = z_1 - z_2
 
