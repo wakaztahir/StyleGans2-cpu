@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sun 08 Nov 2020 16:14:11 AEDT
+# --- Last Modified: Sun 08 Nov 2020 16:20:01 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -177,7 +177,6 @@ def get_max_metric_step(dir_name, metric, sub, compare_fn):
                         target_step = int(line_ls[0].split('-')[-1])
     return target_step
 
-
 def main():
     parser = argparse.ArgumentParser(description='Collect results.')
     parser.add_argument('--in_dir', help='Parent directory of sub-result-dirs to collect results.',
@@ -189,6 +188,12 @@ def main():
                         '[run_desc, run_func_kwargs.G_args.module_G_list, run_func_kwargs.G_loss_args.group_loss_type, run_func_kwargs.G_loss_args.hy_beta]')
     parser.add_argument('--target_step', help='Target step to extract.',
                         type=int, default=20000)
+    parser.add_argument('--optimal_metric', help='The metric to get optimal target step. If is None, use --target_step.',
+                        type=str, default=None)
+    parser.add_argument('--optimal_sub', help='The metric sub value to get target step.',
+                        type=str, default=None)
+    parser.add_argument('--small_or_large', help='The metric small or large is good.',
+                        type=str, default='large')
     args = parser.parse_args()
 
     args.config_variables = parse_config_v(args.config_variables)
@@ -199,10 +204,14 @@ def main():
     #           'fvm.n_dim': [[5, 6], [3, 5]]}
     config_ls = [] # ['beta-1', 'beta-2']
 
+    if args.small_or_largs == 'small':
+        compare_fn = is_smaller
+    else:
+        compare_fn = is_larger
     for dir_name in res_dirs:
         config = get_config(dir_name, args.config_variables)
-        if args.max_metric:
-            target_step = get_max_metric_step(dir_name, args.max_metric, args.max_sub)
+        if args.optimal_metric:
+            target_step = get_max_metric_step(dir_name, args.optimal_metric, args.optimal_sub, compare_fn)
         else:
             target_step = args.target_step
         this_results = extract_this_results(dir_name, target_step)
