@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sun 08 Nov 2020 16:20:01 AEDT
+# --- Last Modified: Sun 08 Nov 2020 16:23:50 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -204,7 +204,7 @@ def main():
     #           'fvm.n_dim': [[5, 6], [3, 5]]}
     config_ls = [] # ['beta-1', 'beta-2']
 
-    if args.small_or_largs == 'small':
+    if args.small_or_large == 'small':
         compare_fn = is_smaller
     else:
         compare_fn = is_larger
