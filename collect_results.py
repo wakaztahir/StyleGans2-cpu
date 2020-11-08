@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sun 08 Nov 2020 16:23:50 AEDT
+# --- Last Modified: Sun 08 Nov 2020 16:33:25 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -214,6 +214,7 @@ def main():
             target_step = get_max_metric_step(dir_name, args.optimal_metric, args.optimal_sub, compare_fn)
         else:
             target_step = args.target_step
+        print('target_step:', target_step)
         this_results = extract_this_results(dir_name, target_step)
         if this_results != {}:
             if config not in config_ls:
