@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Sun 08 Nov 2020 16:33:25 AEDT
+# --- Last Modified: Sun 08 Nov 2020 16:35:04 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -134,20 +134,21 @@ def extract_this_results(dir_name, target_step):
         if os.path.exists(met_fname):
             with open(met_fname, 'r') as f:
                 data = f.readlines()
-            line_ls = re.split(' +', data[-1])
-            if int(line_ls[0].split('-')[-1]) == target_step:
-                cum_idx = 0
-                met_brief = brief.get(metric, metric)
-                for i, item in enumerate(line_ls):
-                    if item.startswith(metric):
-                        if met_brief in moi:
-                            for sub in moi[met_brief]:
-                                if sub in item:
-                                    results[met_brief+'.'+sub] = float(line_ls[i+1])
-                                    break
-                        else:
-                            results[met_brief+'.'+str(cum_idx)] = float(line_ls[i+1])
-                            cum_idx += 1
+            for line in data:
+                line_ls = re.split(' +', line)
+                if int(line_ls[0].split('-')[-1]) == target_step:
+                    cum_idx = 0
+                    met_brief = brief.get(metric, metric)
+                    for i, item in enumerate(line_ls):
+                        if item.startswith(metric):
+                            if met_brief in moi:
+                                for sub in moi[met_brief]:
+                                    if sub in item:
+                                        results[met_brief+'.'+sub] = float(line_ls[i+1])
+                                        break
+                            else:
+                                results[met_brief+'.'+str(cum_idx)] = float(line_ls[i+1])
+                                cum_idx += 1
     return results
 
 def is_smaller(a, b):
