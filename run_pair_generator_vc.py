@@ -8,7 +8,7 @@
 
 # --- File Name: run_pair_generator_vc.py
 # --- Creation Date: 27-02-2020
-# --- Last Modified: Tue 03 Nov 2020 00:41:56 AEDT
+# --- Last Modified: Sun 08 Nov 2020 23:49:33 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -23,6 +23,7 @@ import dnnlib.tflib as tflib
 import re
 import os
 import sys
+import pdb
 
 import pretrained_networks
 from training import misc
@@ -40,7 +41,8 @@ def generate_image_pairs(network_pkl,
                          result_dir,
                          batch_size=10,
                          return_atts=True,
-                         latent_type='onedim'):
+                         latent_type='onedim',
+                         act_mask_ls=None):
     print('Loading networks from "%s"...' % network_pkl)
     tflib.init_tf()
     if (model_type == 'info_gan') or (model_type == 'vc_gan_with_vc_head'):
@@ -59,6 +61,10 @@ def generate_image_pairs(network_pkl,
 
     n_batches = n_imgs // batch_size
 
+    if act_mask_ls is None:
+        act_mask_ls = np.arange(n_continuous)
+    n_act = len(act_mask_ls) # e.g. act_mask_ls: [0,2,3,5]
+    act_mask_dup_array = np.tile(np.array(act_mask_ls)[np.newaxis, ...], [batch_size, 1])
     for i in range(n_batches):
         print('Generating image pairs %d/%d ...' % (i, n_batches))
         grid_labels = np.zeros([batch_size, 0], dtype=np.float32)
@@ -68,12 +74,6 @@ def generate_image_pairs(network_pkl,
             cat_onehot = np.zeros((batch_size, n_discrete))
             cat_onehot[np.arange(cat_dim.size), cat_dim] = 1
 
-        # z_1 = np.random.uniform(low=-2,
-        # high=2,
-        # size=[batch_size, n_continuous])
-        # z_2 = np.random.uniform(low=-2,
-        # high=2,
-        # size=[batch_size, n_continuous])
         z_1 = np.random.normal(size=[batch_size, n_continuous])
         z_2 = np.random.normal(size=[batch_size, n_continuous])
         if latent_type == 'onedim':
@@ -81,6 +81,21 @@ def generate_image_pairs(network_pkl,
             delta_onehot = np.zeros((batch_size, n_continuous))
             delta_onehot[np.arange(delta_dim.size), delta_dim] = 1
             z_2 = np.where(delta_onehot > 0, z_2, z_1)
+
+
+        # New
+        z_1 = np.random.normal(size=[batch_size, n_continuous])
+        z_2 = np.random.normal(size=[batch_size, n_continuous])
+        if latent_type == 'onedim':
+            delta_dim_act = np.random.randint(0, n_act, size=[batch_size])
+            delta_dim = act_mask_dup_array[np.arange(batch_size), delta_dim_act]
+            delta_onehot = np.zeros((batch_size, n_continuous))
+            delta_onehot[np.arange(delta_dim.size), delta_dim] = 1
+            z_2 = np.where(delta_onehot > 0, z_2, z_1)
+        print('z1:', z_1)
+        print('z2:', z_2)
+        pdb.set_trace()
+
         delta_z = z_1 - z_2
 
         if i == 0:
@@ -130,6 +145,11 @@ def _str_to_bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+def _str_to_list_of_int(v):
+    v_values = v.strip()[1:-1]
+    step_list = [int(x.strip()) for x in v_values.split(',')]
+    return step_list
 
 
 _examples = '''examples:
@@ -184,6 +204,11 @@ def main():
                         default=False,
                         metavar='RETURN_ATTS',
                         type=_str_to_bool)
+    parser.add_argument('--act_mask_ls',
+                        help='The list of active latent dimensions.',
+                        default=None,
+                        metavar='ACT_MASK_LS',
+                        type=_str_to_list_of_int)
 
     args = parser.parse_args()
     kwargs = vars(args)
