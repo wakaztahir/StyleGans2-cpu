@@ -39,14 +39,19 @@ class ProjectorVC2:
         self.dlatent_avg_samples        = 10000
         # self.initial_learning_rate      = 0.1
         self.initial_learning_rate      = 0.2
-        self.initial_noise_factor       = 0.05
+        # self.initial_noise_factor       = 0.05
+        self.initial_noise_factor       = 0.5
         self.lr_rampdown_length         = 0.25
+        # self.lr_rampdown_length         = 0.01
         self.lr_rampup_length           = 0.05
+        # self.lr_rampup_length           = 0.2
         self.noise_ramp_length          = 0.75
         # self.regularize_noise_weight    = 1e5
-        self.regularize_noise_weight    = 1e8
+        self.regularize_noise_weight    = 1e10
         self.verbose                    = False
         self.clone_net                  = True
+        # Me
+        self.recons_alpha = 0
 
         self._Gs                    = None
         self._minibatch_size        = None
@@ -85,6 +90,14 @@ class ProjectorVC2:
         if self.clone_net:
             self._Gs = self._Gs.clone()
 
+        # Find dlatent stats.
+        self._info('Finding W midpoint and stddev using %d samples...' % self.dlatent_avg_samples)
+        latent_samples = np.random.RandomState(123).randn(self.dlatent_avg_samples, *self._Gs.input_shapes[0][1:])
+        dlatent_samples = self._Gs.components.mapping.run(latent_samples, None)
+        self._dlatent_avg = np.mean(dlatent_samples, axis=0, keepdims=True) # [1, 512]
+        self._dlatent_std = (np.sum((dlatent_samples - self._dlatent_avg) ** 2) / self.dlatent_avg_samples) ** 0.5
+        self._info('std = %g' % self._dlatent_std)
+
         # Find noise inputs.
         self._info('Setting up noise inputs...')
         self._noise_vars = []
@@ -108,7 +121,10 @@ class ProjectorVC2:
         # Image output graph.
         self._info('Building image output graph...')
         self._dlatents_var = tf.Variable(tf.zeros([self._minibatch_size] + self._Gs.input_shapes[0][1:]), name='dlatents_var')
-        self._dlatents_expr = self._dlatents_var
+        # self._dlatents_expr = self._dlatents_var
+        self._noise_in = tf.placeholder(tf.float32, [], name='noise_in')
+        dlatents_noise = tf.random.normal(shape=self._dlatents_var.shape) * self._noise_in
+        self._dlatents_expr = self._dlatents_var + dlatents_noise
         self._labels = tf.zeros([self._minibatch_size, 0])
         self._images_expr = self._Gs.get_output_for(self._dlatents_expr, self._labels, randomize_noise=False, return_atts=False)
 
@@ -126,6 +142,7 @@ class ProjectorVC2:
             self._lpips = misc.load_pkl('http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl')
         self._dist = self._lpips.get_output_for(proc_images_expr, self._target_images_var)
         self._loss = tf.reduce_sum(self._dist)
+        self._loss += self.recons_alpha * tf.reduce_mean((proc_images_expr - self._target_images_var)**2)
 
         # Noise regularization graph.
         self._info('Building noise regularization graph...')
@@ -134,10 +151,10 @@ class ProjectorVC2:
             sz = v.shape[2]
             while True:
                 reg_loss += tf.reduce_mean(v * tf.roll(v, shift=1, axis=3))**2 + tf.reduce_mean(v * tf.roll(v, shift=1, axis=2))**2
-                # if sz <= 8:
-                    # break # Small enough already
-                if sz <= 32:
+                if sz <= 8:
                     break # Small enough already
+                # if sz <= 32:
+                    # break # Small enough already
                 v = tf.reshape(v, [1, 1, sz//2, 2, sz//2, 2]) # Downscale
                 v = tf.reduce_mean(v, axis=[3, 5])
                 sz = sz // 2
@@ -200,6 +217,7 @@ class ProjectorVC2:
 
         # Hyperparameters.
         t = self._cur_step / self.num_steps
+        noise_strength = self._dlatent_std * self.initial_noise_factor * max(0.0, 1.0 - t / self.noise_ramp_length) ** 2
         lr_ramp = min(1.0, (1.0 - t) / self.lr_rampdown_length)
         lr_ramp = 0.5 - 0.5 * np.cos(lr_ramp * np.pi)
         lr_ramp = lr_ramp * min(1.0, t / self.lr_rampup_length)
@@ -208,7 +226,8 @@ class ProjectorVC2:
         # pdb.set_trace()
 
         # Train.
-        feed_dict = {self._lrate_in: learning_rate}
+        # feed_dict = {self._lrate_in: learning_rate}
+        feed_dict = {self._noise_in: noise_strength, self._lrate_in: learning_rate}
         _, dist_value, loss_value = tflib.run([self._opt_step, self._dist, self._loss], feed_dict)
         # print('passed')
         tflib.run(self._noise_normalize_op)
@@ -224,12 +243,14 @@ class ProjectorVC2:
         return self._cur_step
 
     def get_dlatents(self):
-        return tflib.run(self._dlatents_expr)
+        # return tflib.run(self._dlatents_expr)
+        return tflib.run(self._dlatents_expr, {self._noise_in: 0})
 
     def get_noises(self):
         return tflib.run(self._noise_vars)
 
     def get_images(self):
-        return tflib.run(self._images_expr)
+        # return tflib.run(self._images_expr)
+        return tflib.run(self._images_expr, {self._noise_in: 0})
 
 #----------------------------------------------------------------------------

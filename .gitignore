@@ -1,9 +1,8 @@
-*.swp
-*.swo
-*.swn
-*.swm
+.*.sw*
 *.pkl
 *.pyc
 *.pbs
 *.sh
 *.so
+*.pbs.*
+*hpc_usage_stats.json
