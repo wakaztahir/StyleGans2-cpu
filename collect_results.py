@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 09 Nov 2020 17:06:32 AEDT
+# --- Last Modified: Mon 09 Nov 2020 18:43:21 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -51,7 +51,8 @@ brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
          'factorvae_shape3d_all_hpc': 'fvm',
          'factorvae_shape3d_all_vae': 'fvm',
          'factorvae_shape3d_all': 'fvm',
-         'tpl_nomap': 'tpl', 'mig_dsprites_all': 'mig'
+         'tpl_nomap': 'tpl', 'mig_dsprites_all': 'mig',
+         'np_random_seed': 'seed'
          }
 
 def extend_exist_metrics_for_new_config(results):
@@ -92,7 +93,7 @@ def get_mean_std(results):
     '''
     new_results = {}
     for k, v in results.items():
-        if k == 'dir_id':
+        if k == 'dir_id' or k == 'seed':
             new_results[k] = map(lambda x: str(x), v)
         else:
             k_mean, k_std = k+'.mean', k+'.std'
@@ -120,6 +121,12 @@ def extract_v(data_dict, config_ls):
                 return data_dict[config_ls[0]]
             else:
                 return 0
+    if config_ls[0] == 'rnd' and config_ls[1] == 'np_random_seed' and len(config_ls) == 2:
+        k = '.'.join(config_ls)
+        if k in data_dict:
+            return data_dict[k]
+        else:
+            return 0
     return str(extract_v(data_dict[config_ls[0]], config_ls[1:]))
 
 def simplify_conf_name(name):
@@ -131,8 +138,12 @@ def get_config(dir_name, config_variables):
         data_dict = pickle.loads(s)
     config_vs = []
     for config_ls_i in config_variables:
-        config_vs.append(simplify_conf_name(extract_v(data_dict, config_ls_i)))
-    return '-'.join(config_vs)
+        v = simplify_conf_name(extract_v(data_dict, config_ls_i))
+        if config_ls_i[-1] == 'np_random_seed':
+            seed = v
+        else:
+            config_vs.append(v)
+    return '-'.join(config_vs), seed
 
 def extract_this_results(dir_name, target_step):
     # this_results: {'fvm.eval_acc': 0.5, 'fvm.n_dim': 4, ...}
@@ -234,7 +245,7 @@ def main():
     else:
         compare_fn = is_larger
     for dir_name in res_dirs:
-        config = get_config(dir_name, args.config_variables)
+        config, seed = get_config(dir_name, args.config_variables)
         dir_id = int(os.path.basename(dir_name[:-1]).split('-')[0]) # remove last '/'
         if args.optimal_metric:
             target_step = get_max_metric_step(dir_name, args.optimal_metric,
@@ -245,6 +256,7 @@ def main():
         this_results = extract_this_results(dir_name, target_step)
         if this_results != {}:
             this_results['dir_id'] = dir_id
+            this_results['seed'] = seed
             if config not in config_ls:
                 config_ls.append(config)
                 results = extend_exist_metrics_for_new_config(results)
