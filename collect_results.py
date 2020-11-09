@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 09 Nov 2020 16:21:41 AEDT
+# --- Last Modified: Mon 09 Nov 2020 17:06:32 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -93,7 +93,7 @@ def get_mean_std(results):
     new_results = {}
     for k, v in results.items():
         if k == 'dir_id':
-            new_results[k] = _list_to_str(v)
+            new_results[k] = map(lambda x: str(x), v)
         else:
             k_mean, k_std = k+'.mean', k+'.std'
             v_mean = [get_mean(x) for x in v]
@@ -168,7 +168,7 @@ def is_smaller(a, b):
 def is_larger(a, b):
     return b < a
 
-def get_max_metric_step(dir_name, metric, sub, compare_fn):
+def get_max_metric_step(dir_name, metric, sub, old_target_step, compare_fn):
     met_fname = os.path.join(dir_name, 'metric-' + metric + '.txt')
     if compare_fn == is_smaller:
         v_optimal = float('inf')
@@ -179,15 +179,21 @@ def get_max_metric_step(dir_name, metric, sub, compare_fn):
     if os.path.exists(met_fname):
         with open(met_fname, 'r') as f:
             data = f.readlines()
+        found_target_step = False
         for line in data[-len(data)//3:]:
             line_ls = re.split(' +', line)
             metric_and_sub = '_'.join((metric, sub))
+            step_i = int(line_ls[0].split('-')[-1])
+            if step_i == old_target_step:
+                found_target_step = True
             for i, item in enumerate(line_ls):
                 if item == metric_and_sub:
                     v_i = float(line_ls[i+1])
                     if compare_fn(v_i, v_optimal):
                         v_optimal = v_i
                         target_step = int(line_ls[0].split('-')[-1])
+        if not found_target_step:
+            target_step = old_target_step
     return target_step
 
 def main():
@@ -210,6 +216,10 @@ def main():
     args = parser.parse_args()
 
     args.config_variables = parse_config_v(args.config_variables)
+    if args.optimal_metric is not None:
+        args.result_file = args.result_file[:-4]+'-'+args.optimal_metric+'-'+'.csv'
+    else:
+        args.result_file = args.result_file[:-4]+'-'+str(args.target_step)+'-'+'.csv'
     res_dirs = glob.glob(os.path.join(args.in_dir, '0*/'))
     # print('res_dirs:', res_dirs)
     res_dirs.sort()
@@ -227,13 +237,14 @@ def main():
         config = get_config(dir_name, args.config_variables)
         dir_id = int(os.path.basename(dir_name[:-1]).split('-')[0]) # remove last '/'
         if args.optimal_metric:
-            target_step = get_max_metric_step(dir_name, args.optimal_metric, args.optimal_sub, compare_fn)
+            target_step = get_max_metric_step(dir_name, args.optimal_metric,
+                                              args.optimal_sub, args.target_step, compare_fn)
         else:
             target_step = args.target_step
         # print('target_step:', target_step)
         this_results = extract_this_results(dir_name, target_step)
-        this_results['dir_id'] = dir_id
         if this_results != {}:
+            this_results['dir_id'] = dir_id
             if config not in config_ls:
                 config_ls.append(config)
                 results = extend_exist_metrics_for_new_config(results)
