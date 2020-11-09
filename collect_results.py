@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 09 Nov 2020 13:36:58 AEDT
+# --- Last Modified: Mon 09 Nov 2020 16:21:41 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -79,6 +79,10 @@ def get_std(x):
     x = list(filter(None, x))
     return None if len(x) == 0 else np.std(x)
 
+def _list_to_str(v):
+    v2 = [str(x) for x in v]
+    return ','.join(v2)
+
 def get_mean_std(results):
     '''
     Calculate mean and std based on the raw data with different seeds.
@@ -88,11 +92,14 @@ def get_mean_std(results):
     '''
     new_results = {}
     for k, v in results.items():
-        k_mean, k_std = k+'.mean', k+'.std'
-        v_mean = [get_mean(x) for x in v]
-        v_std = [get_std(x) for x in v]
-        new_results[k_mean] = v_mean
-        new_results[k_std] = v_std
+        if k == 'dir_id':
+            new_results[k] = _list_to_str(v)
+        else:
+            k_mean, k_std = k+'.mean', k+'.std'
+            v_mean = [get_mean(x) for x in v]
+            v_std = [get_std(x) for x in v]
+            new_results[k_mean] = v_mean
+            new_results[k_std] = v_std
     new_results['num_samples'] = [get_num(x) for x in results[list(results.keys())[0]]]
     return new_results
 
@@ -210,6 +217,7 @@ def main():
     # results: {'fvm.eval_acc': [[0.7, 0.8], [0.4, 0.8]],
     #           'fvm.n_dim': [[5, 6], [3, 5]]}
     config_ls = [] # ['beta-1', 'beta-2']
+    raw_results = []
 
     if args.small_or_large == 'small':
         compare_fn = is_smaller
@@ -217,12 +225,14 @@ def main():
         compare_fn = is_larger
     for dir_name in res_dirs:
         config = get_config(dir_name, args.config_variables)
+        dir_id = int(os.path.basename(dir_name[:-1]).split('-')[0]) # remove last '/'
         if args.optimal_metric:
             target_step = get_max_metric_step(dir_name, args.optimal_metric, args.optimal_sub, compare_fn)
         else:
             target_step = args.target_step
         # print('target_step:', target_step)
         this_results = extract_this_results(dir_name, target_step)
+        this_results['dir_id'] = dir_id
         if this_results != {}:
             if config not in config_ls:
                 config_ls.append(config)
@@ -234,15 +244,25 @@ def main():
             if k not in results.keys():
                 results = fill_configs_for_new_metric(results, k)
             results[k][idx_config].append(v)
+        raw_results.append(this_results)
 
+    # raw_results_file = args.result_file[:-4] + '.txt'
+    # # raw_results = [str(x) for x in raw_results]
+    # raw_results = map(lambda x: str(x)+'\n', raw_results)
+    # with open(raw_results_file, 'w') as f:
+        # f.writelines(raw_results)
     for k, v in results.items():
         assert len(v) == len(config_ls)
+
     new_results = get_mean_std(results)
-    new_results['_config'] = config_ls
-    new_results = OrderedDict(sorted(new_results.items()))
-    results_df = pd.DataFrame(new_results)
-    print('results_df:', results_df)
-    results_df.to_csv(args.result_file, na_rep='-',
+    save_results_to_csv(new_results, config_ls, args, '')
+    save_results_to_csv(results, config_ls, args, '_raw')
+
+def save_results_to_csv(results, config_ls, args, sufix):
+    results['_config'] = config_ls
+    results = OrderedDict(sorted(results.items()))
+    results_df = pd.DataFrame(results)
+    results_df.to_csv(args.result_file[:-4]+sufix+'.csv', na_rep='-',
                       index=False, float_format='%.3f')
 
 
