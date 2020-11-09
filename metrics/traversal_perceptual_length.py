@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Wed 04 Nov 2020 23:03:34 AEDT
+# --- Last Modified: Tue 10 Nov 2020 03:17:23 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -29,20 +29,21 @@ from training.utils import get_return_v
 #----------------------------------------------------------------------------
 
 class TPL(metric_base.MetricBase):
-    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, active_thresh=0.1, **kwargs):
+    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, no_convert=False, active_thresh=0.1, **kwargs):
         super().__init__(**kwargs)
         self.crop = crop
         self.Gs_overrides = Gs_overrides
         self.n_samples_per_dim = n_samples_per_dim
         self.n_traversals = n_traversals
         self.no_mapping = no_mapping
+        self.no_convert = no_convert
         self.active_thresh = active_thresh
 
     def _evaluate(self, Gs, Gs_kwargs, num_gpus, **kwargs):
         Gs_kwargs = dict(Gs_kwargs)
         Gs_kwargs.update(self.Gs_overrides)
         minibatch_per_gpu = (self.n_samples_per_dim - 1) // num_gpus + 1
-        if not self.no_mapping:
+        if (not self.no_mapping) and (not self.no_convert):
             Gs = Gs.convert(new_func_name='training.vc_networks2.G_main_vc2')
 
         # Construct TensorFlow graph.
