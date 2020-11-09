@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 09 Nov 2020 18:43:21 AEDT
+# --- Last Modified: Mon 09 Nov 2020 18:48:29 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -137,6 +137,7 @@ def get_config(dir_name, config_variables):
         s = f.read()
         data_dict = pickle.loads(s)
     config_vs = []
+    seed = None
     for config_ls_i in config_variables:
         v = simplify_conf_name(extract_v(data_dict, config_ls_i))
         if config_ls_i[-1] == 'np_random_seed':
