@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 09 Nov 2020 18:48:29 AEDT
+# --- Last Modified: Mon 09 Nov 2020 21:24:49 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -229,7 +229,7 @@ def main():
 
     args.config_variables = parse_config_v(args.config_variables)
     if args.optimal_metric is not None:
-        args.result_file = args.result_file[:-4]+'-'+args.optimal_metric+'-'+'.csv'
+        args.result_file = args.result_file[:-4]+'-'+str(args.target_step)+'-'+args.optimal_metric+'-'+'.csv'
     else:
         args.result_file = args.result_file[:-4]+'-'+str(args.target_step)+'-'+'.csv'
     res_dirs = glob.glob(os.path.join(args.in_dir, '0*/'))
