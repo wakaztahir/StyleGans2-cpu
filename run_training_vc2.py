@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 05 Nov 2020 15:23:17 AEDT
+# --- Last Modified: Wed 11 Nov 2020 23:42:27 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,7 +45,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         dlatent_size=24, arch='resnet', opt_reset_ls=None, norm_ord=2, n_dim_strict=0,
         drop_extra_torgb=False, latent_split_ls_for_std_gen=[5,5,5,5],
         loose_rate=0.2, topk_dims_to_show=20, n_neg_samples=1, temperature=1.,
-        learning_rate=0.002, avg_mv_for_I=False, use_cascade=False, cascade_alt_freq_k=1):
+        learning_rate=0.002, avg_mv_for_I=False, use_cascade=False, cascade_alt_freq_k=1,
+        network_snapshot_ticks=10):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
                      )  # Options for training loop.
@@ -354,7 +355,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
     kwargs.update(dataset_args=dataset_args, sched_args=sched, grid_args=grid, metric_arg_list=metrics,
                   tf_config=tf_config, resume_pkl=resume_pkl, n_discrete=D_global_size,
                   n_continuous=n_continuous, n_samples_per=n_samples_per,
-                  topk_dims_to_show=topk_dims_to_show, cascade_alt_freq_k=cascade_alt_freq_k)
+                  topk_dims_to_show=topk_dims_to_show, cascade_alt_freq_k=cascade_alt_freq_k,
+                  network_snapshot_ticks=network_snapshot_ticks)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
     kwargs.submit_config.run_desc = desc
@@ -518,6 +520,8 @@ def main():
                         default=False, metavar='USE_CASCADE', type=_str_to_bool)
     parser.add_argument('--cascade_alt_freq_k', help='Frequency in k for cascade_dim altering.',
                         metavar='CASCADE_ALT_FREQ_K', default=1, type=float)
+    parser.add_argument('--network_snapshot_ticks', help='Snapshot ticks.',
+                        metavar='NETWORK_SNAPSHOT_TICKS', default=10, type=int)
 
     args = parser.parse_args()
 
