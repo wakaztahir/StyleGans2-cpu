@@ -31,6 +31,7 @@ metric_defaults = EasyDict([(args.name, args) for args in [
     EasyDict(name='ls',        func_name='metrics.linear_separability.LS',         num_samples=200000, num_keep=100000, attrib_indices=range(40), minibatch_per_gpu=4),
     EasyDict(name='pr50k3',    func_name='metrics.precision_recall.PR',            num_images=50000, nhood_size=3, minibatch_per_gpu=8, row_batch_size=10000, col_batch_size=10000),
     EasyDict(name='tpl',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=25, crop=False, n_traversals=50, no_mapping=False, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
+    EasyDict(name='tpl_large',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=49, crop=False, n_traversals=300, no_mapping=False, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
     EasyDict(name='tpl_noconvert',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=25, crop=False, n_traversals=50, no_mapping=False, Gs_overrides=dict(dtype='float32', mapping_dtype='float32'), no_convert=True),
     EasyDict(name='tpl_small',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=25, crop=False, n_traversals=10, no_mapping=False, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
     EasyDict(name='tpl_nomap',  func_name='metrics.traversal_perceptual_length.TPL',     n_samples_per_dim=25, crop=False, n_traversals=50, no_mapping=True, active_thresh=0, Gs_overrides=dict(dtype='float32', mapping_dtype='float32')),
