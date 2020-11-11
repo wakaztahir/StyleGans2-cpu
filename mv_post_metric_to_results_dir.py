@@ -8,7 +8,7 @@
 
 # --- File Name: mv_post_metric_to_results_dir.py
 # --- Creation Date: 11-11-2020
-# --- Last Modified: Wed 11 Nov 2020 18:28:23 AEDT
+# --- Last Modified: Wed 11 Nov 2020 19:02:24 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,7 +34,8 @@ def main():
         data = f.readlines()
     new_metric_line = data[-2]
     new_metric_filepath = os.path.join(args.results_dir, args.new_metric_file)
-    with open(new_metric_filepath, 'a') as f:
+    # with open(new_metric_filepath, 'a') as f:
+    with open(new_metric_filepath, 'w') as f:
         f.write(new_metric_line)
 
 if __name__ == "__main__":
