@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Wed 11 Nov 2020 18:29:47 AEDT
+# --- Last Modified: Wed 11 Nov 2020 18:49:41 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -65,6 +65,7 @@ def fill_configs_for_new_metric(results, new_metric):
     if len(keys) == 0:
         results[new_metric] = [[]]
     else:
+        print('len(results[keys[0]]):', len(results[keys[0]]))
         results[new_metric] = [[] * len(results[keys[0]])]
     return results
 
