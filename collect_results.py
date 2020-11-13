@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Wed 11 Nov 2020 20:44:02 AEDT
+# --- Last Modified: Fri 13 Nov 2020 16:09:20 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -193,7 +193,7 @@ def get_max_metric_step(dir_name, metric, sub, old_target_step, compare_fn):
         with open(met_fname, 'r') as f:
             data = f.readlines()
         found_target_step = False
-        for line in data[-len(data)//8:]:
+        for line in data[-len(data)//3:]:
             line_ls = re.split(' +', line)
             metric_and_sub = '_'.join((metric, sub))
             step_i = int(line_ls[0].split('-')[-1])
