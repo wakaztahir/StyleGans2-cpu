@@ -8,7 +8,7 @@
 
 # --- File Name: delete_pkls.py
 # --- Creation Date: 15-11-2020
-# --- Last Modified: Sun 15 Nov 2020 18:59:05 AEDT
+# --- Last Modified: Mon 16 Nov 2020 02:17:55 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -19,12 +19,24 @@ import argparse
 import os
 import pdb
 import glob
+import re
 
 
 def _str_to_intlist(v):
     v_values = v.strip()[1:-1]
     module_list = [int(x.strip()) for x in v_values.split(',')]
     return module_list
+
+
+def _parse_num_range(s):
+    '''Accept either a comma separated list of numbers 'a,b,c' or a range 'a-c' and return as a list of ints.'''
+
+    range_re = re.compile(r'^(\d+)-(\d+)$')
+    m = range_re.match(s)
+    if m:
+        return range(int(m.group(1)), int(m.group(2)) + 1)
+    vals = s.split(',')
+    return [int(x) for x in vals]
 
 
 def main():
@@ -35,7 +47,7 @@ def main():
                         default='/mnt/hdd/repo_results/test')
     parser.add_argument('--to_rm_idxes',
                         help='Sub dir pkls to remove.',
-                        type=_str_to_intlist,
+                        type=_parse_num_range,
                         default='/mnt/hdd/Datasets/test_data')
     parser.add_argument('--rm_ratio',
                         help='Remove ratio to the total step of pkls.',
@@ -63,7 +75,7 @@ def main():
             for i, item in enumerate(items):
                 if items_idxes[i] < max_items_idx * args.rm_ratio:
                     os.remove(item)
-                    print('Removed '+item)
+                    print('Removed ' + item)
 
 
 if __name__ == "__main__":
