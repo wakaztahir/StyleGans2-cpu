@@ -8,7 +8,7 @@
 
 # --- File Name: mv_post_metric_to_results_dir.py
 # --- Creation Date: 11-11-2020
-# --- Last Modified: Wed 11 Nov 2020 19:02:24 AEDT
+# --- Last Modified: Sun 15 Nov 2020 18:30:11 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,12 +22,18 @@ import pdb
 
 def main():
     parser = argparse.ArgumentParser(description='Project description.')
-    parser.add_argument('--results_dir', help='Results directory.',
-                        type=str, default='/mnt/hdd/repo_results/test')
-    parser.add_argument('--post_metric_dir', help='Post calculated metric dir.',
-                        type=str, default='/mnt/hdd/Datasets/test_data')
-    parser.add_argument('--new_metric_file', help='The new-to-write metric file.',
-                        type=str, default='/mnt/hdd/test')
+    parser.add_argument('--results_dir',
+                        help='Results directory.',
+                        type=str,
+                        default='/mnt/hdd/repo_results/test')
+    parser.add_argument('--post_metric_dir',
+                        help='Post calculated metric dir.',
+                        type=str,
+                        default='/mnt/hdd/Datasets/test_data')
+    parser.add_argument('--new_metric_file',
+                        help='The new-to-write metric file.',
+                        type=str,
+                        default='/mnt/hdd/test')
     args = parser.parse_args()
     post_metric_logfile = os.path.join(args.post_metric_dir, 'log.txt')
     with open(post_metric_logfile, 'r') as f:
@@ -37,6 +43,7 @@ def main():
     # with open(new_metric_filepath, 'a') as f:
     with open(new_metric_filepath, 'w') as f:
         f.write(new_metric_line)
+
 
 if __name__ == "__main__":
     main()
