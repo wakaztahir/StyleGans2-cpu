@@ -8,7 +8,7 @@
 
 # --- File Name: delete_pkls.py
 # --- Creation Date: 15-11-2020
-# --- Last Modified: Sun 15 Nov 2020 18:48:22 AEDT
+# --- Last Modified: Sun 15 Nov 2020 18:56:43 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,7 +46,8 @@ def main():
                         type=int,
                         default=5)
     args = parser.parse_args()
-    subdirs = glob.glob(args.parent_dir)
+    subdirs = glob.glob(os.path.join(args.parent_dir, '*'))
+    print('subdirs:', subdirs)
 
     for subdir in subdirs:
         if not os.path.isdir(subdir):
