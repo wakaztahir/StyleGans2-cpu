@@ -8,7 +8,7 @@
 
 # --- File Name: delete_pkls.py
 # --- Creation Date: 15-11-2020
-# --- Last Modified: Sun 15 Nov 2020 18:56:43 AEDT
+# --- Last Modified: Sun 15 Nov 2020 18:59:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -47,7 +47,7 @@ def main():
                         default=5)
     args = parser.parse_args()
     subdirs = glob.glob(os.path.join(args.parent_dir, '*'))
-    print('subdirs:', subdirs)
+    # print('subdirs:', subdirs)
 
     for subdir in subdirs:
         if not os.path.isdir(subdir):
@@ -63,6 +63,7 @@ def main():
             for i, item in enumerate(items):
                 if items_idxes[i] < max_items_idx * args.rm_ratio:
                     os.remove(item)
+                    print('Removed '+item)
 
 
 if __name__ == "__main__":
