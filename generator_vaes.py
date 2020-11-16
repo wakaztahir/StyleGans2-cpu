@@ -8,7 +8,7 @@
 
 # --- File Name: generator_vaes.py
 # --- Creation Date: 05-10-2020
-# --- Last Modified: Sat 24 Oct 2020 15:27:59 AEDT
+# --- Last Modified: Mon 16 Nov 2020 18:59:38 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -61,7 +61,7 @@ def measure_distance(images, n_samples_per, distance_measure):
     assert images.shape[0] == n_samples_per * n_samples_per
     images = (images + 1) * (255 / 2)  # [-1, -1] -> [0, 255]
     # distance_measure = misc.load_pkl(
-        # 'http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl'
+    # 'http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl'
     # )
     dis_sum = 0
     for i in range(n_samples_per):
@@ -78,10 +78,14 @@ def generate_grids(network,
                    latent_pair,
                    n_samples_per=10,
                    bound=2,
-                   rot=0):
+                   rot=0,
+                   load_gan=False):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network)
-    E, G = get_return_v(misc.load_pkl(network), 2)
+    if load_gan:
+        _G, _D, I, G = misc.load_pkl(network)
+    else:
+        E, G = get_return_v(misc.load_pkl(network), 2)
 
     G_kwargs = dnnlib.EasyDict()
     G_kwargs.is_validation = True
@@ -101,7 +105,8 @@ def generate_grids(network,
             G.run(z, None, **G_kwargs),
             1)  # [n_samples_per*n_samples_per, channel, height, width]
 
-        distance_ls.append(measure_distance(images, n_samples_per, distance_measure))
+        distance_ls.append(
+            measure_distance(images, n_samples_per, distance_measure))
 
         images = add_outline(images, width=1)
         n_samples_square, c, h, w = np.shape(images)
@@ -116,9 +121,14 @@ def generate_grids(network,
     print('mean_distance:', np.mean(np.array(distance_ls)))
 
 
-def plot_fn(rot_ls_ori, distance_rot_ls, rot_start_ori, rot_end_ori, mark_idxs, coord_adj=0):
-    y_start_tick = 9
-    y_end_tick = 17
+def plot_fn(rot_ls_ori,
+            distance_rot_ls,
+            rot_start_ori,
+            rot_end_ori,
+            mark_idxs,
+            coord_adj=0):
+    y_start_tick = int(min(distance_rot_ls)) - 1
+    y_end_tick = int(max(distance_rot_ls)) + 1
     rot_ls = [rot + coord_adj for rot in rot_ls_ori]
     rot_start = rot_start_ori + coord_adj
     rot_end = rot_end_ori + coord_adj
@@ -128,33 +138,47 @@ def plot_fn(rot_ls_ori, distance_rot_ls, rot_start_ori, rot_end_ori, mark_idxs, 
         # if idx == 0:
         marks, = plt.plot(rot_ls[i] * np.ones(pts.shape), pts, 'b--')
         # else:
-            # plt.plot(rot_ls[i] * np.ones(pts.shape), pts, 'b--')
+        # plt.plot(rot_ls[i] * np.ones(pts.shape), pts, 'b--')
     plt.axis([rot_start, rot_end, y_start_tick, y_end_tick])
     plt.xlabel(r'Rotation degree $\alpha$')
     plt.ylabel(r'$dis_{cum}(\alpha)$')
-    plt.xticks(np.arange(rot_start, rot_end+1, 45))
-    plt.yticks(np.arange(y_start_tick, y_end_tick+1, 1))
-    plt.legend((line, marks), (r'$dis_{cum}$', r'axis-aligned $\alpha$'))
+    plt.xticks(np.arange(rot_start, rot_end + 1, 45))
+    plt.yticks(np.arange(y_start_tick, y_end_tick + 1, 1))
+    plt.legend((line, marks), (r'$dis_{cum}$', r'axis-aligned $\alpha$'), loc='upper right')
     # plt.title('Accumulated perceptual traversal distances')
     plt.grid(True)
     plt.savefig(dnnlib.make_run_dir_path('plot_fn.pdf'), dpi=300)
 
-def plot_rot_fn(network, seeds, latent_pair, n_samples_per, bound, rot_start,
-                rot_end, rot_interval, coord_adj):
+
+def plot_rot_fn(network,
+                seeds,
+                latent_pair,
+                n_samples_per,
+                bound,
+                rot_start,
+                rot_end,
+                rot_interval,
+                coord_adj,
+                load_gan=False):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network)
-    E, G = get_return_v(misc.load_pkl(network), 2)
+
+    if load_gan:
+        _G, _D, I, G = misc.load_pkl(network)
+    else:
+        E, G = get_return_v(misc.load_pkl(network), 2)
 
     G_kwargs = dnnlib.EasyDict()
     G_kwargs.is_validation = True
     G_kwargs.randomize_noise = True
+    G_kwargs.minibatch_size=8
 
     distance_measure = misc.load_pkl(
         'http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl'
     )
 
     distance_rot_ls = []
-    rot_ls = list(range(int(rot_start), int(rot_end)+1, int(rot_interval)))
+    rot_ls = list(range(int(rot_start), int(rot_end) + 1, int(rot_interval)))
     mark_idxs = []
     for rot_idx, rot in enumerate(rot_ls):
         print('Generating images for rotation degree %d (%d/%d) ...' %
@@ -169,9 +193,31 @@ def plot_rot_fn(network, seeds, latent_pair, n_samples_per, bound, rot_start,
                 G.run(z, None, **G_kwargs),
                 1)  # [n_samples_per*n_samples_per, channel, height, width]
 
-            distance_ls.append(measure_distance(images, n_samples_per, distance_measure))
+            distance_ls.append(
+                measure_distance(images, n_samples_per, distance_measure))
+            # save grids
+            if seed_idx < 10 and rot == 0:
+                images_2 = add_outline(images, width=1)
+                n_samples_square, c, h, w = np.shape(images_2)
+                assert n_samples_square == n_samples_per * n_samples_per
+                images_2 = np.reshape(images_2,
+                                      (n_samples_per, n_samples_per, c, h, w))
+                images_2 = np.transpose(images_2, [0, 3, 1, 4, 2])
+                images_2 = np.reshape(
+                    images_2, (n_samples_per * h, n_samples_per * w, c))
+                images_2 = misc.adjust_dynamic_range(images_2, [0, 1],
+                                                     [0, 255])
+                images_2 = np.rint(images_2).clip(0, 255).astype(np.uint8)
+                PIL.Image.fromarray(images_2, 'RGB').save(
+                    dnnlib.make_run_dir_path('seed%04d.png' % seed))
+
         distance_rot_ls.append(np.mean(np.array(distance_ls)))
-    plot_fn(rot_ls, distance_rot_ls, rot_start, rot_end, mark_idxs, coord_adj=coord_adj)
+    plot_fn(rot_ls,
+            distance_rot_ls,
+            rot_start,
+            rot_end,
+            mark_idxs,
+            coord_adj=coord_adj)
 
 
 def _parse_num_range(s):
@@ -209,88 +255,93 @@ def main():
 
     subparsers = parser.add_subparsers(help='Sub-commands', dest='command')
 
-    parser_generate_images = subparsers.add_parser('generate-grids',
-                                                   help='Generate grids')
-    parser_generate_images.add_argument('--network',
-                                        help='Network pickle filename',
-                                        required=True)
-    parser_generate_images.add_argument('--seeds',
-                                        type=_parse_num_range,
-                                        help='List of random seeds',
-                                        required=True)
-    parser_generate_images.add_argument('--latent_pair',
-                                        type=_str_to_list_of_int,
-                                        help='latent pair index',
-                                        default='0_1')
-    parser_generate_images.add_argument(
+    parser_generate_images_grids = subparsers.add_parser('generate-grids',
+                                                         help='Generate grids')
+    parser_generate_images_grids.add_argument('--network',
+                                              help='Network pickle filename',
+                                              required=True)
+    parser_generate_images_grids.add_argument('--seeds',
+                                              type=_parse_num_range,
+                                              help='List of random seeds',
+                                              required=True)
+    parser_generate_images_grids.add_argument('--latent_pair',
+                                              type=_str_to_list_of_int,
+                                              help='latent pair index',
+                                              default='0_1')
+    parser_generate_images_grids.add_argument(
         '--n_samples_per',
         type=int,
         help='number of samples per row in grid',
         default=10)
-    parser_generate_images.add_argument(
+    parser_generate_images_grids.add_argument(
         '--bound',
         type=float,
         help='interval [-bound, bound] for traversal',
         default=2)
-    parser_generate_images.add_argument(
+    parser_generate_images_grids.add_argument(
         '--rot',
         type=float,
         help='rotation degree of traversal coordinate system',
         default=0)
-    parser_generate_images.add_argument(
+    parser_generate_images_grids.add_argument(
         '--result-dir',
         help='Root directory for run results (default: %(default)s)',
         default='results',
         metavar='DIR')
+    parser_generate_images_grids.add_argument(
+        '--load_gan',
+        help='If load GAN instead of VAE.',
+        default=False,
+        type=_str_to_bool)
 
-    parser_generate_images = subparsers.add_parser(
-        'plot-rot-fn', help='Plot rotation function')
-    parser_generate_images.add_argument('--network',
-                                        help='Network pickle filename',
-                                        required=True)
-    parser_generate_images.add_argument('--seeds',
-                                        type=_parse_num_range,
-                                        help='List of random seeds',
-                                        required=True)
-    parser_generate_images.add_argument('--latent_pair',
-                                        type=_str_to_list_of_int,
-                                        help='latent pair index',
-                                        default='0_1')
-    parser_generate_images.add_argument(
-        '--n_samples_per',
-        type=int,
-        help='number of samples per row in grid',
-        default=10)
-    parser_generate_images.add_argument(
-        '--bound',
-        type=float,
-        help='interval [-bound, bound] for traversal',
-        default=2)
-    parser_generate_images.add_argument(
+    parser_plot_fn = subparsers.add_parser('plot-rot-fn',
+                                           help='Plot rotation function')
+    parser_plot_fn.add_argument('--network',
+                                help='Network pickle filename',
+                                required=True)
+    parser_plot_fn.add_argument('--seeds',
+                                type=_parse_num_range,
+                                help='List of random seeds',
+                                required=True)
+    parser_plot_fn.add_argument('--latent_pair',
+                                type=_str_to_list_of_int,
+                                help='latent pair index',
+                                default='0_1')
+    parser_plot_fn.add_argument('--n_samples_per',
+                                type=int,
+                                help='number of samples per row in grid',
+                                default=10)
+    parser_plot_fn.add_argument('--bound',
+                                type=float,
+                                help='interval [-bound, bound] for traversal',
+                                default=2)
+    parser_plot_fn.add_argument(
         '--rot_start',
         type=int,
         help='starting rotation degree of traversal coordinate system',
         default=-180)
-    parser_generate_images.add_argument(
+    parser_plot_fn.add_argument(
         '--rot_end',
         type=int,
         help='ending rotation degree of traversal coordinate system',
         default=-180)
-    parser_generate_images.add_argument(
-        '--rot_interval',
-        type=int,
-        help='rotation interval',
-        default=1)
-    parser_generate_images.add_argument(
-        '--coord_adj',
-        type=int,
-        help='x axis adjustment',
-        default=0)
-    parser_generate_images.add_argument(
+    parser_plot_fn.add_argument('--rot_interval',
+                                type=int,
+                                help='rotation interval',
+                                default=1)
+    parser_plot_fn.add_argument('--coord_adj',
+                                type=int,
+                                help='x axis adjustment',
+                                default=0)
+    parser_plot_fn.add_argument(
         '--result-dir',
         help='Root directory for run results (default: %(default)s)',
         default='results',
         metavar='DIR')
+    parser_plot_fn.add_argument('--load_gan',
+                                help='If load GAN instead of VAE.',
+                                default=False,
+                                type=_str_to_bool)
 
     args = parser.parse_args()
     kwargs = vars(args)

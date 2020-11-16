@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Tue 10 Nov 2020 03:17:23 AEDT
+# --- Last Modified: Mon 16 Nov 2020 22:41:43 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -78,13 +78,13 @@ class TPL(metric_base.MetricBase):
                 # lat_t0 = tf.zeros([minibatch_per_gpu] + Gs_clone.input_shape[1:])
                 lat_t0 = tf.tile(lat_sample[tf.newaxis, :], [minibatch_per_gpu, 1])
                 # lat_t0_min2 = lat_t0 - 2
-                lat_t0_min2 = tf.zeros_like(lat_t0) - 2
+                lat_t0_min2 = tf.zeros_like(lat_t0) - 4
                 lat_t0 = tf.where(eval_dim_mask, lat_t0_min2, lat_t0) # [b, n_continuous]
 
                 # lat_t1 = tf.zeros([minibatch_per_gpu] + Gs_clone.input_shape[1:])
                 lat_t1 = tf.tile(lat_sample[tf.newaxis, :], [minibatch_per_gpu, 1])
                 # lat_t1_add2 = lat_t1 + 2
-                lat_t1_add2 = tf.zeros_like(lat_t1) + 2
+                lat_t1_add2 = tf.zeros_like(lat_t1) + 4
                 lat_t1 = tf.where(eval_dim_mask, lat_t1_add2, lat_t1) # [b, n_continuous]
                 lat_e = tflib.lerp(lat_t0, lat_t1, lerp_t[:, tf.newaxis]) # [b, n_continuous]
 
