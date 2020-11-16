@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Fri 13 Nov 2020 16:09:20 AEDT
+# --- Last Modified: Mon 16 Nov 2020 23:13:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -30,7 +30,7 @@ from metrics.metric_defaults import metric_defaults
 # Metrics entries of interest.
 # If not shown here, means all entries of the metrics are of interest.
 # moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim'], 'mig': ['discrete_mig']}
-moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim'], 'tpl_large': ['sum_dist']}
+moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim'], 'tpl_large': ['sum_dist'], 'tpl_b4': ['sum_dist']}
 
 # Brief dict of names.
 brief = {'beta_vae_modular': 'btv', 'factor_vae_modular': 'fcv',
