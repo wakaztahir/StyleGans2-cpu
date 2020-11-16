@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Mon 16 Nov 2020 23:13:15 AEDT
+# --- Last Modified: Mon 16 Nov 2020 23:33:41 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -152,11 +152,15 @@ def extract_this_results(dir_name, target_step):
     # moi = {'tpl': ['sum_dist'], 'fvm': ['eval_acc', 'act_dim']}
     results = {}
     for metric in metric_defaults:
+        if metric == 'tpl_b4':
+            print('tpl_b4 is here')
         met_brief = brief.get(metric, metric)
         if not met_brief in moi:
             continue
+        print('tpl_b4 passed brief')
         met_fname = os.path.join(dir_name, 'metric-' + metric + '.txt')
         if os.path.exists(met_fname):
+            print('metric-tpl_b4.txt exists')
             with open(met_fname, 'r') as f:
                 data = f.readlines()
             for line in data:
