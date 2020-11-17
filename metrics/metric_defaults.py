@@ -66,6 +66,7 @@ metric_defaults = EasyDict([(args.name, args) for args in [
     EasyDict(name='mig_dsprites_all_hpc_vae',  func_name='metrics.mig_metric.MIGMetric',     dataset_dir='/project/xqzhu/disentangle_datasets/dsprites/dsprites_all_noshuffle_tfr', dataset_name='Dsprites', use_latents='[0,1,2,3,4]', batch_size=60, num_train=10000, has_label_place=True, drange_net=[0., 1.]),
     EasyDict(name='mig_dsprites_all_devcube2',  func_name='metrics.mig_metric.MIGMetric',     dataset_dir='/home/xqzhu/disentangle_datasets/dsprites/dsprites_all_noshuffle_tfr', dataset_name='Dsprites', use_latents='[0,1,2,3,4]', batch_size=60, num_train=10000),
     EasyDict(name='mig_dsprites_all_devcube2_vae',  func_name='metrics.mig_metric.MIGMetric',     dataset_dir='/home/xqzhu/disentangle_datasets/dsprites/dsprites_all_noshuffle_tfr', dataset_name='Dsprites', use_latents='[0,1,2,3,4]', batch_size=60, num_train=10000, has_label_place=True, drange_net=[0., 1.]),
+    EasyDict(name='ppl_zend_hp', func_name='metrics.perceptual_path_length_v2.PPLV2', num_samples=100000, epsilon=1e-4, space='z', sampling='end', minibatch_per_gpu=16)
 ]])
 
 #----------------------------------------------------------------------------
