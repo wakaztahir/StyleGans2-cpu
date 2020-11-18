@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Wed 18 Nov 2020 16:12:43 AEDT
+# --- Last Modified: Wed 18 Nov 2020 16:18:12 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -157,6 +157,7 @@ def extract_this_results(dir_name, target_step):
             continue
         met_fname = os.path.join(dir_name, 'metric-' + metric + '.txt')
         if os.path.exists(met_fname):
+            print('collecting: ', met_fname)
             with open(met_fname, 'r') as f:
                 data = f.readlines()
             for line in data:
