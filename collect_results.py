@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Wed 18 Nov 2020 16:18:12 AEDT
+# --- Last Modified: Wed 18 Nov 2020 16:19:12 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -163,6 +163,7 @@ def extract_this_results(dir_name, target_step):
             for line in data:
                 line_ls = re.split(' +', line)
                 if int(line_ls[0].split('-')[-1]) == target_step:
+                    print('step is right')
                     cum_idx = 0
                     for i, item in enumerate(line_ls):
                         if item.startswith(metric):
