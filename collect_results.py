@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Wed 18 Nov 2020 16:19:12 AEDT
+# --- Last Modified: Wed 18 Nov 2020 16:20:58 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -167,7 +167,9 @@ def extract_this_results(dir_name, target_step):
                     cum_idx = 0
                     for i, item in enumerate(line_ls):
                         if item.startswith(metric):
+                            print('it is starswith')
                             if met_brief in moi:
+                                print('it is in moi')
                                 for sub in moi[met_brief]:
                                     if sub in item:
                                         results[met_brief+'.'+sub] = float(line_ls[i+1])
