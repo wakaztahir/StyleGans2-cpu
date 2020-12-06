@@ -8,7 +8,7 @@
 
 # --- File Name: generator_vaes.py
 # --- Creation Date: 05-10-2020
-# --- Last Modified: Mon 16 Nov 2020 18:59:38 AEDT
+# --- Last Modified: Wed 18 Nov 2020 16:55:58 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -90,6 +90,7 @@ def generate_grids(network,
     G_kwargs = dnnlib.EasyDict()
     G_kwargs.is_validation = True
     G_kwargs.randomize_noise = True
+    G_kwargs.minibatch_size=8
 
     distance_measure = misc.load_pkl(
         'http://d36zk2xti64re0.cloudfront.net/stylegan1/networks/metrics/vgg16_zhang_perceptual.pkl'

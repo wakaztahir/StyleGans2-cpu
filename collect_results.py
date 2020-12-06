@@ -8,7 +8,7 @@
 
 # --- File Name: collect_results.py
 # --- Creation Date: 27-08-2020
-# --- Last Modified: Wed 18 Nov 2020 16:20:58 AEDT
+# --- Last Modified: Wed 18 Nov 2020 16:22:41 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -157,19 +157,15 @@ def extract_this_results(dir_name, target_step):
             continue
         met_fname = os.path.join(dir_name, 'metric-' + metric + '.txt')
         if os.path.exists(met_fname):
-            print('collecting: ', met_fname)
             with open(met_fname, 'r') as f:
                 data = f.readlines()
             for line in data:
                 line_ls = re.split(' +', line)
                 if int(line_ls[0].split('-')[-1]) == target_step:
-                    print('step is right')
                     cum_idx = 0
                     for i, item in enumerate(line_ls):
                         if item.startswith(metric):
-                            print('it is starswith')
                             if met_brief in moi:
-                                print('it is in moi')
                                 for sub in moi[met_brief]:
                                     if sub in item:
                                         results[met_brief+'.'+sub] = float(line_ls[i+1])

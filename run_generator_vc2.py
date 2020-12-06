@@ -8,7 +8,7 @@
 
 # --- File Name: run_generator_vc2.py
 # --- Creation Date: 26-05-2020
-# --- Last Modified: Thu 05 Nov 2020 00:05:46 AEDT
+# --- Last Modified: Fri 20 Nov 2020 19:18:45 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,7 +28,7 @@ import cv2
 
 import pretrained_networks
 from training import misc
-from training.utils import get_grid_latents, get_return_v, add_outline
+from training.utils import get_grid_latents, get_return_v, add_outline, save_atts
 from run_editing_vc2 import image_to_ready
 from run_editing_vc2 import image_to_out
 from PIL import Image, ImageDraw, ImageFont
@@ -86,16 +86,18 @@ def generate_domain_shift(network_pkl, seeds, domain_dim):
         images = np.rint(images).clip(0, 255).astype(np.uint8)
         PIL.Image.fromarray(images[0], 'RGB').save(dnnlib.make_run_dir_path('seed%04d.png' % seed))
 
-def generate_traversals(network_pkl, seeds, tpl_metric, n_samples_per, topk_dims_to_show, bound=2):
+def generate_traversals(network_pkl, seeds, tpl_metric, n_samples_per, topk_dims_to_show, return_atts=False, bound=2):
     tflib.init_tf()
     print('Loading networks from "%s"...' % network_pkl)
     # _G, _D, Gs = pretrained_networks.load_networks(network_pkl)
-    _G, _D, I, Gs = misc.load_pkl(network_pkl)
+    _G, _D, I, Gs = get_return_v(misc.load_pkl(network_pkl), 4)
     # noise_vars = [var for name, var in Gs.components.synthesis.vars.items() if name.startswith('noise')]
 
     Gs_kwargs = dnnlib.EasyDict()
     # Gs_kwargs.output_transform = dict(func=tflib.convert_images_to_uint8, nchw_to_nhwc=True)
     Gs_kwargs.randomize_noise = True
+    if return_atts:
+        Gs_kwargs.return_atts = True,
 
     n_continuous = Gs.input_shape[1]
     grid_labels = np.zeros([1,0], dtype=np.float32)
@@ -117,11 +119,19 @@ def generate_traversals(network_pkl, seeds, tpl_metric, n_samples_per, topk_dims
         grid_size, grid_latents, grid_labels = get_grid_latents(
             0, n_continuous, n_samples_per, Gs, grid_labels, topk_dims)
         # images, _ = Gs.run(z, None, **Gs_kwargs) # [minibatch, height, width, channel]
-        grid_fakes = get_return_v(Gs.run(grid_latents,
+        grid_fakes, atts = get_return_v(Gs.run(grid_latents,
                             grid_labels,
                             is_validation=True,
-                            minibatch_size=4,
-                            randomize_noise=True), 1)
+                            minibatch_size=2,
+                            randomize_noise=True), 2)
+        if return_atts:
+            atts = atts[:, topk_dims]
+            save_atts(atts,
+                      filename=dnnlib.make_run_dir_path('atts_seed%04d.png' % seed),
+                      grid_size=grid_size,
+                      drange=[0, 1],
+                      grid_fakes=grid_fakes,
+                      n_samples_per=n_samples_per)
         grid_fakes = add_outline(grid_fakes, width=1)
         misc.save_image_grid(grid_fakes,
                              dnnlib.make_run_dir_path(
@@ -342,6 +352,7 @@ Run 'python %(prog)s <subcommand> --help' for subcommand help.''',
     parser_generate_travs.add_argument('--tpl_metric', help='TPL to use', default='tpl', type=str)
     parser_generate_travs.add_argument('--n_samples_per', help='N samplers per row', default=7, type=int)
     parser_generate_travs.add_argument('--topk_dims_to_show', help='Top k dims to show', default=-1, type=int)
+    parser_generate_travs.add_argument('--return_atts', help='If save atts.', default=False, type=_str_to_bool)
     parser_generate_travs.add_argument('--bound', help='Traversal bound', default=2, type=float)
 
     parser_generate_domain_shift = subparsers.add_parser('generate-domain-shift', help='Generate traversals')

@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Fri 16 Oct 2020 21:47:38 AEDT
+# --- Last Modified: Sun 06 Dec 2020 17:05:17 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -30,62 +30,21 @@ from training.vc_modular_networks2 import split_module_names, LATENT_MODULES
 #----------------------------------------------------------------------------
 
 
-def run(dataset,
-        data_dir,
-        result_dir,
-        num_gpus,
-        total_kimg,
-        mirror_augment,
-        metrics,
-        resume_pkl,
-        model_type='vc_gan2',
-        latent_type='uniform',
-        batch_size=32,
-        batch_per_gpu=16,
-        random_seed=1000,
-        G_fmap_base=8,
-        module_G_list=None,
-        G_nf_scale=4,
-        E_fmap_base=8,
-        module_E_list=None,
-        E_nf_scale=4,
-        D_fmap_base=9,
-        module_D_list=None,
-        D_nf_scale=4,
-        fmap_decay=0.15,
-        fmap_min=16,
-        fmap_max=512,
-        n_samples_per=10,
-        arch='resnet',
-        topk_dims_to_show=20,
-        hy_beta=1,
-        hy_gamma=0,
-        hy_dcp=40,
-        hy_ncut=1,
-        hy_rec=20,
-        hy_hes=20,
-        hy_lin=20,
-        hy_mat=80,
-        hy_gmat=0,
-        hy_oth=80,
-        hy_det=0,
-        hessian_type='no_act_points',
-        n_act_points=10,
-        lie_alg_init_type='oth',
-        lie_alg_init_scale=0.1,
-        G_lrate_base=0.002,
-        D_lrate_base=None,
-        lambda_d_factor=10.,
-        lambda_od=1.,
-        group_loss_type='_rec_mat_',
-        group_feats_size=400,
-        temp=0.67,
-        n_discrete=0,
-        epsilon=1,
-        drange_net=[-1, 1],
-        recons_type='bernoulli_loss',
-        use_group_decomp=False,
-        snapshot_ticks=10):
+def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, metrics, resume_pkl,
+        model_type='vc_gan2', latent_type='uniform', batch_size=32, batch_per_gpu=16, random_seed=1000,
+        G_fmap_base=8, module_G_list=None, G_nf_scale=4,
+        E_fmap_base=8, module_E_list=None, E_nf_scale=4,
+        D_fmap_base=9, module_D_list=None, D_nf_scale=4,
+        fmap_decay=0.15, fmap_min=16, fmap_max=512,
+        n_samples_per=10, arch='resnet', topk_dims_to_show=20,
+        hy_beta=1, hy_gamma=0, hy_dcp=40, hy_ncut=1, hy_rec=20, hy_hes=20, hy_lin=20,
+        hy_mat=80, hy_gmat=0, hy_oth=80, hy_det=0, hy_1p=0,
+        hessian_type='no_act_points', n_act_points=10, lie_alg_init_type='oth',
+        lie_alg_init_scale=0.1, G_lrate_base=0.002, D_lrate_base=None,
+        lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
+        group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
+        drange_net=[-1, 1], recons_type='bernoulli_loss',
+        use_group_decomp=False, snapshot_ticks=10):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
@@ -233,6 +192,12 @@ def run(dataset,
             temp=temp,
             use_group_decomp=use_group_decomp,
             group_loss_type=group_loss_type,
+            recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'so_vae':
+        G_loss = EasyDict(
+            func_name='training.loss_vae_so.so_vae',
+            hy_1p=hy_1p,
+            latent_type=latent_type,
             recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
         G_loss = EasyDict(
@@ -394,7 +359,7 @@ def main():
                             'beta_vae', 'factor_vae', 'factor_sindis_vae',
                             'dip_vae_i', 'dip_vae_ii', 'betatc_vae',
                             'group_vae', 'group_vae_wc', 'group_vae_v2', 'group_vae_spl_v2',
-                            'lie_vae', 'lie_vae_with_split', 'coma_vae'
+                            'lie_vae', 'lie_vae_with_split', 'coma_vae', 'so_vae'
                         ])
     parser.add_argument('--resume_pkl',
                         help='Continue training using pretrained pkl.',
@@ -584,6 +549,11 @@ def main():
     parser.add_argument('--hy_det',
                         help='Hyper-param for determinant in GroupVAE.',
                         metavar='HY_DET',
+                        default=0,
+                        type=float)
+    parser.add_argument('--hy_1p',
+                        help='Hyper-param for oneparam in SO_VAE.',
+                        metavar='HY_1P',
                         default=0,
                         type=float)
     parser.add_argument('--G_lrate_base',

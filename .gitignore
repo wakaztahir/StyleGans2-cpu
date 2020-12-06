@@ -1,4 +1,5 @@
 .*.sw*
+*/.*.sw*
 *.pkl
 *.pyc
 *.pbs
