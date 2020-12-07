@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Sun 06 Dec 2020 17:05:17 AEDT
+# --- Last Modified: Mon 07 Dec 2020 15:23:03 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,7 +44,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
         group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
         drange_net=[-1, 1], recons_type='bernoulli_loss',
-        use_group_decomp=False, snapshot_ticks=10):
+        use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
@@ -86,6 +86,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  n_act_points=n_act_points,
                  lie_alg_init_type=lie_alg_init_type,
                  lie_alg_init_scale=lie_alg_init_scale,
+                 mapping_after_exp=mapping_after_exp,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -611,6 +612,11 @@ def main():
                         help='If use group decomposition loss in group vae',
                         default=True,
                         metavar='USE_GROUP_DECOMP',
+                        type=_str_to_bool)
+    parser.add_argument('--mapping_after_exp',
+                        help='If use a layer of mapping after exp in so vae',
+                        default=False,
+                        metavar='MAPPING_AFTER_EXP',
                         type=_str_to_bool)
 
     args = parser.parse_args()
