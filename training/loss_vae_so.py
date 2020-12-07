@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_so.py
 # --- Creation Date: 06-12-2020
-# --- Last Modified: Sun 06 Dec 2020 16:32:45 AEDT
+# --- Last Modified: Tue 08 Dec 2020 02:47:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,8 +42,8 @@ def so_vae(E,
     kl_loss = autosummary('Loss/kl_loss', kl_loss)
     sampled = sample_from_latent_distribution(means, log_var)
 
-    reconstructions, lie_groups_as_fm, _, _, lie_algs, lie_alg_basis, lie_vars = get_return_v(
-        G.get_output_for(sampled, labels, is_training=True), 7)
+    reconstructions, lie_groups_as_fm, _, _, lie_algs, lie_alg_basis, _, lie_vars = get_return_v(
+        G.get_output_for(sampled, labels, is_training=True), 8)
     # lie_groups_as_fm: [b, lat_dim, mat_dim, mat_dim]
     # lie_algs: [b, lat_dim, mat_dim, mat_dim]
     # lie_alg_basis: [1, lat_dim, mat_dim, mat_dim]
@@ -56,6 +56,6 @@ def so_vae(E,
 
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/so_vae_elbo', elbo)
-    loss = elbo + hy_1p * tf.reduce_sum(lie_vars)
+    loss = elbo + hy_1p * tf.reduce_sum(lie_vars * lie_vars)
     loss = autosummary('Loss/so_vae_loss', loss)
     return loss
