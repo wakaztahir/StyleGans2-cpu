@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 07 Dec 2020 15:23:03 AEDT
+# --- Last Modified: Mon 07 Dec 2020 22:14:12 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -43,7 +43,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         lie_alg_init_scale=0.1, G_lrate_base=0.002, D_lrate_base=None,
         lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
         group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
-        drange_net=[-1, 1], recons_type='bernoulli_loss',
+        drange_net=[-1, 1], recons_type='bernoulli_loss', R_view_scale=1,
         use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
@@ -86,6 +86,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  n_act_points=n_act_points,
                  lie_alg_init_type=lie_alg_init_type,
                  lie_alg_init_scale=lie_alg_init_scale,
+                 R_view_scale=R_view_scale,
                  mapping_after_exp=mapping_after_exp,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
@@ -525,6 +526,11 @@ def main():
                         help='Hyper-param for lie_alg_init_scale.',
                         metavar='LIE_ALG_INIT_SCALE',
                         default=0.1,
+                        type=float)
+    parser.add_argument('--R_view_scale',
+                        help='Hyper-param for R_view scale in so vae.',
+                        metavar='R_view_scale',
+                        default=1,
                         type=float)
     parser.add_argument(
         '--hy_rec',

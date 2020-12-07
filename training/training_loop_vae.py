@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Tue 01 Sep 2020 23:13:45 AEST
+# --- Last Modified: Mon 07 Dec 2020 22:25:33 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -176,11 +176,12 @@ def training_loop_vae(
     print('grid_size:', grid_size)
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
-    grid_fakes = get_return_v(G.run(grid_latents,
-                                    grid_labels,
-                                    is_validation=True,
-                                    minibatch_size=sched.minibatch_gpu,
-                                    randomize_noise=True), 1)
+    grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(grid_latents,
+                                                                grid_labels,
+                                                                is_validation=True,
+                                                                minibatch_size=sched.minibatch_gpu,
+                                                                randomize_noise=True), 8)
+    print('Lie_vars:', lie_vars[0])
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
@@ -413,11 +414,12 @@ def training_loop_vae(
                 else:
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
-                grid_fakes = get_return_v(G.run(grid_latents,
-                                                grid_labels,
-                                                is_validation=True,
-                                                minibatch_size=sched.minibatch_gpu,
-                                                randomize_noise=True), 1)
+                grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(grid_latents,
+                                                                            grid_labels,
+                                                                            is_validation=True,
+                                                                            minibatch_size=sched.minibatch_gpu,
+                                                                            randomize_noise=True), 8)
+                print('Lie_vars:', lie_vars[0])
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(

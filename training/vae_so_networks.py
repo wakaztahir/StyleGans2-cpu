@@ -8,7 +8,7 @@
 
 # --- File Name: vae_so_networks.py
 # --- Creation Date: 05-12-2020
-# --- Last Modified: Mon 07 Dec 2020 18:08:16 AEDT
+# --- Last Modified: Mon 07 Dec 2020 22:11:17 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,11 +34,10 @@ def construct_oneparam_skew_mat(var, mat_dim, var_idx):
     return oneparam_skew_mat
 
 
-def get_R_view(mat_dim, lie_alg_init_scale):
+def get_R_view(mat_dim, lie_alg_init_scale, R_view_scale):
     init_view = tf.initializers.random_normal(0, lie_alg_init_scale)
-    R_view_alg = tf.get_variable('R_view_alg_var',
-                                 shape=[1, mat_dim, mat_dim],
-                                 initializer=init_view)
+    R_view_alg = R_view_scale * tf.get_variable(
+        'R_view_alg_var', shape=[1, mat_dim, mat_dim], initializer=init_view)
     R_view_alg = tf.matrix_band_part(R_view_alg, 0, -1)
     R_view_alg = R_view_alg - tf.transpose(R_view_alg, perm=[0, 2, 1])
     R_view = tf.linalg.expm(R_view_alg)[tf.newaxis,
@@ -51,6 +50,7 @@ def build_so_prior_G(latents_in,
                      scope_idx,
                      group_feats_size,
                      lie_alg_init_scale=0.1,
+                     R_view_scale=1,
                      mapping_after_exp=False,
                      is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
@@ -88,17 +88,20 @@ def build_so_prior_G(latents_in,
 
         lie_groups_ls = tf.split(lie_groups, latent_dim, axis=1)
         Rs_ls = []
-        R_overall = get_R_view(mat_dim,
-                               lie_alg_init_scale)  # [1, 1, mat_dim, mat_dim]
+        R_overall = get_R_view(mat_dim, lie_alg_init_scale,
+                               R_view_scale)  # [1, 1, mat_dim, mat_dim]
         for i, R_i in enumerate(lie_groups_ls):
             R_overall = tf.matmul(R_overall, R_i)
             Rs_ls.append(R_overall)
 
         lie_groups_as_fm = tf.concat(Rs_ls, axis=1)
-        lie_groups_as_tensor = tf.reshape(lie_groups_as_fm, [-1, latent_dim * mat_dim * mat_dim])
+        lie_groups_as_tensor = tf.reshape(lie_groups_as_fm,
+                                          [-1, latent_dim * mat_dim * mat_dim])
         if mapping_after_exp:
             print('using mapping_after_exp')
-            feats_0 = tf.layers.dense(lie_groups_as_tensor, 256, activation=tf.nn.relu)
+            feats_0 = tf.layers.dense(lie_groups_as_tensor,
+                                      256,
+                                      activation=tf.nn.relu)
         else:
             feats_0 = lie_groups_as_tensor
         feats_1 = tf.layers.dense(feats_0, 1024, activation=tf.nn.relu)
