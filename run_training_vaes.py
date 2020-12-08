@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 07 Dec 2020 22:14:12 AEDT
+# --- Last Modified: Tue 08 Dec 2020 18:12:31 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,6 +44,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
         group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
         drange_net=[-1, 1], recons_type='bernoulli_loss', R_view_scale=1,
+        use_sphere_points=False, n_sphere_points=100,
         use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
@@ -88,6 +89,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  lie_alg_init_scale=lie_alg_init_scale,
                  R_view_scale=R_view_scale,
                  mapping_after_exp=mapping_after_exp,
+                 use_sphere_points=use_sphere_points,
+                 n_sphere_points=n_sphere_points,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -624,6 +627,16 @@ def main():
                         default=False,
                         metavar='MAPPING_AFTER_EXP',
                         type=_str_to_bool)
+    parser.add_argument('--use_sphere_points',
+                        help='If use sphere points in so vae',
+                        default=False,
+                        metavar='USE_SPHERE_POINTS',
+                        type=_str_to_bool)
+    parser.add_argument('--n_sphere_points',
+                        help='How many sphere points used in so vae',
+                        default=100,
+                        metavar='N_SPHERE_POINTS',
+                        type=int)
 
     args = parser.parse_args()
 

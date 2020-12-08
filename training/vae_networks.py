@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 07 Dec 2020 22:12:25 AEDT
+# --- Last Modified: Tue 08 Dec 2020 18:08:34 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -209,6 +209,8 @@ def G_main_modular(
         nf_scale=1,
         fmap_base=8,
         mapping_after_exp=False,
+        use_sphere_points=False,
+        n_sphere_points=100,
         group_feats_size=400,  # Should be square of an integer.
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
@@ -354,6 +356,8 @@ def G_main_modular(
                 lie_alg_init_scale=lie_alg_init_scale,
                 R_view_scale=R_view_scale,
                 mapping_after_exp=mapping_after_exp,
+                use_sphere_points=use_sphere_points,
+                n_sphere_points=n_sphere_points,
                 is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(

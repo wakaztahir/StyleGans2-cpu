@@ -8,13 +8,14 @@
 
 # --- File Name: vae_so_networks.py
 # --- Creation Date: 05-12-2020
-# --- Last Modified: Mon 07 Dec 2020 22:11:17 AEDT
+# --- Last Modified: Tue 08 Dec 2020 18:20:22 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
 SO(n) networks.
 """
 import math
+import numpy as np
 import tensorflow as tf
 
 
@@ -45,6 +46,17 @@ def get_R_view(mat_dim, lie_alg_init_scale, R_view_scale):
     return R_view
 
 
+def sample_sphere_points(mat_dim, n_points):
+    # Return: [1, 1, mat_dim, n_points]
+    init = tf.initializers.random_normal(0, 1)
+    raw_points = tf.get_variable('sphere_raw_points',
+                                 shape=[1, 1, mat_dim, n_points],
+                                 trainable=False,
+                                 initializer=init)
+    points, _ = tf.linalg.normalize(raw_points, axis=2)
+    return points
+
+
 def build_so_prior_G(latents_in,
                      name,
                      scope_idx,
@@ -52,6 +64,8 @@ def build_so_prior_G(latents_in,
                      lie_alg_init_scale=0.1,
                      R_view_scale=1,
                      mapping_after_exp=False,
+                     use_sphere_points=False,
+                     n_sphere_points=100,
                      is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         latent_dim = latents_in.get_shape().as_list()[-1]
@@ -90,15 +104,23 @@ def build_so_prior_G(latents_in,
         Rs_ls = []
         R_overall = get_R_view(mat_dim, lie_alg_init_scale,
                                R_view_scale)  # [1, 1, mat_dim, mat_dim]
+        if use_sphere_points:
+            print('using sphere points')
+            sphere_points = sample_sphere_points(
+                mat_dim, n_sphere_points)  # [1, 1, mat_dim, n_points]
         for i, R_i in enumerate(lie_groups_ls):
             R_overall = tf.matmul(R_overall, R_i)
-            Rs_ls.append(R_overall)
+            if use_sphere_points:
+                sphere_points_rot = tf.matmul(R_overall, sphere_points)
+            else:
+                sphere_points_rot = R_overall
+            Rs_ls.append(sphere_points_rot)
 
         lie_groups_as_fm = tf.concat(Rs_ls, axis=1)
-        lie_groups_as_tensor = tf.reshape(lie_groups_as_fm,
-                                          [-1, latent_dim * mat_dim * mat_dim])
+        # lie_groups_as_tensor = tf.reshape(lie_groups_as_fm,
+        # [-1, latent_dim * mat_dim * mat_dim])
+        lie_groups_as_tensor = tf.layers.flatten(lie_groups_as_fm)
         if mapping_after_exp:
-            print('using mapping_after_exp')
             feats_0 = tf.layers.dense(lie_groups_as_tensor,
                                       256,
                                       activation=tf.nn.relu)
