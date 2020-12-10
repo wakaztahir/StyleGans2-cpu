@@ -8,7 +8,7 @@
 
 # --- File Name: vae_so_networks.py
 # --- Creation Date: 05-12-2020
-# --- Last Modified: Tue 08 Dec 2020 18:20:22 AEDT
+# --- Last Modified: Thu 10 Dec 2020 22:14:14 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,16 +46,15 @@ def get_R_view(mat_dim, lie_alg_init_scale, R_view_scale):
     return R_view
 
 
-def sample_sphere_points(mat_dim, n_points):
+def sample_sphere_points(mat_dim, n_points, trainable=False):
     # Return: [1, 1, mat_dim, n_points]
     init = tf.initializers.random_normal(0, 1)
     raw_points = tf.get_variable('sphere_raw_points',
                                  shape=[1, 1, mat_dim, n_points],
-                                 trainable=False,
+                                 trainable=trainable,
                                  initializer=init)
     points, _ = tf.linalg.normalize(raw_points, axis=2)
     return points
-
 
 def build_so_prior_G(latents_in,
                      name,
@@ -65,6 +64,7 @@ def build_so_prior_G(latents_in,
                      R_view_scale=1,
                      mapping_after_exp=False,
                      use_sphere_points=False,
+                     use_learnable_sphere_points=False,
                      n_sphere_points=100,
                      is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
@@ -107,10 +107,14 @@ def build_so_prior_G(latents_in,
         if use_sphere_points:
             print('using sphere points')
             sphere_points = sample_sphere_points(
-                mat_dim, n_sphere_points)  # [1, 1, mat_dim, n_points]
+                mat_dim, n_sphere_points, trainable=False)  # [1, 1, mat_dim, n_points]
+        elif use_learnable_sphere_points:
+            print('using learnable sphere points')
+            sphere_points = sample_sphere_points(
+                mat_dim, n_sphere_points, trainable=True)  # [1, 1, mat_dim, n_points]
         for i, R_i in enumerate(lie_groups_ls):
             R_overall = tf.matmul(R_overall, R_i)
-            if use_sphere_points:
+            if use_sphere_points or use_learnable_sphere_points:
                 sphere_points_rot = tf.matmul(R_overall, sphere_points)
             else:
                 sphere_points_rot = R_overall
