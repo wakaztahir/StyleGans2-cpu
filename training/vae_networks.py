@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Thu 10 Dec 2020 22:38:50 AEDT
+# --- Last Modified: Fri 11 Dec 2020 00:08:42 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,6 +26,7 @@ from training.vae_standard_networks import build_standard_conv_E_64
 from training.vae_standard_networks import build_standard_conv_E_128
 from training.vae_standard_networks import build_standard_post_E
 from training.vae_standard_networks import build_standard_conv_G_64
+from training.vae_standard_networks import build_6layer_conv_G_64
 from training.vae_standard_networks import build_standard_conv_G_128
 from training.vae_standard_networks import build_standard_prior_G
 from training.vae_standard_networks import build_standard_fc_D_64
@@ -363,6 +364,15 @@ def G_main_modular(
                 is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(
+                d2_reshaped=x,
+                name=k,
+                scope_idx=scope_idx,
+                output_shape=[num_channels, resolution, resolution],
+                recons_type=recons_type,
+                is_validation=is_validation)
+            break
+        elif k == '6layer_G_64':
+            x = build_6layer_conv_G_64(
                 d2_reshaped=x,
                 name=k,
                 scope_idx=scope_idx,
