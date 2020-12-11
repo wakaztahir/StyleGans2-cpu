@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Thu 10 Dec 2020 22:40:07 AEDT
+# --- Last Modified: Fri 11 Dec 2020 16:49:33 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,6 +44,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
         group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
         drange_net=[-1, 1], recons_type='bernoulli_loss', R_view_scale=1,
+        group_feat_type='concat',
         use_sphere_points=False, use_learnable_sphere_points=False, n_sphere_points=100,
         use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
     train = EasyDict(
@@ -88,6 +89,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  lie_alg_init_type=lie_alg_init_type,
                  lie_alg_init_scale=lie_alg_init_scale,
                  R_view_scale=R_view_scale,
+                 group_feat_type=group_feat_type,
                  mapping_after_exp=mapping_after_exp,
                  use_sphere_points=use_sphere_points,
                  use_learnable_sphere_points=use_learnable_sphere_points,
@@ -643,6 +645,11 @@ def main():
                         default=100,
                         metavar='N_SPHERE_POINTS',
                         type=int)
+    parser.add_argument('--group_feat_type',
+                        help='Group_feat_type in so vae.',
+                        default='concat',
+                        metavar='GROUP_FEAT_TYPE',
+                        type=str)
 
     args = parser.parse_args()
 

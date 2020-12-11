@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 11 Dec 2020 00:08:42 AEDT
+# --- Last Modified: Fri 11 Dec 2020 16:48:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -201,6 +201,7 @@ def G_main_modular(
         lie_alg_init_type='oth',
         lie_alg_init_scale=0.1,
         R_view_scale=1,
+        group_feat_type='concat',
         fmap_min=16,
         fmap_max=512,
         fmap_decay=0.15,
@@ -357,6 +358,7 @@ def G_main_modular(
                 group_feats_size=group_feats_size,
                 lie_alg_init_scale=lie_alg_init_scale,
                 R_view_scale=R_view_scale,
+                group_feat_type=group_feat_type,
                 mapping_after_exp=mapping_after_exp,
                 use_sphere_points=use_sphere_points,
                 use_learnable_sphere_points=use_learnable_sphere_points,

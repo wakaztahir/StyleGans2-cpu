@@ -8,7 +8,7 @@
 
 # --- File Name: vae_so_networks.py
 # --- Creation Date: 05-12-2020
-# --- Last Modified: Thu 10 Dec 2020 22:14:14 AEDT
+# --- Last Modified: Fri 11 Dec 2020 16:52:00 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -62,6 +62,7 @@ def build_so_prior_G(latents_in,
                      group_feats_size,
                      lie_alg_init_scale=0.1,
                      R_view_scale=1,
+                     group_feat_type='concat',
                      mapping_after_exp=False,
                      use_sphere_points=False,
                      use_learnable_sphere_points=False,
@@ -120,7 +121,19 @@ def build_so_prior_G(latents_in,
                 sphere_points_rot = R_overall
             Rs_ls.append(sphere_points_rot)
 
-        lie_groups_as_fm = tf.concat(Rs_ls, axis=1)
+        if group_feat_type == 'concat':
+            print('using concat')
+            lie_groups_as_fm = tf.concat(Rs_ls, axis=1)
+        elif group_feat_type == 'last':
+            print('using last')
+            lie_groups_as_fm = Rs_ls[-1]
+        elif group_feat_type == 'sum':
+            print('using sum')
+            lie_groups_as_fm = 0.
+            for R in Rs_ls:
+                lie_groups_as_fm += R
+        else:
+            raise ValueError('Unknown group_feat_type:', group_feat_type)
         # lie_groups_as_tensor = tf.reshape(lie_groups_as_fm,
         # [-1, latent_dim * mat_dim * mat_dim])
         lie_groups_as_tensor = tf.layers.flatten(lie_groups_as_fm)
