@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_so.py
 # --- Creation Date: 06-12-2020
-# --- Last Modified: Fri 11 Dec 2020 17:21:05 AEDT
+# --- Last Modified: Fri 11 Dec 2020 17:26:03 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -55,8 +55,8 @@ def so_vae(E,
     # reconstruction_loss = tf.reduce_mean(reconstruction_loss)
     reconstruction_loss = autosummary('Loss/recons_loss', reconstruction_loss)
 
-    elbo = reconstruction_loss + kl_loss
+    elbo = reconstruction_loss + hy_beta * kl_loss
     elbo = autosummary('Loss/so_vae_elbo', elbo)
-    loss = elbo + (hy_beta-1) * kl_loss + hy_1p * tf.reduce_sum(lie_vars * lie_vars)
+    loss = elbo + hy_1p * tf.reduce_sum(lie_vars * lie_vars)
     loss = autosummary('Loss/so_vae_loss', loss)
     return loss
