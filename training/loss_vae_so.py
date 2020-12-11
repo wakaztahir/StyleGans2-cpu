@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_so.py
 # --- Creation Date: 06-12-2020
-# --- Last Modified: Tue 08 Dec 2020 02:47:15 AEDT
+# --- Last Modified: Fri 11 Dec 2020 17:21:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -33,6 +33,7 @@ def so_vae(E,
            reals,
            labels,
            hy_1p=0,
+           hy_beta=1,
            latent_type='normal',
            recons_type='bernoulli_loss'):
     _ = opt, training_set
@@ -56,6 +57,6 @@ def so_vae(E,
 
     elbo = reconstruction_loss + kl_loss
     elbo = autosummary('Loss/so_vae_elbo', elbo)
-    loss = elbo + hy_1p * tf.reduce_sum(lie_vars * lie_vars)
+    loss = elbo + (hy_beta-1) * kl_loss + hy_1p * tf.reduce_sum(lie_vars * lie_vars)
     loss = autosummary('Loss/so_vae_loss', loss)
     return loss
