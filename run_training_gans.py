@@ -6,13 +6,13 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: run_training_vaes.py
-# --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 14 Dec 2020 17:06:24 AEDT
+# --- File Name: run_training_gans.py
+# --- Creation Date: 11-12-2020
+# --- Last Modified: Fri 11 Dec 2020 17:59:24 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Run training file Variational Autoencoders.
+Run training file Generative Adversarial Networks.
 Code borrowed from run_training.py from NVIDIA.
 """
 
@@ -37,18 +37,16 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         D_fmap_base=9, module_D_list=None, D_nf_scale=4,
         fmap_decay=0.15, fmap_min=16, fmap_max=512,
         n_samples_per=10, arch='resnet', topk_dims_to_show=20,
-        hy_beta=1, hy_gamma=0, hy_dcp=40, hy_ncut=1, hy_ncut_G=1, hy_rec=20, hy_hes=20, hy_lin=20,
-        hy_mat=80, hy_gmat=0, hy_oth=80, hy_det=0, hy_1p=0,
-        hessian_type='no_act_points', n_act_points=10, lie_alg_init_type='oth',
+        hy_beta=1, hy_gamma=0, hy_1p=0,
+        lie_alg_init_type='oth',
         lie_alg_init_scale=0.1, G_lrate_base=0.002, D_lrate_base=None,
-        lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
         group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
         drange_net=[-1, 1], recons_type='bernoulli_loss', R_view_scale=1,
         group_feat_type='concat',
         use_sphere_points=False, use_learnable_sphere_points=False, n_sphere_points=100,
-        use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
+        mapping_after_exp=False, snapshot_ticks=10):
     train = EasyDict(
-        run_func_name='training.training_loop_vae.training_loop_vae'
+        run_func_name='training.training_loop_gan.training_loop_gan'
     )  # Options for training loop.
 
     if not (module_G_list is None):
@@ -64,8 +62,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         key_D_ls, size_D_ls, count_dlatent_D_size = split_module_names(
             module_D_list)
 
-    D = D_opt = D_loss = None
-    E = EasyDict(func_name='training.vae_networks.E_main_modular',
+    E = EasyDict(func_name='training.gan_networks.E_main_modular',
                  fmap_min=fmap_min,
                  fmap_max=fmap_max,
                  fmap_decay=fmap_decay,
@@ -75,7 +72,17 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  nf_scale=E_nf_scale,
                  n_discrete=n_discrete,
                  fmap_base=2 << E_fmap_base)  # Options for encoder network.
-    G = EasyDict(func_name='training.vae_networks.G_main_modular',
+    D = EasyDict(func_name='training.gan_networks.D_main_modular',
+                 fmap_min=fmap_min,
+                 fmap_max=fmap_max,
+                 fmap_decay=fmap_decay,
+                 latent_size=count_dlatent_D_size,
+                 group_feats_size=group_feats_size,
+                 module_D_list=module_D_list,
+                 nf_scale=D_nf_scale,
+                 n_discrete=n_discrete,
+                 fmap_base=2 << D_fmap_base)  # Options for discriminator network.
+    G = EasyDict(func_name='training.gan_networks.G_main_modular',
                  fmap_min=fmap_min,
                  fmap_max=fmap_max,
                  fmap_decay=fmap_decay,
@@ -85,7 +92,6 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  nf_scale=G_nf_scale,
                  n_discrete=n_discrete,
                  recons_type=recons_type,
-                 n_act_points=n_act_points,
                  lie_alg_init_type=lie_alg_init_type,
                  lie_alg_init_scale=lie_alg_init_scale,
                  R_view_scale=R_view_scale,
@@ -94,154 +100,25 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  use_sphere_points=use_sphere_points,
                  use_learnable_sphere_points=use_learnable_sphere_points,
                  n_sphere_points=n_sphere_points,
-                 hy_ncut=hy_ncut_G,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
-    if model_type == 'factor_vae' or model_type == 'factor_sindis_vae':  # Factor-VAE
-        D = EasyDict(
-            func_name='training.vae_networks.D_factor_vae_modular',
-            fmap_min=fmap_min,
-            fmap_max=fmap_max,
-            fmap_decay=fmap_decay,
-            latent_size=count_dlatent_D_size,
-            module_D_list=module_D_list,
-            nf_scale=D_nf_scale,
-            fmap_base=2 << D_fmap_base)  # Options for generator network.
-        D_opt = EasyDict(beta1=0.5, beta2=0.9,
-                         epsilon=1e-8)  # Options for discriminator optimizer.
+    D_opt = EasyDict(beta1=0.9, beta2=0.999,
+                     epsilon=1e-8)  # Options for discriminator optimizer.
     desc = model_type + '_modular'
 
-    if model_type == 'beta_vae':  # Beta-VAE
+    if model_type == 'so_gan':
         G_loss = EasyDict(
-            func_name='training.loss_vae.beta_vae',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'betatc_vae':  # BetaTC-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.betatc_vae',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'coma_vae':  # COMA-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.coma_vae',
-            latent_type=latent_type,
-            hy_gamma=hy_gamma,
-            epsilon=epsilon,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'lie_vae':  # LieVAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae_lie.lie_vae',
-            latent_type=latent_type,
-            hy_rec=hy_rec,
-            hy_dcp=hy_dcp,
-            hy_hes=hy_hes,
-            hy_lin=hy_lin,
-            hy_ncut=hy_ncut,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'lie_vae_with_split':  # LieVAE with split loss
-        G_loss = EasyDict(
-            func_name='training.loss_vae_lie.lie_vae_with_split',
-            latent_type=latent_type,
-            hy_rec=hy_rec,
-            hy_dcp=hy_dcp,
-            hy_hes=hy_hes,
-            hy_lin=hy_lin,
-            hy_ncut=hy_ncut,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_vae_v2':  # GroupVAE-v2
-        G_loss = EasyDict(
-            func_name='training.loss_vae_group_v2.group_act_vae',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            hy_rec=hy_rec,
-            hy_gmat=hy_gmat,
-            hy_dcp=hy_dcp,
-            hy_hes=hy_hes,
-            hy_lin=hy_lin,
-            hy_ncut=hy_ncut,
-            hessian_type=hessian_type,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_vae_spl_v2':  # GroupVAE-v2
-        G_loss = EasyDict(
-            func_name='training.loss_vae_group_v2.group_act_spl_vae',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            hy_rec=hy_rec,
-            hy_gmat=hy_gmat,
-            hy_dcp=hy_dcp,
-            hy_hes=hy_hes,
-            hy_lin=hy_lin,
-            hy_ncut=hy_ncut,
-            hessian_type=hessian_type,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_vae':  # Group-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.group_vae',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            hy_dcp=hy_dcp,
-            hy_ncut=hy_ncut,
-            hy_rec=hy_rec,
-            hy_mat=hy_mat,
-            hy_gmat=hy_gmat,
-            hy_oth=hy_oth,
-            hy_det=hy_det,
-            use_group_decomp=use_group_decomp,
-            group_loss_type=group_loss_type,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_vae_wc':  # Group-VAE-with_Cat
-        G_loss = EasyDict(
-            func_name='training.loss_vae.group_vae_wc',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            hy_gamma=hy_gamma,
-            temp=temp,
-            use_group_decomp=use_group_decomp,
-            group_loss_type=group_loss_type,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_norm_vae':  # GroupVAE-v2
-        G_loss = EasyDict(
-            func_name='training.loss_vae_group_v3.group_norm_vae',
-            latent_type=latent_type,
-            hy_beta=hy_beta,
-            hy_hes=hy_hes,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'so_vae':
-        G_loss = EasyDict(
-            func_name='training.loss_vae_so.so_vae',
+            func_name='training.loss_gan_so.so_gan',
             hy_1p=hy_1p,
             hy_beta=hy_beta,
             latent_type=latent_type,
             recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'dip_vae_i' or model_type == 'dip_vae_ii':  # DIP-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.dip_vae',
-            lambda_d_factor=lambda_d_factor,
-            lambda_od=lambda_od,
-            latent_type=latent_type,
-            dip_type=model_type,
-            recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'factor_vae':  # Factor-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.factor_vae_G',
-            latent_type=latent_type,
-            hy_gamma=hy_gamma,
-            recons_type=recons_type)  # Options for generator loss.
         D_loss = EasyDict(
-            func_name='training.loss_vae.factor_vae_D',
+            func_name='training.loss_gan.gan_D',
             latent_type=latent_type)  # Options for discriminator loss.
-    elif model_type == 'factor_sindis_vae':  # Factor-VAE
-        G_loss = EasyDict(
-            func_name='training.loss_vae.factor_vae_sindis_G',
-            latent_type=latent_type,
-            hy_gamma=hy_gamma,
-            recons_type=recons_type)  # Options for generator loss.
-        D_loss = EasyDict(
-            func_name='training.loss_vae.factor_vae_sindis_D',
-            latent_type=latent_type)  # Options for discriminator loss.
+    else:
+        raise ValueError('Unknown model_type:', model_type)
 
     sched = EasyDict()  # Options for TrainingSchedule.
     grid = EasyDict(
@@ -335,7 +212,7 @@ def _parse_comma_sep(s):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Train VAEs.',
+        description='Train GANs.',
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         '--result-dir',
@@ -369,15 +246,10 @@ def main():
         type=_parse_comma_sep)
     parser.add_argument('--model_type',
                         help='Type of model to train',
-                        default='beta_vae',
+                        default='so_gan',
                         type=str,
                         metavar='MODEL_TYPE',
-                        choices=[
-                            'beta_vae', 'factor_vae', 'factor_sindis_vae',
-                            'dip_vae_i', 'dip_vae_ii', 'betatc_vae',
-                            'group_vae', 'group_vae_wc', 'group_vae_v2', 'group_vae_spl_v2',
-                            'lie_vae', 'lie_vae_with_split', 'coma_vae', 'so_vae', 'group_norm_vae'
-                        ])
+                        choices=['so_gan'])
     parser.add_argument('--resume_pkl',
                         help='Continue training using pretrained pkl.',
                         default=None,
@@ -502,41 +374,6 @@ def main():
                         metavar='EPSILON',
                         default=1,
                         type=float)
-    parser.add_argument('--hy_dcp',
-                        help='Hyper-param for decompose in GroupVAE and LieVAE.',
-                        metavar='HY_DCP',
-                        default=1,
-                        type=float)
-    parser.add_argument('--hy_hes',
-                        help='Hyper-param for Hessian in LieVAE.',
-                        metavar='HY_HES',
-                        default=1,
-                        type=float)
-    parser.add_argument('--hy_lin',
-                        help='Hyper-param for linear dependency in LieVAE.',
-                        metavar='HY_LIN',
-                        default=1,
-                        type=float)
-    parser.add_argument('--hy_ncut',
-                        help='Hyper-param for number of cuts in GroupVAE.',
-                        metavar='HY_NCUT',
-                        default=1,
-                        type=int)
-    parser.add_argument('--hy_ncut_G',
-                        help='Hyper-param for number of cuts in GroupVAE model construction.',
-                        metavar='HY_NCUT_G',
-                        default=1,
-                        type=int)
-    parser.add_argument('--n_act_points',
-                        help='Hyper-param for number of points for act on in GroupVAEv2.',
-                        metavar='N_ACT_POINTS',
-                        default=10,
-                        type=int)
-    parser.add_argument('--hessian_type',
-                        help='Hessian type in GroupVAEv2.',
-                        metavar='HESSIAN_TYPE',
-                        default='no_act_points',
-                        type=str)
     parser.add_argument('--lie_alg_init_type',
                         help='Hyper-param for lie_alg_init_type.',
                         metavar='LIE_ALG_INIT_TYPE',
@@ -548,38 +385,12 @@ def main():
                         default=0.1,
                         type=float)
     parser.add_argument('--R_view_scale',
-                        help='Hyper-param for R_view scale in so vae.',
+                        help='Hyper-param for R_view scale in so gan.',
                         metavar='R_view_scale',
                         default=1,
                         type=float)
-    parser.add_argument(
-        '--hy_rec',
-        help='Hyper-param for gfeats reconstruction in GroupVAE and LieVAE.',
-        metavar='HY_REC',
-        default=1,
-        type=float)
-    parser.add_argument('--hy_mat',
-                        help='Hyper-param for mat_mul in GroupVAE.',
-                        metavar='HY_MAT',
-                        default=1,
-                        type=float)
-    parser.add_argument('--hy_gmat',
-                        help='Hyper-param for G mat_mul in GroupVAE.',
-                        metavar='HY_GMAT',
-                        default=0,
-                        type=float)
-    parser.add_argument('--hy_oth',
-                        help='Hyper-param for G mat_mul in GroupVAE.',
-                        metavar='HY_OTH',
-                        default=1,
-                        type=float)
-    parser.add_argument('--hy_det',
-                        help='Hyper-param for determinant in GroupVAE.',
-                        metavar='HY_DET',
-                        default=0,
-                        type=float)
     parser.add_argument('--hy_1p',
-                        help='Hyper-param for oneparam in SO_VAE.',
+                        help='Hyper-param for oneparam in SO_GAN.',
                         metavar='HY_1P',
                         default=0,
                         type=float)
@@ -604,28 +415,13 @@ def main():
                         metavar='RECONS_TYPE',
                         type=str,
                         choices=['l2_loss', 'bernoulli_loss'])
-    parser.add_argument('--lambda_d_factor',
-                        help='DIP vae lambda_d_factor.',
-                        metavar='LAMBDA_D_FACTOR',
-                        default=10.,
-                        type=float)
-    parser.add_argument('--lambda_od',
-                        help='DIP vae lambda_od.',
-                        metavar='LAMBDA_OD',
-                        default=1.,
-                        type=float)
-    parser.add_argument('--group_loss_type',
-                        help='Group vae loss type.',
-                        metavar='GROUP_LOSS_TYPE',
-                        default='_rec_mat_',
-                        type=str)
     parser.add_argument('--group_feats_size',
-                        help='Group vae group_feats_size.',
+                        help='Group gan group_feats_size.',
                         metavar='GROUP_FEATS_SIZE',
                         default=400,
                         type=int)
     parser.add_argument('--temp',
-                        help='Group vae with discrete latents. Gumbel temp.',
+                        help='Group gan with discrete latents. Gumbel temp.',
                         metavar='TEMP',
                         default=0.67,
                         type=float)
@@ -634,33 +430,28 @@ def main():
                         metavar='N_DISCRETE',
                         default=0,
                         type=int)
-    parser.add_argument('--use_group_decomp',
-                        help='If use group decomposition loss in group vae',
-                        default=True,
-                        metavar='USE_GROUP_DECOMP',
-                        type=_str_to_bool)
     parser.add_argument('--mapping_after_exp',
-                        help='If use a layer of mapping after exp in so vae',
+                        help='If use a layer of mapping after exp in so gan',
                         default=False,
                         metavar='MAPPING_AFTER_EXP',
                         type=_str_to_bool)
     parser.add_argument('--use_sphere_points',
-                        help='If use sphere points in so vae',
+                        help='If use sphere points in so gan',
                         default=False,
                         metavar='USE_SPHERE_POINTS',
                         type=_str_to_bool)
     parser.add_argument('--use_learnable_sphere_points',
-                        help='If use learnable sphere points in so vae',
+                        help='If use learnable sphere points in so gan',
                         default=False,
                         metavar='USE_LEARNABLE_SPHERE_POINTS',
                         type=_str_to_bool)
     parser.add_argument('--n_sphere_points',
-                        help='How many sphere points used in so vae',
+                        help='How many sphere points used in so gan',
                         default=100,
                         metavar='N_SPHERE_POINTS',
                         type=int)
     parser.add_argument('--group_feat_type',
-                        help='Group_feat_type in so vae.',
+                        help='Group_feat_type in so gan.',
                         default='concat',
                         metavar='GROUP_FEAT_TYPE',
                         type=str)

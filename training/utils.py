@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 04 Nov 2020 23:18:55 AEDT
+# --- Last Modified: Fri 11 Dec 2020 18:07:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -118,3 +118,37 @@ def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels, to
     # grid_labels = np.tile(grid_labels[:1],
                           # (n_discrete * n_continuous * n_samples_per, 1))
     return grid_size, grid_latents, grid_labels
+
+#----------------------------------------------------------------------------
+# Evaluate time-varying training parameters.
+
+def training_schedule(
+    cur_nimg,
+    training_set,
+    minibatch_size_base     = 32,       # Global minibatch size.
+    minibatch_gpu_base      = 4,        # Number of samples processed at a time by one GPU.
+    G_lrate_base            = 0.002,    # Learning rate for the generator.
+    D_lrate_base            = 0.002,    # Learning rate for the discriminator.
+    lrate_rampup_kimg       = 0,        # Duration of learning rate ramp-up.
+    tick_kimg_base          = 4,        # Default interval of progress snapshots.
+    tick_kimg_dict          = {8:28, 16:24, 32:20, 64:16, 128:12, 256:8, 512:6, 1024:4}): # Resolution-specific overrides.
+
+    # Initialize result dict.
+    s = dnnlib.EasyDict()
+    s.kimg = cur_nimg / 1000.0
+
+    # Minibatch size.
+    s.minibatch_size = minibatch_size_base
+    s.minibatch_gpu = minibatch_gpu_base
+
+    # Learning rate.
+    s.G_lrate = G_lrate_base
+    s.D_lrate = D_lrate_base
+    if lrate_rampup_kimg > 0:
+        rampup = min(s.kimg / lrate_rampup_kimg, 1.0)
+        s.G_lrate *= rampup
+        s.D_lrate *= rampup
+
+    # Other parameters.
+    s.tick_kimg = tick_kimg_dict.get(training_set.shape[1], tick_kimg_base)
+    return s

@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 11 Dec 2020 16:48:05 AEDT
+# --- Last Modified: Mon 14 Dec 2020 16:25:10 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -45,6 +45,7 @@ from training.vae_group_networks import build_group_sim_prior_G_wc
 from training.vae_group_networks import build_group_sim_prior_down_G
 from training.vae_group_networks_v2 import build_group_act_sim_prior_G
 from training.vae_group_networks_v2 import build_group_act_spl_sim_prior_G
+from training.vae_group_networks_v3 import build_group_norm_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G_oth
 from training.vae_lie_networks import build_lie_sim_prior_G_oth_l2
@@ -215,6 +216,7 @@ def G_main_modular(
         use_learnable_sphere_points=False,
         n_sphere_points=100,
         group_feats_size=400,  # Should be square of an integer.
+        hy_ncut=1,
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -307,6 +309,16 @@ def G_main_modular(
                 scope_idx=scope_idx,
                 group_feats_size=group_feats_size,
                 n_act_points=n_act_points,
+                lie_alg_init_type=lie_alg_init_type,
+                lie_alg_init_scale=lie_alg_init_scale,
+                is_validation=is_validation)
+        elif k == 'Group_norm_prior_sim_G':
+            x, group_feats, lie_alg_feats, lie_alg_basis, lie_vars = build_group_norm_prior_G(
+                latents_in=x,
+                name=k,
+                scope_idx=scope_idx,
+                group_feats_size=group_feats_size,
+                hy_ncut=hy_ncut,
                 lie_alg_init_type=lie_alg_init_type,
                 lie_alg_init_scale=lie_alg_init_scale,
                 is_validation=is_validation)

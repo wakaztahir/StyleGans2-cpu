@@ -6,13 +6,13 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-# --- File Name: training_loop_vae.py
-# --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 11 Dec 2020 18:07:58 AEDT
+# --- File Name: training_loop_gan.py
+# --- Creation Date: 11-12-2020
+# --- Last Modified: Fri 11 Dec 2020 18:49:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Training loop file for VAE related networks.
+Training loop file for GAN related networks.
 Code borrowed from training_loop.py of NVIDIA.
 """
 
@@ -32,44 +32,9 @@ from training.utils import add_outline, get_grid_latents, get_return_v
 from training.utils import training_schedule
 
 #----------------------------------------------------------------------------
-# Evaluate time-varying training parameters.
-
-def training_schedule(
-    cur_nimg,
-    training_set,
-    minibatch_size_base     = 32,       # Global minibatch size.
-    minibatch_gpu_base      = 4,        # Number of samples processed at a time by one GPU.
-    G_lrate_base            = 0.002,    # Learning rate for the generator.
-    D_lrate_base            = 0.002,    # Learning rate for the discriminator.
-    lrate_rampup_kimg       = 0,        # Duration of learning rate ramp-up.
-    tick_kimg_base          = 4,        # Default interval of progress snapshots.
-    tick_kimg_dict          = {8:28, 16:24, 32:20, 64:16, 128:12, 256:8, 512:6, 1024:4}): # Resolution-specific overrides.
-
-    # Initialize result dict.
-    s = dnnlib.EasyDict()
-    s.kimg = cur_nimg / 1000.0
-
-    # Minibatch size.
-    s.minibatch_size = minibatch_size_base
-    s.minibatch_gpu = minibatch_gpu_base
-
-    # Learning rate.
-    s.G_lrate = G_lrate_base
-    s.D_lrate = D_lrate_base
-    if lrate_rampup_kimg > 0:
-        rampup = min(s.kimg / lrate_rampup_kimg, 1.0)
-        s.G_lrate *= rampup
-        s.D_lrate *= rampup
-
-    # Other parameters.
-    s.tick_kimg = tick_kimg_dict.get(training_set.shape[1], tick_kimg_base)
-    return s
-
-#----------------------------------------------------------------------------
 # Main training script.
 
-
-def training_loop_vae(
+def training_loop_gan(
         G_args={},  # Options for generator network.
         E_args={},  # Options for encoder network.
         D_args={},  # Options for discriminator network.
@@ -83,6 +48,7 @@ def training_loop_vae(
         metric_arg_list=[],  # Options for MetricGroup.
         tf_config={},  # Options for tflib.init_tf().
         data_dir=None,  # Directory to load datasets from.
+        G_smoothing_kimg=10.0,  # Half-life of the running average of generator weights.
         minibatch_repeats=1,  # Number of minibatches to run before adjusting training parameters.
         total_kimg=25000,  # Total length of the training, measured in thousands of real images.
         mirror_augment=False,  # Enable mirror augment?
@@ -98,6 +64,7 @@ def training_loop_vae(
         traversal_grid=False,  # Used for disentangled representation learning.
         n_discrete=0,  # Number of discrete latents in model.
         n_continuous=4,  # Number of continuous latents in model.
+        avg_mv_for_E=False,  # If use average moving for I.
         topk_dims_to_show=20, # Number of top disentant dimensions to show in a snapshot.
         n_samples_per=10):  # Number of samples for each line in traversal.
 
@@ -106,7 +73,7 @@ def training_loop_vae(
     num_gpus = dnnlib.submit_config.num_gpus
 
     # If use Discriminator.
-    use_D = D_args is not None
+    use_E = E_args is not None
 
     # Load training set.
     training_set = dataset.load_dataset(data_dir=dnnlib.convert_path(data_dir),
@@ -124,47 +91,60 @@ def training_loop_vae(
     with tf.device('/gpu:0'):
         if resume_pkl is None or resume_with_new_nets:
             print('Constructing networks...')
-            E = tflib.Network('E',
+            D = tflib.Network('D',
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
                               input_shape=[None]+training_set.shape,
-                              **E_args)
+                              **D_args)
             G = tflib.Network('G',
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
                               input_shape=[None, n_discrete+G_args.latent_size],
                               **G_args)
-            if use_D:
-                D = tflib.Network('D',
+            if use_E:
+                E = tflib.Network('E',
                                   num_channels=training_set.shape[0],
                                   resolution=training_set.shape[1],
                                   label_size=training_set.label_size,
-                                  input_shape=[None, D_args.latent_size],
-                                  **D_args)
+                                  input_shape=[None]+training_set.shape,
+                                  **E_args)
+                if avg_mv_for_E:
+                    Es = E.clone('Es')
+            Gs = G.clone('Gs')
         if resume_pkl is not None:
             print('Loading networks from "%s"...' % resume_pkl)
-            if use_D:
-                rE, rG, rD = misc.load_pkl(resume_pkl)
+            if use_E:
+                if avg_mv_for_E:
+                    rG, rD, rE, rGs, rEs = misc.load_pkl(resume_pkl)
+                else:
+                    rG, rD, rE, rGs = misc.load_pkl(resume_pkl)
             else:
-                rE, rG = misc.load_pkl(resume_pkl)
+                rG, rD, rGs = misc.load_pkl(resume_pkl)
+
             if resume_with_new_nets:
-                E.copy_vars_from(rE)
+                D.copy_vars_from(rD)
                 G.copy_vars_from(rG)
-                if use_D:
-                    D.copy_vars_from(rD)
+                if use_E:
+                    E.copy_vars_from(rE)
+                    if avg_mv_for_E:
+                        Es.copy_vars_from(rEs)
+                Gs.copy_vars_from(rGs)
             else:
-                E = rE
+                D = rD
                 G = rG
-                if use_D:
-                    D = rD
+                if use_E:
+                    E = rE
+                    if avg_mv_for_E:
+                        Es = rEs
+                Gs = rGs
 
     # Print layers and generate initial image snapshot.
-    E.print_layers()
+    D.print_layers()
     G.print_layers()
-    if use_D:
-        D.print_layers()
+    if use_E:
+        E.print_layers()
     sched = training_schedule(cur_nimg=total_kimg * 1000,
                               training_set=training_set,
                               **sched_args)
@@ -177,11 +157,11 @@ def training_loop_vae(
     print('grid_size:', grid_size)
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
-    grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(grid_latents,
-                                                                grid_labels,
-                                                                is_validation=True,
-                                                                minibatch_size=sched.minibatch_gpu,
-                                                                randomize_noise=True), 8)
+    grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(Gs.run(grid_latents,
+                                                                 grid_labels,
+                                                                 is_validation=True,
+                                                                 minibatch_size=sched.minibatch_gpu,
+                                                                 randomize_noise=True), 8)
     print('Lie_vars:', lie_vars[0])
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
@@ -201,17 +181,19 @@ def training_loop_vae(
                                           shape=[])
         minibatch_multiplier = minibatch_size_in // (minibatch_gpu_in *
                                                      num_gpus)
+        Gs_beta = 0.5**tf.div(tf.cast(minibatch_size_in,
+                                      tf.float32), G_smoothing_kimg *
+                              1000.0) if G_smoothing_kimg > 0.0 else 0.0
 
     # Setup optimizers.
     G_opt_args = dict(G_opt_args)
     G_opt_args['minibatch_multiplier'] = minibatch_multiplier
     G_opt_args['learning_rate'] = lrate_in
     G_opt = tflib.Optimizer(name='TrainG', **G_opt_args)
-    if use_D:
-        D_opt_args = dict(D_opt_args)
-        D_opt_args['minibatch_multiplier'] = minibatch_multiplier
-        D_opt_args['learning_rate'] = lrate_in
-        D_opt = tflib.Optimizer(name='TrainD', **D_opt_args)
+    D_opt_args = dict(D_opt_args)
+    D_opt_args['minibatch_multiplier'] = minibatch_multiplier
+    D_opt_args['learning_rate'] = lrate_in
+    D_opt = tflib.Optimizer(name='TrainD', **D_opt_args)
 
     # Build training graph for each GPU.
     data_fetch_ops = []
@@ -219,10 +201,12 @@ def training_loop_vae(
         with tf.name_scope('GPU%d' % gpu), tf.device('/gpu:%d' % gpu):
 
             # Create GPU-specific shadow copies of G and D.
-            E_gpu = E if gpu == 0 else E.clone(E.name + '_shadow')
+            D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
             G_gpu = G if gpu == 0 else G.clone(G.name + '_shadow')
-            if use_D:
-                D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
+            if use_E:
+                E_gpu = E if gpu == 0 else E.clone(E.name + '_shadow')
+            else:
+                E_gpu = None
 
             # Fetch training data via temporary variables.
             with tf.name_scope('DataFetch'):
@@ -252,46 +236,40 @@ def training_loop_vae(
                 labels_read = labels_var[:minibatch_gpu_in]
 
             # Evaluate loss functions.
-            if use_D:
-                with tf.name_scope('G_loss'):
-                    G_loss = dnnlib.util.call_func_by_name(
-                        E=E_gpu, G=G_gpu, D=D_gpu, opt=G_opt,
-                        training_set=training_set,
-                        minibatch_size=minibatch_gpu_in,
-                        reals=reals_read, labels=labels_read, **G_loss_args)
-                with tf.name_scope('D_loss'):
-                    D_loss = dnnlib.util.call_func_by_name(
-                        E=E_gpu, D=D_gpu, opt=D_opt,
-                        training_set=training_set,
-                        minibatch_size=minibatch_gpu_in,
-                        reals=reals_read, labels=labels_read, **D_loss_args)
-            else:
-                with tf.name_scope('G_loss'):
-                    G_loss = dnnlib.util.call_func_by_name(
-                        E=E_gpu, G=G_gpu, opt=G_opt,
-                        training_set=training_set,
-                        minibatch_size=minibatch_gpu_in,
-                        reals=reals_read, labels=labels_read, **G_loss_args)
+            with tf.name_scope('G_loss'):
+                G_loss, G_reg = dnnlib.util.call_func_by_name(
+                    G=G_gpu, D=D_gpu, E=E_gpu, opt=G_opt,
+                    training_set=training_set,
+                    minibatch_size=minibatch_gpu_in,
+                    reals=reals_read, labels=labels_read, **G_loss_args)
+            with tf.name_scope('D_loss'):
+                D_loss, D_reg = dnnlib.util.call_func_by_name(
+                    G=G_gpu, D=D_gpu, E=E_gpu, opt=D_opt,
+                    training_set=training_set,
+                    minibatch_size=minibatch_gpu_in,
+                    reals=reals_read, labels=labels_read, **D_loss_args)
+            if G_reg is not None: G_loss += G_reg
+            if D_reg is not None: D_loss += D_reg
 
             # Register gradients.
-            EG_gpu_trainables = collections.OrderedDict(
-                    list(E_gpu.trainables.items()) +
-                    list(G_gpu.trainables.items()))
+            if use_E:
+                gpu_trainables = collections.OrderedDict(
+                        list(E_gpu.trainables.items()) +
+                        list(G_gpu.trainables.items()))
+            else:
+                gpu_trainables = G_gpu.trainables
             G_opt.register_gradients(tf.reduce_mean(G_loss),
-                                     EG_gpu_trainables)
-            # G_opt.register_gradients(G_loss,
-                                     # EG_gpu_trainables)
-            if use_D:
-                D_opt.register_gradients(tf.reduce_mean(D_loss),
-                                         D_gpu.trainables)
-                # D_opt.register_gradients(D_loss,
-                                         # D_gpu.trainables)
+                                     gpu_trainables)
+            D_opt.register_gradients(tf.reduce_mean(D_loss),
+                                     D_gpu.trainables)
 
     # Setup training ops.
     data_fetch_op = tf.group(*data_fetch_ops)
     G_train_op = G_opt.apply_updates()
-    if use_D:
-        D_train_op = D_opt.apply_updates()
+    D_train_op = D_opt.apply_updates()
+    Gs_update_op = Gs.setup_as_moving_average_of(G, beta=Gs_beta)
+    if avg_mv_for_E:
+        Es_update_op = Es.setup_as_moving_average_of(E, beta=Gs_beta)
 
     # Finalize graph.
     with tf.device('/gpu:0'):
@@ -307,8 +285,9 @@ def training_loop_vae(
         summary_log.add_graph(tf.get_default_graph())
     if save_weight_histograms:
         G.setup_weight_histograms()
-        if use_D:
-            D.setup_weight_histograms()
+        D.setup_weight_histograms()
+        if use_E:
+            E.setup_weight_histograms()
     metrics = metric_base.MetricGroup(metric_arg_list)
 
     print('Training for %d kimg...\n' % total_kimg)
@@ -345,19 +324,23 @@ def training_loop_vae(
 
             # Fast path without gradient accumulation.
             if len(rounds) == 1:
-                tflib.run([G_train_op], feed_dict)
-                tflib.run([data_fetch_op], feed_dict)
-                if use_D:
-                    tflib.run([D_train_op], feed_dict)
+                tflib.run([G_train_op, data_fetch_op], feed_dict)
+                if avg_mv_for_E:
+                    tflib.run([D_train_op, Gs_update_op, Es_update_op], feed_dict)
+                else:
+                    tflib.run([D_train_op, Gs_update_op], feed_dict)
 
             # Slow path with gradient accumulation.
             else:
                 for _round in rounds:
                     tflib.run(G_train_op, feed_dict)
+                if avg_mv_for_E:
+                    tflib.run([Gs_update_op, Es_update_op], feed_dict)
+                else:
+                    tflib.run(Gs_update_op, feed_dict)
                 for _round in rounds:
                     tflib.run(data_fetch_op, feed_dict)
-                    if use_D:
-                        tflib.run(D_train_op, feed_dict)
+                    tflib.run(D_train_op, feed_dict)
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
@@ -390,16 +373,19 @@ def training_loop_vae(
                     cur_tick % network_snapshot_ticks == 0 or done):
                 pkl = dnnlib.make_run_dir_path('network-snapshot-%06d.pkl' %
                                                (cur_nimg // 1000))
-                if use_D:
-                    misc.save_pkl((E, G, D), pkl)
+                if use_E:
+                    if avg_mv_for_E:
+                        misc.save_pkl((G, D, E, Gs, Es), pkl)
+                    else:
+                        misc.save_pkl((G, D, E, Gs), pkl)
                 else:
-                    misc.save_pkl((E, G), pkl)
+                    misc.save_pkl((G, D, Gs), pkl)
                 met_outs = metrics.run(pkl,
                                        run_dir=dnnlib.make_run_dir_path(),
                                        data_dir=dnnlib.convert_path(data_dir),
                                        num_gpus=num_gpus,
                                        tf_config=tf_config,
-                                       is_vae=True, use_D=use_D,
+                                       is_vae=True, use_E=use_E,
                                        Gs_kwargs=dict(is_validation=True))
                 if 'tpl_per_dim' in met_outs:
                     avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
@@ -415,11 +401,11 @@ def training_loop_vae(
                 else:
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
-                grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(grid_latents,
-                                                                            grid_labels,
-                                                                            is_validation=True,
-                                                                            minibatch_size=sched.minibatch_gpu,
-                                                                            randomize_noise=True), 8)
+                grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(Gs.run(grid_latents,
+                                                                             grid_labels,
+                                                                             is_validation=True,
+                                                                             minibatch_size=sched.minibatch_gpu,
+                                                                             randomize_noise=True), 8)
                 print('Lie_vars:', lie_vars[0])
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
@@ -438,11 +424,15 @@ def training_loop_vae(
             ).get_last_update_interval() - tick_time
 
     # Save final snapshot.
-    if use_D:
-        misc.save_pkl((E, G, D),
-                      dnnlib.make_run_dir_path('network-final.pkl'))
+    if use_E:
+        if avg_mv_for_E:
+            misc.save_pkl((G, D, E, Gs, Es),
+                          dnnlib.make_run_dir_path('network-final.pkl'))
+        else:
+            misc.save_pkl((G, D, E, Gs),
+                          dnnlib.make_run_dir_path('network-final.pkl'))
     else:
-        misc.save_pkl((E, G),
+        misc.save_pkl((G, D, Gs),
                       dnnlib.make_run_dir_path('network-final.pkl'))
 
     # All done.

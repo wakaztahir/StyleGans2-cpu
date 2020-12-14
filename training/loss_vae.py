@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae.py
 # --- Creation Date: 15-08-2020
-# --- Last Modified: Fri 16 Oct 2020 21:59:43 AEDT
+# --- Last Modified: Mon 14 Dec 2020 15:37:49 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -541,9 +541,10 @@ def split_latents_1cut(x, minibatch_size):
     return x * mask_1, x * mask_2
 
 
-def split_latents(x, minibatch_size=1, hy_ncut=1):
+def split_latents(x, hy_ncut=1):
     # x: [b, dim]
-    # b = minibatch_size
+    if hy_ncut == 0:
+        return [x]
     b = tf.shape(x)[0]
     dim = x.get_shape().as_list()[1]
     split_idx = tf.random.uniform(shape=[b, hy_ncut],
@@ -663,7 +664,6 @@ def group_vae(E,
     if use_group_decomp:
         # sampled_1, sampled_2 = split_latents_1cut(sampled, minibatch_size)
         sampled_split_ls = split_latents(sampled,
-                                         minibatch_size,
                                          hy_ncut=hy_ncut)
         # sampled_split = tf.concat([sampled_1, sampled_2], axis=0)
         sampled_split = tf.concat(sampled_split_ls, axis=0)
