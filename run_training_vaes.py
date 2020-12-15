@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 14 Dec 2020 17:06:24 AEDT
+# --- Last Modified: Tue 15 Dec 2020 01:57:27 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,7 +44,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
         group_feats_size=400, temp=0.67, n_discrete=0, epsilon=1,
         drange_net=[-1, 1], recons_type='bernoulli_loss', R_view_scale=1,
-        group_feat_type='concat',
+        group_feat_type='concat', normalize_alg=True, use_alg_var=True,
         use_sphere_points=False, use_learnable_sphere_points=False, n_sphere_points=100,
         use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
     train = EasyDict(
@@ -95,6 +95,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  use_learnable_sphere_points=use_learnable_sphere_points,
                  n_sphere_points=n_sphere_points,
                  hy_ncut=hy_ncut_G,
+                 normalize_alg=normalize_alg,
+                 use_alg_var=use_alg_var,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -664,6 +666,16 @@ def main():
                         default='concat',
                         metavar='GROUP_FEAT_TYPE',
                         type=str)
+    parser.add_argument('--normalize_alg',
+                        help='If normalize alg in norm_vae',
+                        default=True,
+                        metavar='NORMALIZE_ALG',
+                        type=_str_to_bool)
+    parser.add_argument('--use_alg_var',
+                        help='If use alg_var in norm_vae',
+                        default=True,
+                        metavar='USE_ALG_VAR',
+                        type=_str_to_bool)
 
     args = parser.parse_args()
 

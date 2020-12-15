@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 14 Dec 2020 16:25:10 AEDT
+# --- Last Modified: Tue 15 Dec 2020 01:55:48 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -217,6 +217,8 @@ def G_main_modular(
         n_sphere_points=100,
         group_feats_size=400,  # Should be square of an integer.
         hy_ncut=1,
+        normalize_alg=True,
+        use_alg_var=True,
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -321,6 +323,8 @@ def G_main_modular(
                 hy_ncut=hy_ncut,
                 lie_alg_init_type=lie_alg_init_type,
                 lie_alg_init_scale=lie_alg_init_scale,
+                normalize_alg=normalize_alg,
+                use_alg_var=use_alg_var,
                 is_validation=is_validation)
         elif k == 'Lie_prior_sim_G':
             x, group_feats, lie_alg_feats, lie_alg_basis = build_lie_sim_prior_G(

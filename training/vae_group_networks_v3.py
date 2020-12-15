@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks_v3.py
 # --- Creation Date: 14-12-2020
-# --- Last Modified: Mon 14 Dec 2020 17:12:29 AEDT
+# --- Last Modified: Tue 15 Dec 2020 01:54:33 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,6 +26,8 @@ def build_group_norm_prior_G(latents_in,
                              hy_ncut=0,
                              lie_alg_init_type='none',
                              lie_alg_init_scale=0.1,
+                             normalize_alg=True,
+                             use_alg_var=True,
                              is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
         lie_alg_basis_norm_ls = []
@@ -46,11 +48,18 @@ def build_group_norm_prior_G(latents_in,
                 lie_alg_tmp = tf.matrix_band_part(lie_alg_tmp, 0, -1)
                 lie_alg_tmp = lie_alg_tmp - tf.transpose(lie_alg_tmp,
                                                          perm=[0, 2, 1])
-            lie_alg_tmp_norm, _ = tf.linalg.normalize(lie_alg_tmp,
-                                                      axis=[-2, -1])
-            var_tmp = tf.get_variable(
-                'lie_alg_var_' + str(i), shape=[1, 1],
-                initializer=init)  # lie_alg_whole = var * lie_alg
+            if normalize_alg:
+                lie_alg_tmp_norm, _ = tf.linalg.normalize(lie_alg_tmp,
+                                                          axis=[-2, -1])
+            else:
+                lie_alg_tmp_norm = lie_alg_tmp
+
+            if use_alg_var:
+                var_tmp = tf.get_variable(
+                    'lie_alg_var_' + str(i), shape=[1, 1],
+                    initializer=init)  # lie_alg_whole = var * lie_alg
+            else:
+                var_tmp = tf.ones([1, 1], dtype=lie_alg_tmp.dtype)
             lie_alg_basis_norm_ls.append(lie_alg_tmp_norm)
             lie_var_ls.append(var_tmp)
             lie_alg_basis_ls.append(lie_alg_tmp_norm * var_tmp)
