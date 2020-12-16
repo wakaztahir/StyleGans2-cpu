@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v3.py
 # --- Creation Date: 14-12-2020
-# --- Last Modified: Mon 14 Dec 2020 16:53:55 AEDT
+# --- Last Modified: Wed 16 Dec 2020 16:12:14 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -26,8 +26,12 @@ from training.loss_vae import compute_gaussian_kl
 from training.loss_vae import split_latents
 
 
-def make_lie_group_norm_loss(group_feats_G, lie_alg_feats, lie_alg_basis_norm,
-                             minibatch_size, hy_hes):
+def make_lie_group_norm_loss(group_feats_G,
+                             lie_alg_feats,
+                             lie_alg_basis_norm,
+                             minibatch_size,
+                             hy_hes,
+                             hy_commute=0):
     '''
     lie_alg_basis_norm: [1, lat_dim, mat_dim, mat_dim]
     '''
@@ -40,12 +44,23 @@ def make_lie_group_norm_loss(group_feats_G, lie_alg_feats, lie_alg_basis_norm,
     hessian_mask = 1. - tf.eye(
         lat_dim,
         dtype=lie_alg_basis_outer_mul.dtype)[:, :, tf.newaxis, tf.newaxis]
-    lie_alg_basis_mul_ij = lie_alg_basis_outer_mul * hessian_mask
+    lie_alg_basis_mul_ij = lie_alg_basis_outer_mul * hessian_mask  # XY
+    lie_alg_commutator = lie_alg_basis_mul_ij - tf.transpose(
+        lie_alg_basis_mul_ij, [0, 1, 3, 2])
+    loss = 0.
     hessian_loss = tf.reduce_mean(
         tf.reduce_sum(tf.square(lie_alg_basis_mul_ij), axis=[2, 3]))
     hessian_loss = autosummary('Loss/hessian', hessian_loss)
     hessian_loss *= hy_hes
-    return hessian_loss
+    loss += hessian_loss
+    if hy_commute > 0:
+        print('using commute loss')
+        commute_loss = tf.reduce_mean(
+            tf.reduce_sum(tf.square(lie_alg_commutator), axis=[2, 3]))
+        commute_loss = autosummary('Loss/commute', commute_loss)
+        commute_loss *= hy_commute
+        loss += commute_loss
+    return loss
 
 
 def group_norm_vae(E,
@@ -58,6 +73,7 @@ def group_norm_vae(E,
                    latent_type='normal',
                    hy_beta=1,
                    hy_hes=0,
+                   hy_commute=0,
                    recons_type='bernoulli_loss'):
     _ = opt, training_set
     means, log_var = get_return_v(
@@ -74,7 +90,8 @@ def group_norm_vae(E,
         lie_alg_feats=lie_alg_feats,
         lie_alg_basis_norm=lie_alg_basis_norm,
         minibatch_size=minibatch_size,
-        hy_hes=hy_hes)
+        hy_hes=hy_hes,
+        hy_commute=hy_commute)
 
     reconstruction_loss = make_reconstruction_loss(reals,
                                                    reconstructions,

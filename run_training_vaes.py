@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Tue 15 Dec 2020 01:57:27 AEDT
+# --- Last Modified: Wed 16 Dec 2020 16:10:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -38,7 +38,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         fmap_decay=0.15, fmap_min=16, fmap_max=512,
         n_samples_per=10, arch='resnet', topk_dims_to_show=20,
         hy_beta=1, hy_gamma=0, hy_dcp=40, hy_ncut=1, hy_ncut_G=1, hy_rec=20, hy_hes=20, hy_lin=20,
-        hy_mat=80, hy_gmat=0, hy_oth=80, hy_det=0, hy_1p=0,
+        hy_mat=80, hy_gmat=0, hy_oth=80, hy_det=0, hy_1p=0, hy_commute=0,
         hessian_type='no_act_points', n_act_points=10, lie_alg_init_type='oth',
         lie_alg_init_scale=0.1, G_lrate_base=0.002, D_lrate_base=None,
         lambda_d_factor=10., lambda_od=1., group_loss_type='_rec_mat_',
@@ -210,6 +210,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
             latent_type=latent_type,
             hy_beta=hy_beta,
             hy_hes=hy_hes,
+            hy_commute=hy_commute,
             recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'so_vae':
         G_loss = EasyDict(
@@ -583,6 +584,11 @@ def main():
     parser.add_argument('--hy_1p',
                         help='Hyper-param for oneparam in SO_VAE.',
                         metavar='HY_1P',
+                        default=0,
+                        type=float)
+    parser.add_argument('--hy_commute',
+                        help='Hyper-param for commutator in GroupVAE-v3.',
+                        metavar='HY_COMMUTE',
                         default=0,
                         type=float)
     parser.add_argument('--G_lrate_base',
