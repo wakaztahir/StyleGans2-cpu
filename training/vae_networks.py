@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Tue 15 Dec 2020 01:55:48 AEDT
+# --- Last Modified: Mon 28 Dec 2020 00:03:17 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,6 +46,7 @@ from training.vae_group_networks import build_group_sim_prior_down_G
 from training.vae_group_networks_v2 import build_group_act_sim_prior_G
 from training.vae_group_networks_v2 import build_group_act_spl_sim_prior_G
 from training.vae_group_networks_v3 import build_group_norm_prior_G
+from training.vae_group_networks_v4 import build_group_subspace_prior_G, build_group_subspace_post_E
 from training.vae_lie_networks import build_lie_sim_prior_G
 from training.vae_lie_networks import build_lie_sim_prior_G_oth
 from training.vae_lie_networks import build_lie_sim_prior_G_oth_l2
@@ -75,6 +76,8 @@ def E_main_modular(
         nf_scale=1,
         fmap_base=8,
         group_feats_size=400,  # Should be square of an integer.
+        subgroup_sizes_ls=None,
+        subspace_sizes_ls=None,
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -163,6 +166,15 @@ def E_main_modular(
                                           cat_latent_size=n_discrete,
                                           is_validation=is_validation)
             break
+        elif k == 'SBS_post_E':
+            x = build_group_subspace_post_E(x=x,
+                                            name=k,
+                                            scope_idx=scope_idx,
+                                            subgroup_sizes_ls=subgroup_sizes_ls,
+                                            subspace_sizes_ls=subspace_sizes_ls,
+                                            latent_size=latent_size,
+                                            is_validation=False)
+            break
         else:
             raise ValueError('Not supported module key:', k)
 
@@ -219,6 +231,9 @@ def G_main_modular(
         hy_ncut=1,
         normalize_alg=True,
         use_alg_var=True,
+        subgroup_sizes_ls=None,
+        subspace_sizes_ls=None,
+        lie_alg_init_type_ls=None,
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -379,6 +394,19 @@ def G_main_modular(
                 use_sphere_points=use_sphere_points,
                 use_learnable_sphere_points=use_learnable_sphere_points,
                 n_sphere_points=n_sphere_points,
+                is_validation=is_validation)
+        elif k == 'SBS_prior_G':
+            x, group_feats, lie_alg_feats, lie_alg_basis, lie_vars = build_group_subspace_prior_G(
+                latents_in=x,
+                name=k,
+                scope_idx=scope_idx,
+                subgroup_sizes_ls=subgroup_sizes_ls,
+                subspace_sizes_ls=subspace_sizes_ls,
+                lie_alg_init_type_ls=lie_alg_init_type_ls,
+                hy_ncut=hy_ncut,
+                lie_alg_init_scale=lie_alg_init_scale,
+                normalize_alg=normalize_alg,
+                use_alg_var=use_alg_var,
                 is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(

@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Wed 16 Dec 2020 16:10:05 AEDT
+# --- Last Modified: Mon 28 Dec 2020 18:29:44 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,7 +46,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         drange_net=[-1, 1], recons_type='bernoulli_loss', R_view_scale=1,
         group_feat_type='concat', normalize_alg=True, use_alg_var=True,
         use_sphere_points=False, use_learnable_sphere_points=False, n_sphere_points=100,
-        use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10):
+        use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10,
+        subgroup_sizes_ls=None, subspace_sizes_ls=None, lie_alg_init_type_ls=None):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
@@ -74,6 +75,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  module_E_list=module_E_list,
                  nf_scale=E_nf_scale,
                  n_discrete=n_discrete,
+                 subgroup_sizes_ls=subgroup_sizes_ls,
+                 subspace_sizes_ls=subspace_sizes_ls,
                  fmap_base=2 << E_fmap_base)  # Options for encoder network.
     G = EasyDict(func_name='training.vae_networks.G_main_modular',
                  fmap_min=fmap_min,
@@ -97,6 +100,9 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  hy_ncut=hy_ncut_G,
                  normalize_alg=normalize_alg,
                  use_alg_var=use_alg_var,
+                 subgroup_sizes_ls=subgroup_sizes_ls,
+                 subspace_sizes_ls=subspace_sizes_ls,
+                 lie_alg_init_type_ls=lie_alg_init_type_ls,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -204,12 +210,23 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
             use_group_decomp=use_group_decomp,
             group_loss_type=group_loss_type,
             recons_type=recons_type)  # Options for generator loss.
-    elif model_type == 'group_norm_vae':  # GroupVAE-v2
+    elif model_type == 'group_norm_vae':  # GroupVAE-v3
         G_loss = EasyDict(
             func_name='training.loss_vae_group_v3.group_norm_vae',
             latent_type=latent_type,
             hy_beta=hy_beta,
             hy_hes=hy_hes,
+            hy_commute=hy_commute,
+            recons_type=recons_type)  # Options for generator loss.
+    elif model_type == 'sbs_vae':  # GroupVAE-v4
+        G_loss = EasyDict(
+            func_name='training.loss_vae_group_v4.group_subspace_vae',
+            latent_type=latent_type,
+            subgroup_sizes_ls=subgroup_sizes_ls,
+            subspace_sizes_ls=subspace_sizes_ls,
+            hy_beta=hy_beta,
+            hy_hes=hy_hes,
+            hy_rec=hy_rec,
             hy_commute=hy_commute,
             recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'so_vae':
@@ -327,6 +344,12 @@ def _str_to_list_of_int(v):
     return step_list
 
 
+def _str_to_list_of_str(v):
+    v_values = v.strip()[1:-1]
+    step_list = [x.strip() for x in v_values.split(',')]
+    return step_list
+
+
 def _parse_comma_sep(s):
     if s is None or s.lower() == 'none' or s == '':
         return []
@@ -379,7 +402,8 @@ def main():
                             'beta_vae', 'factor_vae', 'factor_sindis_vae',
                             'dip_vae_i', 'dip_vae_ii', 'betatc_vae',
                             'group_vae', 'group_vae_wc', 'group_vae_v2', 'group_vae_spl_v2',
-                            'lie_vae', 'lie_vae_with_split', 'coma_vae', 'so_vae', 'group_norm_vae'
+                            'lie_vae', 'lie_vae_with_split', 'coma_vae', 'so_vae', 'group_norm_vae',
+                            'sbs_vae'
                         ])
     parser.add_argument('--resume_pkl',
                         help='Continue training using pretrained pkl.',
@@ -682,7 +706,21 @@ def main():
                         default=True,
                         metavar='USE_ALG_VAR',
                         type=_str_to_bool)
-
+    parser.add_argument('--subgroup_sizes_ls',
+                        help='Subgroup sizes list for subspace group vae',
+                        default=[25, 25, 25, 25],
+                        metavar='SUBGROUP_SIZES_LS',
+                        type=_str_to_list_of_int)
+    parser.add_argument('--subspace_sizes_ls',
+                        help='Subspace sizes list for subspace group vae',
+                        default=[1, 1, 1, 1],
+                        metavar='SUBSPACE_SIZES_LS',
+                        type=_str_to_list_of_int)
+    parser.add_argument('--lie_alg_init_type_ls',
+                        help='Lie_alg init type list for subspace group vae',
+                        default=['none', 'none', 'none', 'none'],
+                        metavar='LIE_ALG_INIT_TYPE_LS',
+                        type=_str_to_list_of_str)
     args = parser.parse_args()
 
     if not os.path.exists(args.data_dir):

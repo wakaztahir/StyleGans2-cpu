@@ -8,11 +8,11 @@
 
 # --- File Name: vae_group_networks_v3.py
 # --- Creation Date: 14-12-2020
-# --- Last Modified: Tue 15 Dec 2020 01:54:33 AEDT
+# --- Last Modified: Sun 27 Dec 2020 21:57:37 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-GroupVAE v2.
+GroupVAE v3.
 """
 import math
 import tensorflow as tf

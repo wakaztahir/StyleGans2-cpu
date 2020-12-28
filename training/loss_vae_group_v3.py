@@ -8,11 +8,11 @@
 
 # --- File Name: loss_vae_group_v3.py
 # --- Creation Date: 14-12-2020
-# --- Last Modified: Wed 16 Dec 2020 16:12:14 AEDT
+# --- Last Modified: Mon 28 Dec 2020 00:04:00 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
-Loss GroupVAE v2.
+Loss GroupVAE v3.
 """
 import numpy as np
 import math
