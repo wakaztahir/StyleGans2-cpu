@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v4.py
 # --- Creation Date: 28-12-2020
-# --- Last Modified: Mon 04 Jan 2021 22:53:17 AEDT
+# --- Last Modified: Mon 04 Jan 2021 23:41:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -136,13 +136,10 @@ def group_subspace_vae(E,
 
     sampled = sample_from_latent_distribution(means, log_var)
 
-    reconstructions_z, group_feats_G, _, _, _, lie_alg_basis_flattened, _, _ = get_return_v(
-        G.get_output_for(sampled, labels, is_training=True), 8)
-    reconstructions_eg = get_return_v(
-        G.get_output_for(group_feats_E,
+    reconstructions, group_feats_G, _, _, _, lie_alg_basis_flattened, _, _ = get_return_v(
+        G.get_output_for(tf.concat([sampled, group_feats_E], axis=1),
                          labels,
-                         is_training=True,
-                         forward_eg=True), 1)
+                         is_training=True), 8)
     lie_group_loss = make_group_subspace_loss(
         minibatch_size=minibatch_size,
         group_feats_E=group_feats_E,
@@ -153,10 +150,6 @@ def group_subspace_vae(E,
         hy_hes=hy_hes,
         hy_rec=hy_rec,
         hy_commute=hy_commute)
-
-    forward_eg_prob = tf.random.uniform(shape=[])
-    reconstructions = tf.cond(forward_eg_prob > 0.6667, reconstructions_eg,
-                              reconstructions_z)
 
     reconstruction_loss = make_reconstruction_loss(reals,
                                                    reconstructions,

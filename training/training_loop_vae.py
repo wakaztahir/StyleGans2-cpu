@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 11 Dec 2020 18:07:58 AEDT
+# --- Last Modified: Mon 04 Jan 2021 23:51:52 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -29,7 +29,7 @@ from training import misc
 from metrics import metric_base
 from training.training_loop import process_reals
 from training.utils import add_outline, get_grid_latents, get_return_v
-from training.utils import training_schedule
+from training.utils import append_gfeats
 
 #----------------------------------------------------------------------------
 # Evaluate time-varying training parameters.
@@ -99,6 +99,9 @@ def training_loop_vae(
         n_discrete=0,  # Number of discrete latents in model.
         n_continuous=4,  # Number of continuous latents in model.
         topk_dims_to_show=20, # Number of top disentant dimensions to show in a snapshot.
+        subgroup_sizes_ls=None,
+        subspace_sizes_ls=None,
+        forward_eg=False,
         n_samples_per=10):  # Number of samples for each line in traversal.
 
     # Initialize dnnlib and TensorFlow.
@@ -134,7 +137,7 @@ def training_loop_vae(
                               num_channels=training_set.shape[0],
                               resolution=training_set.shape[1],
                               label_size=training_set.label_size,
-                              input_shape=[None, n_discrete+G_args.latent_size],
+                              input_shape=[None, n_discrete+G_args.latent_size] if not forward_eg else [None, n_discrete+G_args.latent_size+sum(subgroup_sizes_ls)],
                               **G_args)
             if use_D:
                 D = tflib.Network('D',
@@ -177,7 +180,7 @@ def training_loop_vae(
     print('grid_size:', grid_size)
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
-    grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(grid_latents,
+    grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(append_gfeats(grid_latents, G) if forward_eg else grid_latents,
                                                                 grid_labels,
                                                                 is_validation=True,
                                                                 minibatch_size=sched.minibatch_gpu,
@@ -415,7 +418,7 @@ def training_loop_vae(
                 else:
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
-                grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(grid_latents,
+                grid_fakes, _, _, _, _, _, _, lie_vars = get_return_v(G.run(append_gfeats(grid_latents, G) if forward_eg else grid_latents,
                                                                             grid_labels,
                                                                             is_validation=True,
                                                                             minibatch_size=sched.minibatch_gpu,

@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 28 Dec 2020 18:29:44 AEDT
+# --- Last Modified: Mon 04 Jan 2021 23:43:44 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -47,7 +47,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         group_feat_type='concat', normalize_alg=True, use_alg_var=True,
         use_sphere_points=False, use_learnable_sphere_points=False, n_sphere_points=100,
         use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10,
-        subgroup_sizes_ls=None, subspace_sizes_ls=None, lie_alg_init_type_ls=None):
+        subgroup_sizes_ls=None, subspace_sizes_ls=None, lie_alg_init_type_ls=None, forward_eg=False):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
@@ -103,6 +103,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  subgroup_sizes_ls=subgroup_sizes_ls,
                  subspace_sizes_ls=subspace_sizes_ls,
                  lie_alg_init_type_ls=lie_alg_init_type_ls,
+                 forward_eg=forward_eg,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -311,6 +312,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                   tf_config=tf_config,
                   resume_pkl=resume_pkl,
                   n_samples_per=n_samples_per,
+                  forward_eg=forward_eg,
                   topk_dims_to_show=topk_dims_to_show)
     kwargs.submit_config = copy.deepcopy(sc)
     kwargs.submit_config.run_dir_root = result_dir
@@ -721,6 +723,11 @@ def main():
                         default=['none', 'none', 'none', 'none'],
                         metavar='LIE_ALG_INIT_TYPE_LS',
                         type=_str_to_list_of_str)
+    parser.add_argument('--forward_eg',
+                        help='If append E group_feats in generator',
+                        default=False,
+                        metavar='FORWARD_EG',
+                        type=_str_to_bool)
     args = parser.parse_args()
 
     if not os.path.exists(args.data_dir):

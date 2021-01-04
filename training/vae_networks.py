@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 04 Jan 2021 22:49:10 AEDT
+# --- Last Modified: Mon 04 Jan 2021 23:39:25 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -233,8 +233,8 @@ def G_main_modular(
         use_alg_var=True,
         subgroup_sizes_ls=None,
         subspace_sizes_ls=None,
-        forward_eg=False,
         lie_alg_init_type_ls=None,
+        forward_eg=False,
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -251,6 +251,13 @@ def G_main_modular(
     latents_in = tf.cast(latents_in, dtype)
     labels_in.set_shape([None, label_size])
     labels_in = tf.cast(labels_in, dtype)
+
+    if forward_eg:
+        len_gfeats = sum(subgroup_sizes_ls)
+        group_feats_E = latents_in[:, -len_gfeats:]
+        latents_in = latents_in[:, :-len_gfeats]
+    else:
+        group_feats_E = None
 
     # Generator network.
     key_ls, size_ls, count_dlatent_size = split_module_names(module_G_list)
@@ -399,6 +406,7 @@ def G_main_modular(
         elif k == 'SBS_prior_G':
             x, group_feats, lie_alg_feats, lie_alg_basis, lie_vars = build_group_subspace_prior_G(
                 latents_in=x,
+                group_feats_E=group_feats_E,
                 name=k,
                 scope_idx=scope_idx,
                 subgroup_sizes_ls=subgroup_sizes_ls,
@@ -408,7 +416,6 @@ def G_main_modular(
                 lie_alg_init_scale=lie_alg_init_scale,
                 normalize_alg=normalize_alg,
                 use_alg_var=use_alg_var,
-                forward_eg=forward_eg,
                 is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(

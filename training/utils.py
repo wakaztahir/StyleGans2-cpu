@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Fri 11 Dec 2020 18:07:15 AEDT
+# --- Last Modified: Mon 04 Jan 2021 23:51:18 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -37,6 +37,12 @@ def get_return_v(x, topk=1):
         # return x[0]
     # else:
         # return x[:topk]
+
+def append_gfeats(latents, G):
+    len_gfeats = sum(G.static_kwargs.subgroup_sizes_ls)
+    b = latents.shape[0]
+    new_latents = np.concatenate((latents, np.zeros([b, len_gfeats], dtype=latents.dtype)))
+    return new_latents
 
 def save_atts(atts, filename, grid_size, drange, grid_fakes, n_samples_per):
     canvas = np.zeros([grid_fakes.shape[0], 1, grid_fakes.shape[2], grid_fakes.shape[3]])
