@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v4.py
 # --- Creation Date: 28-12-2020
-# --- Last Modified: Mon 28 Dec 2020 19:02:48 AEDT
+# --- Last Modified: Mon 04 Jan 2021 22:16:51 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -137,7 +137,10 @@ def group_subspace_vae(E,
     sampled = sample_from_latent_distribution(means, log_var)
 
     reconstructions, group_feats_G, _, _, _, lie_alg_basis_flattened, _, _ = get_return_v(
-        G.get_output_for(sampled, labels, is_training=True), 8)
+        G.get_output_for(sampled,
+                         labels,
+                         is_training=True,
+                         group_feats_E=group_feats_E), 8)
     lie_group_loss = make_group_subspace_loss(
         minibatch_size=minibatch_size,
         group_feats_E=group_feats_E,
