@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks_v4.py
 # --- Creation Date: 27-12-2020
-# --- Last Modified: Mon 04 Jan 2021 22:34:40 AEDT
+# --- Last Modified: Mon 04 Jan 2021 22:48:28 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -119,64 +119,64 @@ def build_group_subspace_prior_G(latents_in,
                                  lie_alg_init_scale=0.001,
                                  normalize_alg=False,
                                  use_alg_var=False,
-                                 group_feats_E=None,
+                                 forward_eg=False,
                                  is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx)):
-        lie_alg_basis_norm_ls = []
-        lie_var_ls = []
-        lie_alg_basis_ls = []
-        lie_alg_basis_flattened_ls = []
-        latent_dim = latents_in.get_shape().as_list()[-1]
-        assert latent_dim == sum(subspace_sizes_ls)
-        assert len(subgroup_sizes_ls) == len(subspace_sizes_ls)
+        if forward_eg:
+            lie_group_tensor = latents_in
+        else:
+            lie_alg_basis_norm_ls = []
+            lie_var_ls = []
+            lie_alg_basis_ls = []
+            lie_alg_basis_flattened_ls = []
+            latent_dim = latents_in.get_shape().as_list()[-1]
+            assert latent_dim == sum(subspace_sizes_ls)
+            assert len(subgroup_sizes_ls) == len(subspace_sizes_ls)
 
-        # Init lie_alg for each latent dim.
-        for i, subgroup_size_i in enumerate(subgroup_sizes_ls):
-            mat_dim = int(math.sqrt(subgroup_size_i))
-            assert mat_dim * mat_dim == subgroup_size_i
-            for j in range(subspace_sizes_ls[i]):
-                lie_alg_tmp, _, var_tmp = init_alg_basis(
-                    i, j, mat_dim, lie_alg_init_type_ls[i], lie_alg_init_scale,
-                    normalize_alg, use_alg_var)
-                lie_alg_basis_ls.append(lie_alg_tmp)
-                lie_alg_basis_flattened_ls.append(
-                    tf.reshape(lie_alg_tmp, [1, -1]))
-                # lie_alg_basis_norm_ls.append(lie_alg_tmp_norm)
-                lie_var_ls.append(var_tmp)
-        lie_vars = tf.concat(lie_var_ls, axis=1)  # [1, lat_dim]
-        # lie_alg_basis_norm = tf.concat(
-        # lie_alg_basis_ls, axis=0)[tf.newaxis,
-        # ...]  # [1, lat_dim, mat_dim, mat_dim]
-        lie_alg_basis = tf.concat(
-            lie_alg_basis_flattened_ls,
-            axis=1)  # [1, mat_dim_1*mat_dim_1+mat_dim_2*mat_dim_2+...]
+            # Init lie_alg for each latent dim.
+            for i, subgroup_size_i in enumerate(subgroup_sizes_ls):
+                mat_dim = int(math.sqrt(subgroup_size_i))
+                assert mat_dim * mat_dim == subgroup_size_i
+                for j in range(subspace_sizes_ls[i]):
+                    lie_alg_tmp, _, var_tmp = init_alg_basis(
+                        i, j, mat_dim, lie_alg_init_type_ls[i],
+                        lie_alg_init_scale, normalize_alg, use_alg_var)
+                    lie_alg_basis_ls.append(lie_alg_tmp)
+                    lie_alg_basis_flattened_ls.append(
+                        tf.reshape(lie_alg_tmp, [1, -1]))
+                    # lie_alg_basis_norm_ls.append(lie_alg_tmp_norm)
+                    lie_var_ls.append(var_tmp)
+            lie_vars = tf.concat(lie_var_ls, axis=1)  # [1, lat_dim]
+            # lie_alg_basis_norm = tf.concat(
+            # lie_alg_basis_ls, axis=0)[tf.newaxis,
+            # ...]  # [1, lat_dim, mat_dim, mat_dim]
+            lie_alg_basis = tf.concat(
+                lie_alg_basis_flattened_ls,
+                axis=1)  # [1, mat_dim_1*mat_dim_1+mat_dim_2*mat_dim_2+...]
 
-        # Calc exp.
-        lie_group_tensor_ls = []
-        b_idx = 0
-        for i, subgroup_size_i in enumerate(subgroup_sizes_ls):
-            mat_dim = int(math.sqrt(subgroup_size_i))
-            e_idx = b_idx + subspace_sizes_ls[i]
-            if subspace_sizes_ls[i] > 1:
-                if is_validation:
+            # Calc exp.
+            lie_group_tensor_ls = []
+            b_idx = 0
+            for i, subgroup_size_i in enumerate(subgroup_sizes_ls):
+                mat_dim = int(math.sqrt(subgroup_size_i))
+                e_idx = b_idx + subspace_sizes_ls[i]
+                if subspace_sizes_ls[i] > 1:
+                    if is_validation:
+                        lie_subgroup = val_exp(latents_in[:, b_idx:e_idx],
+                                               lie_alg_basis_ls[b_idx:e_idx])
+                    else:
+                        lie_subgroup = train_exp(latents_in[:, b_idx:e_idx],
+                                                 lie_alg_basis_ls[b_idx:e_idx],
+                                                 hy_ncut, mat_dim)
+                else:
                     lie_subgroup = val_exp(latents_in[:, b_idx:e_idx],
                                            lie_alg_basis_ls[b_idx:e_idx])
-                else:
-                    lie_subgroup = train_exp(latents_in[:, b_idx:e_idx],
-                                             lie_alg_basis_ls[b_idx:e_idx],
-                                             hy_ncut, mat_dim)
-            else:
-                lie_subgroup = val_exp(latents_in[:, b_idx:e_idx],
-                                       lie_alg_basis_ls[b_idx:e_idx])
-            lie_subgroup_tensor = tf.reshape(lie_subgroup,
-                                             [-1, mat_dim * mat_dim])
-            lie_group_tensor_ls.append(lie_subgroup_tensor)
-            b_idx = e_idx
-
-        forward_eg = tf.random.uniform(shape=[])
-        lie_group_tensor = tf.cond(
-            forward_eg > 0.6667, lambda: group_feats_E, lambda: tf.concat(
-                lie_group_tensor_ls, axis=1))  # [b, group_feat_size]
+                lie_subgroup_tensor = tf.reshape(lie_subgroup,
+                                                 [-1, mat_dim * mat_dim])
+                lie_group_tensor_ls.append(lie_subgroup_tensor)
+                b_idx = e_idx
+            lie_group_tensor = tf.concat(lie_group_tensor_ls,
+                                         axis=1)  # [b, group_feat_size]
 
         d1 = tf.layers.dense(lie_group_tensor, 256, activation=tf.nn.relu)
         d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
