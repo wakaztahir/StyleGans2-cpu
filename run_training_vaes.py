@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 04 Jan 2021 23:43:44 AEDT
+# --- Last Modified: Mon 04 Jan 2021 23:56:23 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -312,6 +312,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                   tf_config=tf_config,
                   resume_pkl=resume_pkl,
                   n_samples_per=n_samples_per,
+                  subgroup_sizes_ls=subgroup_sizes_ls,
+                  subspace_sizes_ls=subspace_sizes_ls,
                   forward_eg=forward_eg,
                   topk_dims_to_show=topk_dims_to_show)
     kwargs.submit_config = copy.deepcopy(sc)
