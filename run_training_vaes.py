@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Mon 04 Jan 2021 23:56:23 AEDT
+# --- Last Modified: Wed 06 Jan 2021 00:23:15 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -104,6 +104,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
                  subspace_sizes_ls=subspace_sizes_ls,
                  lie_alg_init_type_ls=lie_alg_init_type_ls,
                  forward_eg=forward_eg,
+                 forward_eg_prob=forward_eg_prob,
                  fmap_base=2 << G_fmap_base)  # Options for generator network.
     G_opt = EasyDict(beta1=0.9, beta2=0.999,
                      epsilon=1e-8)  # Options for generator optimizer.
@@ -730,6 +731,11 @@ def main():
                         default=False,
                         metavar='FORWARD_EG',
                         type=_str_to_bool)
+    parser.add_argument('--forward_eg_prob',
+                        help='Forward eg probability',
+                        default=0.3333,
+                        metavar='FORWARD_EG_PROB',
+                        type=float)
     args = parser.parse_args()
 
     if not os.path.exists(args.data_dir):

@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 04 Jan 2021 23:39:25 AEDT
+# --- Last Modified: Wed 06 Jan 2021 00:22:08 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -235,6 +235,7 @@ def G_main_modular(
         subspace_sizes_ls=None,
         lie_alg_init_type_ls=None,
         forward_eg=False,
+        forward_eg_prob=0.3333,
         **kwargs):  # Arguments for sub-networks (mapping and synthesis).
     '''
     Modularized VAE encoder.
@@ -416,6 +417,7 @@ def G_main_modular(
                 lie_alg_init_scale=lie_alg_init_scale,
                 normalize_alg=normalize_alg,
                 use_alg_var=use_alg_var,
+                forward_eg_prob=forward_eg_prob,
                 is_validation=is_validation)
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(
