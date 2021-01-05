@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Wed 06 Jan 2021 00:23:15 AEDT
+# --- Last Modified: Wed 06 Jan 2021 00:26:16 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -47,7 +47,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
         group_feat_type='concat', normalize_alg=True, use_alg_var=True,
         use_sphere_points=False, use_learnable_sphere_points=False, n_sphere_points=100,
         use_group_decomp=False, mapping_after_exp=False, snapshot_ticks=10,
-        subgroup_sizes_ls=None, subspace_sizes_ls=None, lie_alg_init_type_ls=None, forward_eg=False):
+        subgroup_sizes_ls=None, subspace_sizes_ls=None, lie_alg_init_type_ls=None,
+        forward_eg=False, forward_eg_prob=0.3333):
     train = EasyDict(
         run_func_name='training.training_loop_vae.training_loop_vae'
     )  # Options for training loop.
