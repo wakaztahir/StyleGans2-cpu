@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks_v4.py
 # --- Creation Date: 27-12-2020
-# --- Last Modified: Mon 11 Jan 2021 19:16:09 AEDT
+# --- Last Modified: Mon 11 Jan 2021 22:13:50 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -79,7 +79,7 @@ def build_group_subspace_post_E(x,
                                 latent_size,
                                 is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         flat_x = tf.layers.flatten(x)
         e5 = tf.layers.dense(flat_x, 256, activation=tf.nn.relu, name="e5")
 
@@ -124,7 +124,7 @@ def build_group_subspace_prior_G(latents_in,
                                  forward_eg_prob=0.3333,
                                  is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         lie_alg_basis_norm_ls = []
         lie_var_ls = []
         lie_alg_basis_ls = []

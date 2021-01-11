@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 11 Jan 2021 19:15:23 AEDT
+# --- Last Modified: Mon 11 Jan 2021 22:13:39 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -21,7 +21,7 @@ from training.vc_modular_networks2 import build_C_spgroup_layers
 
 def build_standard_conv_E_64(reals_in, name, scope_idx, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         e1 = tf.layers.conv2d(
             inputs=reals_in,
             filters=32,
@@ -67,7 +67,7 @@ def build_standard_conv_E_64(reals_in, name, scope_idx, is_validation=False):
 
 def build_standard_conv_E_128(reals_in, name, scope_idx, is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         e1 = tf.layers.conv2d(
             inputs=reals_in,
             filters=32,
@@ -128,7 +128,7 @@ def build_standard_post_E(x,
                           use_relu=True,
                           is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         flat_x = tf.layers.flatten(x)
         e5 = tf.layers.dense(flat_x,
                              256,
@@ -148,7 +148,7 @@ def build_standard_prior_G(latents_in,
                            use_relu=True,
                            is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d1 = tf.layers.dense(latents_in,
                              256,
                              activation=tf.nn.relu if use_relu else None)
@@ -164,7 +164,7 @@ def build_standard_conv_G_64(d2_reshaped,
                              recons_type='bernoulli_loss',
                              is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d3 = tf.layers.conv2d_transpose(
             inputs=d2_reshaped,
             filters=64,
@@ -215,7 +215,7 @@ def build_6layer_conv_G_64(d2_reshaped,
                            recons_type='bernoulli_loss',
                            is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d3 = tf.layers.conv2d_transpose(
             inputs=d2_reshaped,
             filters=64,
@@ -281,7 +281,7 @@ def build_standard_conv_G_128(d1_reshaped,
                               recons_type='bernoulli_loss',
                               is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d2 = tf.layers.conv2d_transpose(
             inputs=d1_reshaped,
             filters=64,
@@ -342,7 +342,7 @@ def build_fain_conv_G_64(latents_in,
                          recons_type='bernoulli_loss',
                          is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         latent_size = latents_in.shape[1]
         with tf.variable_scope('4x4Const'):
             x = tf.get_variable('const',
@@ -439,7 +439,7 @@ def build_fain_conv_G_64(latents_in,
 
 def build_standard_fc_D_64(latents, name, scope_idx):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d1 = tf.layers.dense(latents,
                              1000,
                              activation=tf.nn.leaky_relu,
@@ -456,7 +456,7 @@ def build_standard_fc_D_64(latents, name, scope_idx):
 
 def build_standard_fc_sindis_D_64(latents, name, scope_idx):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d1 = tf.layers.dense(latents,
                              1000,
                              activation=tf.nn.leaky_relu,
@@ -472,7 +472,7 @@ def build_standard_fc_sindis_D_64(latents, name, scope_idx):
 
 def build_simple_fc_sindis_D_64(latents, name, scope_idx):
     with tf.variable_scope(name + '-' + str(scope_idx),
-                           initializer=tf.compat.v1.initializers.he_uniform):
+                           initializer=tf.compat.v1.initializers.he_uniform()):
         d1 = tf.layers.dense(latents,
                              256,
                              activation=tf.nn.leaky_relu,
