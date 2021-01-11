@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks_v4.py
 # --- Creation Date: 27-12-2020
-# --- Last Modified: Wed 06 Jan 2021 00:21:12 AEDT
+# --- Last Modified: Mon 11 Jan 2021 19:16:09 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -78,7 +78,8 @@ def build_group_subspace_post_E(x,
                                 subspace_sizes_ls,
                                 latent_size,
                                 is_validation=False):
-    with tf.variable_scope(name + '-' + str(scope_idx)):
+    with tf.variable_scope(name + '-' + str(scope_idx),
+                           initializer=tf.compat.v1.initializers.he_uniform):
         flat_x = tf.layers.flatten(x)
         e5 = tf.layers.dense(flat_x, 256, activation=tf.nn.relu, name="e5")
 
@@ -122,7 +123,8 @@ def build_group_subspace_prior_G(latents_in,
                                  use_alg_var=False,
                                  forward_eg_prob=0.3333,
                                  is_validation=False):
-    with tf.variable_scope(name + '-' + str(scope_idx)):
+    with tf.variable_scope(name + '-' + str(scope_idx),
+                           initializer=tf.compat.v1.initializers.he_uniform):
         lie_alg_basis_norm_ls = []
         lie_var_ls = []
         lie_alg_basis_ls = []
@@ -175,13 +177,13 @@ def build_group_subspace_prior_G(latents_in,
             b_idx = e_idx
 
         if is_validation:
-            lie_group_tensor = tf.concat(
-                    lie_group_tensor_ls, axis=1)  # [b, group_feat_size]
+            lie_group_tensor = tf.concat(lie_group_tensor_ls,
+                                         axis=1)  # [b, group_feat_size]
         else:
             eg_prob = tf.random.uniform(shape=[])
             lie_group_tensor = tf.cond(
-                eg_prob < forward_eg_prob, lambda: group_feats_E, lambda: tf.concat(
-                    lie_group_tensor_ls, axis=1))  # [b, group_feat_size]
+                eg_prob < forward_eg_prob, lambda: group_feats_E, lambda: tf.
+                concat(lie_group_tensor_ls, axis=1))  # [b, group_feat_size]
 
         d1 = tf.layers.dense(lie_group_tensor, 256, activation=tf.nn.relu)
         d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
