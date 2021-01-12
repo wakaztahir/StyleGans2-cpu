@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vaes.py
 # --- Creation Date: 13-08-2020
-# --- Last Modified: Wed 06 Jan 2021 00:26:16 AEDT
+# --- Last Modified: Tue 12 Jan 2021 15:31:32 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -231,6 +231,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, mirror_augment, met
             hy_hes=hy_hes,
             hy_rec=hy_rec,
             hy_commute=hy_commute,
+            forward_eg=forward_eg,
             recons_type=recons_type)  # Options for generator loss.
     elif model_type == 'so_vae':
         G_loss = EasyDict(

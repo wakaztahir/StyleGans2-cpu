@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v4.py
 # --- Creation Date: 28-12-2020
-# --- Last Modified: Mon 04 Jan 2021 23:41:05 AEDT
+# --- Last Modified: Tue 12 Jan 2021 15:31:56 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -127,6 +127,7 @@ def group_subspace_vae(E,
                        hy_hes=0,
                        hy_rec=1,
                        hy_commute=0,
+                       forward_eg=False,
                        recons_type='bernoulli_loss'):
     _ = opt, training_set
     means, log_var, group_feats_E = get_return_v(
@@ -137,7 +138,7 @@ def group_subspace_vae(E,
     sampled = sample_from_latent_distribution(means, log_var)
 
     reconstructions, group_feats_G, _, _, _, lie_alg_basis_flattened, _, _ = get_return_v(
-        G.get_output_for(tf.concat([sampled, group_feats_E], axis=1),
+        G.get_output_for(tf.concat([sampled, group_feats_E], axis=1) if forward_eg else sampled,
                          labels,
                          is_training=True), 8)
     lie_group_loss = make_group_subspace_loss(
