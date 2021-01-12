@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Wed 06 Jan 2021 00:22:08 AEDT
+# --- Last Modified: Tue 12 Jan 2021 15:26:09 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -417,6 +417,7 @@ def G_main_modular(
                 lie_alg_init_scale=lie_alg_init_scale,
                 normalize_alg=normalize_alg,
                 use_alg_var=use_alg_var,
+                forward_eg=forward_eg,
                 forward_eg_prob=forward_eg_prob,
                 is_validation=is_validation)
         elif k == 'Standard_G_64':

@@ -8,7 +8,7 @@
 
 # --- File Name: vae_group_networks_v4.py
 # --- Creation Date: 27-12-2020
-# --- Last Modified: Mon 11 Jan 2021 22:13:50 AEDT
+# --- Last Modified: Tue 12 Jan 2021 15:27:02 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -121,6 +121,7 @@ def build_group_subspace_prior_G(latents_in,
                                  lie_alg_init_scale=0.001,
                                  normalize_alg=False,
                                  use_alg_var=False,
+                                 forward_eg=False,
                                  forward_eg_prob=0.3333,
                                  is_validation=False):
     with tf.variable_scope(name + '-' + str(scope_idx),
@@ -176,7 +177,7 @@ def build_group_subspace_prior_G(latents_in,
             lie_group_tensor_ls.append(lie_subgroup_tensor)
             b_idx = e_idx
 
-        if is_validation:
+        if is_validation or (not forward_eg):
             lie_group_tensor = tf.concat(lie_group_tensor_ls,
                                          axis=1)  # [b, group_feat_size]
         else:
