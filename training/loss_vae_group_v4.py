@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v4.py
 # --- Creation Date: 28-12-2020
-# --- Last Modified: Sun 17 Jan 2021 16:27:05 AEDT
+# --- Last Modified: Sun 17 Jan 2021 16:29:42 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -94,7 +94,7 @@ def make_group_subspace_loss(minibatch_size, group_feats_E, group_feats_G,
     lie_alg_basis_ls = basis_flattened_to_ls(lie_alg_basis_flattened,
                                              subgroup_sizes_ls,
                                              subspace_sizes_ls)
-    print('lie_alg_basis_ls.len:', len(lie_alg_basis_ls))
+    # print('lie_alg_basis_ls.len:', len(lie_alg_basis_ls))
     b_idx = 0
     hessian_loss = 0.
     commute_loss = 0.
@@ -102,7 +102,7 @@ def make_group_subspace_loss(minibatch_size, group_feats_E, group_feats_G,
         e_idx = b_idx + subspace_size
         if subspace_size > 1:
             mat_dim = int(math.sqrt(subgroup_sizes_ls[i]))
-            print('lie_alg_basis_ls[b_idx]:', lie_alg_basis_ls[b_idx])
+            # print('lie_alg_basis_ls[b_idx]:', lie_alg_basis_ls[b_idx])
             assert lie_alg_basis_ls[b_idx].get_shape().as_list()[-1] == mat_dim
             lie_alg_basis_mul_ij = calc_basis_mul_ij(
                 lie_alg_basis_ls[b_idx:e_idx])  # XY
