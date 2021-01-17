@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vae_group_v4.py
 # --- Creation Date: 28-12-2020
-# --- Last Modified: Sun 17 Jan 2021 16:20:03 AEDT
+# --- Last Modified: Sun 17 Jan 2021 16:27:05 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -80,7 +80,11 @@ def basis_flattened_to_ls(lie_alg_basis_flattened, subgroup_sizes_ls,
         split_ls += [subgroup_size_i] * subspace_sizes_ls[i]
     lie_alg_basis_ls = list(tf.split(lie_alg_basis_flattened, split_ls,
                                      axis=1))
-    return lie_alg_basis_ls
+    lie_alg_basis_ls_new = []
+    for i, lie_alg_basis_i in enumerate(lie_alg_basis_ls):
+        mat_dim = int(math.sqrt(lie_alg_basis_i.get_shape().as_list()[-1]))
+        lie_alg_basis_ls_new.append(tf.reshape(lie_alg_basis_i, [1, mat_dim, mat_dim]))
+    return lie_alg_basis_ls_new
 
 
 def make_group_subspace_loss(minibatch_size, group_feats_E, group_feats_G,
