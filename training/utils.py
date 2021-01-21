@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Thu 21 Jan 2021 16:56:23 AEDT
+# --- Last Modified: Thu 21 Jan 2021 17:00:16 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -114,11 +114,11 @@ def get_grid_latents(n_discrete, n_continuous, n_samples_per, G, grid_labels, to
     grid_labels = np.tile(grid_labels[:1],
                           (n_discrete * n_continuous * n_samples_per, 1))
     if topk_dims is not None:
-        print('grid_latents.shape:', grid_latents.shape)
+        # print('grid_latents.shape:', grid_latents.shape)
         grid_latents = np.reshape(grid_latents, [n_discrete, n_continuous, n_samples_per, -1])
-        print('grid_latents.shape:', grid_latents.shape)
+        # print('grid_latents.shape:', grid_latents.shape)
         grid_latents = grid_latents[:, topk_dims]
-        print('grid_latents.shape:', grid_latents.shape)
+        # print('grid_latents.shape:', grid_latents.shape)
         n_continuous = topk_dims
         grid_latents = np.reshape(grid_latents, [n_discrete * len(topk_dims) * n_samples_per, -1])
         grid_labels = np.tile(grid_labels[:1],

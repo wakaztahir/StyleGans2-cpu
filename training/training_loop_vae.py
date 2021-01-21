@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vae.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 04 Jan 2021 23:51:52 AEDT
+# --- Last Modified: Thu 21 Jan 2021 16:59:52 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -172,7 +172,10 @@ def training_loop_vae(
                               training_set=training_set,
                               **sched_args)
     if traversal_grid:
-        topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+        if topk_dims_to_show > 0:
+            topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+        else:
+            topk_dims = np.arange(n_continuous)
         grid_size, grid_latents, grid_labels = get_grid_latents(
             n_discrete, n_continuous, n_samples_per, G, grid_labels, topk_dims)
     else:
@@ -404,11 +407,14 @@ def training_loop_vae(
                                        tf_config=tf_config,
                                        is_vae=True, use_D=use_D,
                                        Gs_kwargs=dict(is_validation=True))
-                if 'tpl_per_dim' in met_outs:
-                    avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
-                    topk_dims = np.argsort(avg_distance_per_dim)[::-1][:topk_dims_to_show] # shape: (20)
+                if topk_dims_to_show > 0:
+                    if 'tpl_per_dim' in met_outs:
+                        avg_distance_per_dim = met_outs['tpl_per_dim'] # shape: (n_continuous)
+                        topk_dims = np.argsort(avg_distance_per_dim)[::-1][:topk_dims_to_show] # shape: (20)
+                    else:
+                        topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
                 else:
-                    topk_dims = np.arange(min(topk_dims_to_show, n_continuous))
+                    topk_dims = np.arange(n_continuous)
 
             if image_snapshot_ticks is not None and (
                     cur_tick % image_snapshot_ticks == 0 or done):
