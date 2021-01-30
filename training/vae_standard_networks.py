@@ -8,7 +8,7 @@
 
 # --- File Name: vae_standard_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Mon 18 Jan 2021 04:02:32 AEDT
+# --- Last Modified: Sun 31 Jan 2021 02:20:18 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -18,6 +18,42 @@ import tensorflow as tf
 from training.utils import get_return_v
 from training.vc_modular_networks2 import build_C_spgroup_layers
 
+
+def build_standard_conv_E_32(reals_in, name, scope_idx, is_validation=False):
+    # with tf.variable_scope(name + '-' + str(scope_idx),
+                           # initializer=tf.compat.v1.initializers.he_uniform()):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        e1 = tf.layers.conv2d(
+            inputs=reals_in,
+            filters=32,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+            data_format='channels_first',
+            name="e1",
+        )
+        e2 = tf.layers.conv2d(
+            inputs=e1,
+            filters=32,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+            data_format='channels_first',
+            name="e2",
+        )
+        e3 = tf.layers.conv2d(
+            inputs=e2,
+            filters=64,
+            kernel_size=2,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+            data_format='channels_first',
+            name="e3",
+        )
+    return e3
 
 def build_standard_conv_E_64(reals_in, name, scope_idx, is_validation=False):
     # with tf.variable_scope(name + '-' + str(scope_idx),
@@ -159,6 +195,48 @@ def build_standard_prior_G(latents_in,
         d2 = tf.layers.dense(d1, 1024, activation=tf.nn.relu)
         d2_reshaped = tf.reshape(d2, shape=[-1, 64, 4, 4])
     return d2_reshaped, d1
+
+
+def build_standard_conv_G_32(d2_reshaped,
+                             name,
+                             scope_idx,
+                             output_shape,
+                             recons_type='bernoulli_loss',
+                             is_validation=False):
+    # with tf.variable_scope(name + '-' + str(scope_idx),
+                           # initializer=tf.compat.v1.initializers.he_uniform()):
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        d4 = tf.layers.conv2d_transpose(
+            inputs=d2_reshaped,
+            filters=32,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+            data_format='channels_first',
+        )
+
+        d5 = tf.layers.conv2d_transpose(
+            inputs=d4,
+            filters=32,
+            kernel_size=4,
+            strides=2,
+            activation=tf.nn.relu,
+            padding="same",
+            data_format='channels_first',
+        )
+
+        d6 = tf.layers.conv2d_transpose(
+            inputs=d5,
+            filters=output_shape[0],
+            kernel_size=4,
+            strides=2,
+            padding="same",
+            data_format='channels_first',
+        )
+        if is_validation and recons_type == 'bernoulli_loss':
+            d6 = tf.nn.sigmoid(d6)
+    return d6
 
 
 def build_standard_conv_G_64(d2_reshaped,

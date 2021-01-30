@@ -8,7 +8,7 @@
 
 # --- File Name: vae_networks.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Tue 12 Jan 2021 15:26:09 AEDT
+# --- Last Modified: Sun 31 Jan 2021 02:22:02 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -22,9 +22,11 @@ import dnnlib
 import dnnlib.tflib as tflib
 from dnnlib import EasyDict
 from training.vc_modular_networks2 import split_module_names
+from training.vae_standard_networks import build_standard_conv_E_32
 from training.vae_standard_networks import build_standard_conv_E_64
 from training.vae_standard_networks import build_standard_conv_E_128
 from training.vae_standard_networks import build_standard_post_E
+from training.vae_standard_networks import build_standard_conv_G_32
 from training.vae_standard_networks import build_standard_conv_G_64
 from training.vae_standard_networks import build_6layer_conv_G_64
 from training.vae_standard_networks import build_standard_conv_G_128
@@ -99,7 +101,12 @@ def E_main_modular(
     key_ls, size_ls, count_dlatent_size = split_module_names(module_E_list)
     x = reals_in
     for scope_idx, k in enumerate(key_ls):
-        if k == 'Standard_E_64':
+        if k == 'Standard_E_32':
+            x = build_standard_conv_E_32(reals_in=x,
+                                         name=k,
+                                         scope_idx=scope_idx,
+                                         is_validation=is_validation)
+        elif k == 'Standard_E_64':
             x = build_standard_conv_E_64(reals_in=x,
                                          name=k,
                                          scope_idx=scope_idx,
@@ -420,6 +427,15 @@ def G_main_modular(
                 forward_eg=forward_eg,
                 forward_eg_prob=forward_eg_prob,
                 is_validation=is_validation)
+        elif k == 'Standard_G_32':
+            x = build_standard_conv_G_32(
+                d2_reshaped=x,
+                name=k,
+                scope_idx=scope_idx,
+                output_shape=[num_channels, resolution, resolution],
+                recons_type=recons_type,
+                is_validation=is_validation)
+            break
         elif k == 'Standard_G_64':
             x = build_standard_conv_G_64(
                 d2_reshaped=x,
