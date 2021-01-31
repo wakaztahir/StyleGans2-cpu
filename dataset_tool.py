@@ -419,10 +419,9 @@ def create_mnist_per_class(tfrecord_dir, mnist_dir):
     for i in range(10):
         tfrecord_dir_i = os.path.join(tfrecord_dir, 'number_' + str(i))
         with TFRecordExporter(tfrecord_dir_i, images.shape[0]//10) as tfr:
-            order = tfr.choose_shuffled_order()
-            for idx in range(order.size):
+            for idx in range(labels.shape[0]):
                 if onehot[idx][i] > 0:
-                    tfr.add_image(images[order[idx]])
+                    tfr.add_image(images[idx])
 
 
 #----------------------------------------------------------------------------
