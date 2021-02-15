@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Sat 23 Jan 2021 02:02:26 AEDT
+# --- Last Modified: Mon 15 Feb 2021 17:10:10 AEDT
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -152,7 +152,8 @@ class TPL(metric_base.MetricBase):
                                    lat_end_alpha_phs[k_gpu]:alphas[j*num_gpus+k_gpu+1],
                                    lat_sample_phs[k_gpu]:lat_sample_np})
                     distance_expr_out, lerps_expr_out = tflib.run([distance_expr, lerps_expr], feed_dict=fd)
-                    dim_distances += tflib.run(distance_expr, feed_dict=fd)
+                    dim_distances += distance_expr_out
+                    # dim_distances += tflib.run(distance_expr, feed_dict=fd)
                     # print(lerps_expr_out)
                 dim_distances = np.concatenate(dim_distances, axis=0)
                 # print('dim_distances.shape:', dim_distances.shape)
