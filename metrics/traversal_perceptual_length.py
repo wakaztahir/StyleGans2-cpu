@@ -8,7 +8,7 @@
 
 # --- File Name: traversal_perceptual_length.py
 # --- Creation Date: 12-05-2020
-# --- Last Modified: Mon 15 Feb 2021 17:10:10 AEDT
+# --- Last Modified: Thu 08 Apr 2021 02:04:24 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """Traversal Perceptual Length (TPL)."""
@@ -29,7 +29,7 @@ from training.utils import get_return_v
 #----------------------------------------------------------------------------
 
 class TPL(metric_base.MetricBase):
-    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, no_convert=False, active_thresh=0.1, use_bound_4=True, **kwargs):
+    def __init__(self, n_samples_per_dim, crop, Gs_overrides, n_traversals, no_mapping, no_convert=True, active_thresh=0.1, use_bound_4=True, **kwargs):
         super().__init__(**kwargs)
         self.crop = crop
         self.Gs_overrides = Gs_overrides

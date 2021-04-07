@@ -321,8 +321,20 @@ class Network:
 
     def copy_vars_from(self, src_net: "Network") -> None:
         """Copy the values of all variables from the given network, including sub-networks."""
-        names = [name for name in self.vars.keys() if name in src_net.vars]
-        tfutil.set_vars(tfutil.run({self.vars[name]: src_net.vars[name] for name in names}))
+        # print('self.vars.keys():', list(self.vars.keys()))
+        # print('src_net.vars.keys():', list(src_net.vars.keys()))
+
+        suspected_new_name = 'G_synthesis/'
+        suspected_old_name = 'G_vc_synthesis/'
+        if list(self.vars.keys())[1].startswith(suspected_new_name) and \
+                list(src_net.vars.keys())[1].startswith(suspected_old_name):
+            names = [name.replace(suspected_new_name, '') for name in self.vars.keys() if name.replace(suspected_new_name, suspected_old_name) in src_net.vars]
+            # print('names:', names)
+            tfutil.set_vars(tfutil.run({self.vars[suspected_new_name+name] if name!='lod' else self.vars[name] : src_net.vars[suspected_old_name+name] if name!='lod' else src_net.vars[name] for name in names}))
+        else:
+            names = [name for name in self.vars.keys() if name in src_net.vars]
+            # print('names:', names)
+            tfutil.set_vars(tfutil.run({self.vars[name]: src_net.vars[name] for name in names}))
 
     def copy_trainables_from(self, src_net: "Network") -> None:
         """Copy the values of all trainable variables from the given network, including sub-networks."""
@@ -334,6 +346,8 @@ class Network:
         if new_name is None:
             new_name = self.name
         static_kwargs = dict(self.static_kwargs)
+        # print('static_kwargs:', static_kwargs)
+        # print('new_static_kwargs:', new_static_kwargs)
         static_kwargs.update(new_static_kwargs)
         net = Network(name=new_name, func_name=new_func_name, **static_kwargs)
         net.copy_vars_from(self)
