@@ -8,7 +8,7 @@
 
 # --- File Name: modular_transformer.py
 # --- Creation Date: 06-04-2021
-# --- Last Modified: Thu 08 Apr 2021 16:10:40 AEST
+# --- Last Modified: Thu 08 Apr 2021 20:56:00 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -17,7 +17,7 @@ Code borrowed from https://www.tensorflow.org/tutorials/text/transformer
 """
 import numpy as np
 import tensorflow as tf
-# from training.networks_stylegan2 import dense_layer, conv2d_layer
+from training.networks_stylegan2 import dense_layer
 from training.networks_stylegan2 import conv2d_layer, get_weight
 from training.networks_stylegan2 import apply_bias_act, naive_upsample_2d
 from training.networks_stylegan2 import naive_downsample_2d, modulated_conv2d_layer
@@ -75,22 +75,30 @@ def split_heads(x, num_heads, depth):
     x = tf.reshape(x, (-1, seq_len, num_heads, depth))
     return tf.transpose(x, perm=[0, 2, 1, 3])
 
-def dense_layer(x, fmaps, gain=1, use_wscale=True, lrmul=1, weight_var='weight'):
+def dense_layer_last_dim(x, fmaps, gain=1, use_wscale=True, lrmul=1, weight_var='weight'):
     w = get_weight([x.shape[-1].value, fmaps], gain=gain, use_wscale=use_wscale, lrmul=lrmul, weight_var=weight_var)
     w = tf.cast(w, x.dtype)
     return tf.matmul(x, w)
 
+def apply_bias(x, lrmul=1):
+    b = tf.get_variable('bias', shape=[x.shape[-1]], initializer=tf.initializers.zeros()) * lrmul
+    b = tf.cast(b, x.dtype)
+    if len(x.shape) == 2:
+        return x + b
+    if len(x.shape) == 3:
+        return x + tf.reshape(b, [1, 1, -1])
+    return x + tf.reshape(b, [1, -1, 1, 1])
 
 def multihead_attention(v, k, q, mask, d_model, num_heads, idx):
     batch_size = tf.shape(q)[0]
     seq_len = q.get_shape().as_list()[1]
     depth = d_model // num_heads
     with tf.variable_scope('mha_q_' + str(idx)):
-        q = dense_layer(q, d_model)
+        q = apply_bias(dense_layer_last_dim(q, d_model))
     with tf.variable_scope('mha_k_' + str(idx)):
-        k = dense_layer(k, d_model)
+        k = apply_bias(dense_layer_last_dim(k, d_model))
     with tf.variable_scope('mha_v_' + str(idx)):
-        v = dense_layer(v, d_model)
+        v = apply_bias(dense_layer_last_dim(v, d_model))
 
     q = split_heads(q, num_heads, depth)  # (batch_size, num_heads, seq_len_q, depth)
     k = split_heads(k, num_heads, depth)  # (batch_size, num_heads, seq_len_k, depth)
@@ -104,16 +112,19 @@ def multihead_attention(v, k, q, mask, d_model, num_heads, idx):
     concat_attention = tf.reshape(scaled_attention,
                                   (batch_size, seq_len, d_model))  # (batch_size, seq_len_q, d_model)
     with tf.variable_scope('mha_out_' + str(idx)):
-        output = dense_layer(concat_attention, d_model)  # (batch_size, seq_len_q, d_model)
+        output = apply_bias(dense_layer_last_dim(concat_attention, d_model))  # (batch_size, seq_len_q, d_model)
 
     return output, attention_weights
 
 
 def point_wise_feed_forward_network(x, d_model, dff):
+    seq_len, x_dim = x.get_shape().as_list()[-2:]
     with tf.variable_scope('ffn_0_'):
-        x = apply_bias_act(dense_layer(x, dff), act='relu')  # (batch_size, seq_len, dff)
+        x = tf.reshape(x, [-1, x_dim])
+        x = apply_bias_act(dense_layer(x, dff), act='relu')
+        x = tf.reshape(x, [-1, seq_len, dff])  # (batch_size, seq_len, dff)
     with tf.variable_scope('ffn_1_'):
-        x = dense_layer(x, d_model)  # (batch_size, seq_len, d_model)
+        x = apply_bias(dense_layer_last_dim(x, d_model))  # (batch_size, seq_len, d_model)
     return x
 
 
@@ -225,7 +236,7 @@ def trans_decoder_basic(x, enc_output, is_training, look_ahead_mask, padding_mas
 
 
 def sc_masks(mask_logits, n_masks, n_subs, wh):
-    atts_wh = dense_layer(mask_logits, fmaps=n_subs * 4 * wh)
+    atts_wh = dense_layer_last_dim(mask_logits, fmaps=n_subs * 4 * wh)
     atts_wh = tf.reshape(atts_wh, [-1, n_masks, n_subs, 4, wh]) # [b, n_masks, n_subs, 4, wh]
     att_wh_sm = tf.nn.softmax(atts_wh, axis=-1)
     att_wh_cs = tf.cumsum(att_wh_sm, axis=-1)
@@ -327,7 +338,7 @@ def build_trans_mask_to_feat_layer(x_mask, dlatents_in, name, n_layers, scope_id
             dlatents_in = dlatents_in[:, :, np.newaxis]
             b = tf.shape(x_mask)[0]
             n_masks = x_mask.get_shape().as_list()[-2]
-            x = dense_layer(x_mask, trans_dim)
+            x = apply_bias(dense_layer_last_dim(x_mask, trans_dim))
             feat_logits = get_return_v(trans_decoder_basic(x, dlatents_in, is_training, None, None, n_layers,
                                                            trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, z_dim, d_model)
             # [b, n_masks, d_model]
@@ -362,6 +373,27 @@ def construct_feat_by_masks_latent(feat_on_masks, masks, dlatents_in):
             canvas = canvas * (1 - masks[:, i]) + feat_styled * masks[:, i]
     return canvas
 
+def construct_feat_by_concat_masks_latent(feat_on_masks, masks, dlatents_in):
+    '''
+    feat_on_masks: [b, n_masks, dim, h, w]
+    masks: [b, n_masks, h, w]
+    dlatents_in: [b, n_masks]
+    '''
+    n_masks, dim, h, w = feat_on_masks.get_shape().as_list()[1:]
+    masks = masks[:, :, np.newaxis, ...]
+
+    feat_on_masks = tf.reshape(feat_on_masks, [-1, dim, h, w])
+    feat_on_masks = instance_norm(feat_on_masks)
+    feat_on_masks = tf.reshape(feat_on_masks, [-1, n_masks, dim, h, w])
+    canvas = []
+    for i in range(n_masks):
+        with tf.variable_scope('style_mod-' + str(i)):
+            feat_styled = style_mod(feat_on_masks[:, i], dlatents_in[:, i:i+1]) # [b, dim, h, w]
+            canvas.append(feat_styled)
+            # canvas = canvas * (1 - masks[:, i]) + feat_styled * masks[:, i]
+    canvas = tf.concat(canvas, axis=1)
+    return canvas
+
 def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, scope_idx,
                                            is_training, wh, feat_cnn_dim,
                                            trans_dim=512, dff=512, trans_rate=0.1, **kwargs):
@@ -374,7 +406,7 @@ def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, 
         b = tf.shape(x_mask)[0]
         n_masks = x_mask.get_shape().as_list()[-2]
         with tf.variable_scope('FeatEncoding'):
-            x = dense_layer(x_mask, trans_dim)
+            x = apply_bias(dense_layer_last_dim(x_mask, trans_dim))
             feat_logits = get_return_v(trans_encoder_basic(x, is_training, None, n_layers,
                                                            trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, z_dim, d_model)
             # [b, n_masks, d_model]
@@ -385,5 +417,6 @@ def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, 
             feat_on_masks = conv2d_layer(feat_logits, fmaps=feat_cnn_dim, kernel=3)  # [b*n_masks, feat_cnn_dim, wh, wh]
             feat_on_masks = tf.reshape(feat_on_masks, [-1, n_masks, feat_cnn_dim, wh, wh])
             construct_feat = construct_feat_by_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
+            # construct_feat = construct_feat_by_concat_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
             # [b, feat_cnn_dim, h, w]
         return construct_feat
