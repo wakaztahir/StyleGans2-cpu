@@ -8,7 +8,7 @@
 
 # --- File Name: modular_transformer.py
 # --- Creation Date: 06-04-2021
-# --- Last Modified: Thu 08 Apr 2021 02:05:03 AEST
+# --- Last Modified: Thu 08 Apr 2021 16:10:40 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -245,7 +245,7 @@ def sc_masks(mask_logits, n_masks, n_subs, wh):
 
 def build_trans_z_to_mask_layer(x, name, n_layers, scope_idx,
                                 is_training, wh, n_subs, resolution=128,
-                                trans_dim=512, **kwargs):
+                                trans_dim=512, dff=512, trans_rate=0.1, **kwargs):
     '''
     Build z_to_mask forwarding transformer to predict semantic variation masks.
     '''
@@ -254,7 +254,39 @@ def build_trans_z_to_mask_layer(x, name, n_layers, scope_idx,
             x = x[:, :, np.newaxis]
             n_masks = x.get_shape().as_list()[-2]
             mask_logits = get_return_v(trans_encoder_basic(x, is_training, None, n_layers,
-                                                           trans_dim, num_heads=8, dff=512, rate=0.1), 1)  # (b, z_dim, d_model)
+                                                           trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, z_dim, d_model)
+
+        with tf.variable_scope('MaskMapping'):
+            atts = sc_masks(mask_logits, n_masks, n_subs, wh)  # [b, n_masks, h, w]
+            masks = tf.reshape(atts, [-1, n_masks, wh * wh])
+            # y = tf.concat([x[:, :, np.newaxis], masks], axis=-1)
+            y = masks
+
+        with tf.variable_scope('ReshapeAttns'):
+            atts = tf.reshape(atts, [-1, wh, wh, 1])
+            atts = tf.image.resize(atts, size=(resolution, resolution))
+            atts = tf.reshape(atts, [-1, n_masks, 1, resolution, resolution])
+        return y, atts
+
+
+def build_trans_pos_to_mask_layer(x, name, n_layers, scope_idx,
+                                  is_training, wh, n_subs, resolution=128,
+                                  trans_dim=512, dff=512, trans_rate=0.1, **kwargs):
+    '''
+    Build pos_to_mask forwarding transformer to predict semantic variation masks.
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        with tf.variable_scope('PosConstant'):
+            n_masks = x.get_shape().as_list()[-1]
+            pos = tf.get_variable(
+                'const',
+                shape=[1, n_masks, trans_dim],
+                initializer=tf.initializers.random_normal())
+            pos = tf.tile(tf.cast(pos, x.dtype),
+                          [tf.shape(x)[0], 1, 1])
+        with tf.variable_scope('MaskEncoding'):
+            mask_logits = get_return_v(trans_encoder_basic(pos, is_training, None, n_layers,
+                                                           trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, z_dim, d_model)
 
         with tf.variable_scope('MaskMapping'):
             atts = sc_masks(mask_logits, n_masks, n_subs, wh)  # [b, n_masks, h, w]
@@ -274,8 +306,9 @@ def construct_feat_by_masks(feat_on_masks, masks):
     masks: [b, n_masks, h, w]
     '''
     n_masks, dim, h, w = feat_on_masks.get_shape().as_list()[1:]
-    canvas = tf.zeros([1, dim, h, w])
-    canvas = tf.tile(tf.cast(canvas, feat_on_masks.dtype), [tf.shape(feat_on_masks)[0], 1, 1, 1])
+    with tf.variable_scope('CanvasConst'):
+        canvas = tf.get_variable('canvas_const', shape=[1, dim, h, w], initializer=tf.initializers.random_normal())
+        canvas = tf.tile(tf.cast(canvas, feat_on_masks.dtype), [tf.shape(feat_on_masks)[0], 1, 1, 1])
     masks = masks[:, :, np.newaxis, ...]
     for i in range(n_masks):
         canvas = canvas * (1 - masks[:, i]) + feat_on_masks[:, i] * masks[:, i]
@@ -283,10 +316,10 @@ def construct_feat_by_masks(feat_on_masks, masks):
 
 def build_trans_mask_to_feat_layer(x_mask, dlatents_in, name, n_layers, scope_idx,
                                    is_training, wh, feat_cnn_dim,
-                                   trans_dim=512, **kwargs):
+                                   trans_dim=512, dff=512, trans_rate=0.1, **kwargs):
     '''
     Build mask_to_feat forwarding transformer to predict semantic variation masks.
-    x: [b, n_masks, wh * wh]
+    x_mask: [b, n_masks, wh * wh]
     dlatents_in: [b, n_masks]
     '''
     with tf.variable_scope(name + '-' + str(scope_idx)):
@@ -296,7 +329,7 @@ def build_trans_mask_to_feat_layer(x_mask, dlatents_in, name, n_layers, scope_id
             n_masks = x_mask.get_shape().as_list()[-2]
             x = dense_layer(x_mask, trans_dim)
             feat_logits = get_return_v(trans_decoder_basic(x, dlatents_in, is_training, None, None, n_layers,
-                                                           trans_dim, num_heads=8, dff=512, rate=0.1), 1)  # (b, z_dim, d_model)
+                                                           trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, z_dim, d_model)
             # [b, n_masks, d_model]
         with tf.variable_scope('ConstructFeatMap'):
             assert trans_dim % (wh * wh) == 0
@@ -305,5 +338,52 @@ def build_trans_mask_to_feat_layer(x_mask, dlatents_in, name, n_layers, scope_id
             feat_on_masks = conv2d_layer(feat_logits, fmaps=feat_cnn_dim, kernel=3)  # [b*n_masks, feat_cnn_dim, wh, wh]
             feat_on_masks = tf.reshape(feat_on_masks, [-1, n_masks, feat_cnn_dim, wh, wh])
             construct_feat = construct_feat_by_masks(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]))
+            # [b, feat_cnn_dim, h, w]
+        return construct_feat
+
+def construct_feat_by_masks_latent(feat_on_masks, masks, dlatents_in):
+    '''
+    feat_on_masks: [b, n_masks, dim, h, w]
+    masks: [b, n_masks, h, w]
+    dlatents_in: [b, n_masks]
+    '''
+    n_masks, dim, h, w = feat_on_masks.get_shape().as_list()[1:]
+    with tf.variable_scope('CanvasConst'):
+        canvas = tf.get_variable('canvas_const', shape=[1, dim, h, w], initializer=tf.initializers.random_normal())
+        canvas = tf.tile(tf.cast(canvas, feat_on_masks.dtype), [tf.shape(feat_on_masks)[0], 1, 1, 1])
+    masks = masks[:, :, np.newaxis, ...]
+
+    feat_on_masks = tf.reshape(feat_on_masks, [-1, dim, h, w])
+    feat_on_masks = instance_norm(feat_on_masks)
+    feat_on_masks = tf.reshape(feat_on_masks, [-1, n_masks, dim, h, w])
+    for i in range(n_masks):
+        with tf.variable_scope('style_mod-' + str(i)):
+            feat_styled = style_mod(feat_on_masks[:, i], dlatents_in[:, i:i+1])
+            canvas = canvas * (1 - masks[:, i]) + feat_styled * masks[:, i]
+    return canvas
+
+def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, scope_idx,
+                                           is_training, wh, feat_cnn_dim,
+                                           trans_dim=512, dff=512, trans_rate=0.1, **kwargs):
+    '''
+    Build mask_to_feat forwarding transformer to predict semantic variation masks.
+    x_mask: [b, n_masks, wh * wh]
+    dlatents_in: [b, n_masks]
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        b = tf.shape(x_mask)[0]
+        n_masks = x_mask.get_shape().as_list()[-2]
+        with tf.variable_scope('FeatEncoding'):
+            x = dense_layer(x_mask, trans_dim)
+            feat_logits = get_return_v(trans_encoder_basic(x, is_training, None, n_layers,
+                                                           trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, z_dim, d_model)
+            # [b, n_masks, d_model]
+        with tf.variable_scope('ConstructFeatMap'):
+            assert trans_dim % (wh * wh) == 0
+            feat_precnn_dim = trans_dim // (wh * wh)
+            feat_logits = tf.reshape(feat_logits, [-1, feat_precnn_dim, wh, wh])
+            feat_on_masks = conv2d_layer(feat_logits, fmaps=feat_cnn_dim, kernel=3)  # [b*n_masks, feat_cnn_dim, wh, wh]
+            feat_on_masks = tf.reshape(feat_on_masks, [-1, n_masks, feat_cnn_dim, wh, wh])
+            construct_feat = construct_feat_by_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
             # [b, feat_cnn_dim, h, w]
         return construct_feat

@@ -8,7 +8,7 @@
 
 # --- File Name: tsfm_G_nets.py
 # --- Creation Date: 05-04-2021
-# --- Last Modified: Thu 08 Apr 2021 02:00:51 AEST
+# --- Last Modified: Thu 08 Apr 2021 16:10:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -32,7 +32,9 @@ from training.modular_networks2 import build_C_spgroup_layers
 from training.modular_networks2 import build_C_spgroup_softmax_layers
 # from training.modular_transformer import build_trans_cond_layer
 from training.modular_transformer import build_trans_z_to_mask_layer
+from training.modular_transformer import build_trans_pos_to_mask_layer
 from training.modular_transformer import build_trans_mask_to_feat_layer
+from training.modular_transformer import build_trans_mask_to_feat_encoder_layer
 from training.utils import get_return_v
 
 #----------------------------------------------------------------------------
@@ -139,6 +141,8 @@ def G_synthesis_modular_tsfm(
         is_training=True,  # If the model is in training mode.
         post_trans_wh=16,  # The cnn h and w after transformer.
         post_trans_cnn_dim=128,  # The cnn fmap after transformer.
+        dff=512,  # The dff in transformers.
+        trans_rate=0.1,  # The dropout rate in transformers.
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized Transformer network.
@@ -167,7 +171,7 @@ def G_synthesis_modular_tsfm(
                      fused_modconv=fused_modconv, use_noise=use_noise, randomize_noise=randomize_noise,
                      resolution=resolution, fmap_base=fmap_base, architecture=architecture,
                      num_channels=num_channels, fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, 
-                     is_training=is_training, **kwargs)
+                     dff=dff, trans_rate=trans_rate, is_training=is_training, **kwargs)
 
     # Build modules by module_dict.
     start_idx = 0
@@ -188,11 +192,29 @@ def G_synthesis_modular_tsfm(
                 x = get_return_v(build_trans_z_to_mask_layer(x, name=k, n_layers=n_layers,
                                                              scope_idx=scope_idx, wh=post_trans_wh, n_subs=n_subs,
                                                              trans_dim=trans_dim, **subkwargs), 1)
+        elif k.startswith('Trans_pos2mask-'):
+            # e.g. {'Trans_pos2mask-3-1': 10} (format: {name-n_layers-n_subs: n_masks (nlatents)})
+            n_subs = int(k.split('-')[-1])
+            n_layers = int(k.split('-')[-2])
+            if return_atts:
+                x, atts_tmp = build_trans_pos_to_mask_layer(x, name=k, n_layers=n_layers,
+                                                            scope_idx=scope_idx, wh=post_trans_wh, n_subs=n_subs,
+                                                            trans_dim=trans_dim, **subkwargs)
+                atts.append(atts_tmp)
+            else:
+                x = get_return_v(build_trans_pos_to_mask_layer(x, name=k, n_layers=n_layers,
+                                                               scope_idx=scope_idx, wh=post_trans_wh, n_subs=n_subs,
+                                                               trans_dim=trans_dim, **subkwargs), 1)
         elif k == 'Trans_mask2feat':
             # e.g. {'Trans_mask2feat': 2}
             x = build_trans_mask_to_feat_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                                wh=post_trans_wh, feat_cnn_dim=post_trans_cnn_dim,
                                                trans_dim=trans_dim, **subkwargs)
+        elif k == 'Trans_mask2feat_enc':
+            # e.g. {'Trans_mask2feat': 2}
+            x = build_trans_mask_to_feat_encoder_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
+                                                       wh=post_trans_wh, feat_cnn_dim=post_trans_cnn_dim,
+                                                       trans_dim=trans_dim, **subkwargs)
         elif k == 'Noise':
             # e.g. {'Noise': 1}
             # print('out noise_inputs:', noise_inputs)

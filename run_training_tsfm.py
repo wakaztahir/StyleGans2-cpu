@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_tsfm.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 08 Apr 2021 00:15:25 AEST
+# --- Last Modified: Thu 08 Apr 2021 14:58:23 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -42,7 +42,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
         fmap_min=16, fmap_max=512, G_nf_scale=4,
         norm_ord=2, topk_dims_to_show=20,
         learning_rate=0.002, avg_mv_for_I=False, use_cascade=False, cascade_alt_freq_k=1,
-        post_trans_wh=16, post_trans_cnn_dim=128,
+        post_trans_wh=16, post_trans_cnn_dim=128, dff=512, trans_rate=0.1,
         trans_dim=512, network_snapshot_ticks=10):
     train = EasyDict(run_func_name='training.training_loop_tsfm.training_loop_tsfm'
                      )  # Options for training loop.
@@ -60,6 +60,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
             module_list=module_list, use_noise=True, return_atts=return_atts,
             G_nf_scale=G_nf_scale, trans_dim=trans_dim,
             post_trans_wh=post_trans_wh, post_trans_cnn_dim=post_trans_cnn_dim,
+            dff=dff, trans_rate=trans_rate,
         )  # Options for generator network.
         I = EasyDict(func_name='training.tsfm_I_nets.head_infogan2',
                      dlatent_size=count_dlatent_size,
@@ -76,6 +77,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
             module_list=module_list, use_noise=True, return_atts=return_atts,
             G_nf_scale=G_nf_scale, trans_dim=trans_dim,
             post_trans_wh=post_trans_wh, post_trans_cnn_dim=post_trans_cnn_dim,
+            dff=dff, trans_rate=trans_rate,
         )  # Options for generator network.
         I = EasyDict(func_name='training.tsfm_I_nets.head_ps_sc',
                      dlatent_size=count_dlatent_size,
@@ -92,6 +94,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
             module_list=module_list, use_noise=True, return_atts=return_atts,
             G_nf_scale=G_nf_scale, trans_dim=trans_dim,
             post_trans_wh=post_trans_wh, post_trans_cnn_dim=post_trans_cnn_dim,
+            dff=dff, trans_rate=trans_rate,
         )  # Options for generator network.
         I = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
@@ -296,6 +299,10 @@ def main():
                         metavar='POST_TRANS_WH', default=16, type=int)
     parser.add_argument('--post_trans_cnn_dim', help='The cnn fmap after transformer.',
                         metavar='POST_TRANS_CNN_DIM', default=128, type=int)
+    parser.add_argument('--dff', help='The dff in transformers.',
+                        metavar='DFF', default=512, type=int)
+    parser.add_argument('--trans_rate', help='The dropout rate in transformers.',
+                        metavar='TRANS_RATE', default=0.1, type=float)
 
     args = parser.parse_args()
 
