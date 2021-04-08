@@ -8,7 +8,7 @@
 
 # --- File Name: modular_transformer.py
 # --- Creation Date: 06-04-2021
-# --- Last Modified: Thu 08 Apr 2021 20:56:00 AEST
+# --- Last Modified: Thu 08 Apr 2021 22:08:26 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -396,6 +396,7 @@ def construct_feat_by_concat_masks_latent(feat_on_masks, masks, dlatents_in):
 
 def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, scope_idx,
                                            is_training, wh, feat_cnn_dim,
+                                           construct_feat_by_concat=False,
                                            trans_dim=512, dff=512, trans_rate=0.1, **kwargs):
     '''
     Build mask_to_feat forwarding transformer to predict semantic variation masks.
@@ -416,7 +417,9 @@ def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, 
             feat_logits = tf.reshape(feat_logits, [-1, feat_precnn_dim, wh, wh])
             feat_on_masks = conv2d_layer(feat_logits, fmaps=feat_cnn_dim, kernel=3)  # [b*n_masks, feat_cnn_dim, wh, wh]
             feat_on_masks = tf.reshape(feat_on_masks, [-1, n_masks, feat_cnn_dim, wh, wh])
-            construct_feat = construct_feat_by_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
-            # construct_feat = construct_feat_by_concat_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
+            if construct_feat_by_concat:
+                construct_feat = construct_feat_by_concat_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
+            else:
+                construct_feat = construct_feat_by_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
             # [b, feat_cnn_dim, h, w]
         return construct_feat

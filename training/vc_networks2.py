@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Sat 17 Oct 2020 17:36:58 AEDT
+# --- Last Modified: Thu 08 Apr 2021 23:17:04 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -40,6 +40,7 @@ from training.vc_modular_networks2 import build_local_heat_layers, build_local_h
 from training.vc_modular_networks2 import build_noise_layer, build_conv_layer
 from training.vc_modular_networks2 import build_res_conv_layer, build_C_fgroup_layers
 from training.vc_modular_networks2 import build_C_spfgroup_layers, build_C_spgroup_layers
+from training.vc_modular_networks2 import build_C_spgroup_regW_layers
 from training.vc_modular_networks2 import build_C_spgroup_softmax_layers
 from training.vc_modular_networks2 import build_C_spgroup_stn_layers
 from training.vc_modular_networks2 import build_C_spgroup_lcond_layers
@@ -196,6 +197,7 @@ def G_synthesis_modular_vc2(
     x = dlatents_in
     atts = []
     noise_inputs = []
+    z_w = []
     # print('out 2 noise_inputs:', noise_inputs)
     for scope_idx, k in enumerate(key_ls):
         if k == 'Const':
@@ -233,6 +235,16 @@ def G_synthesis_modular_vc2(
             else:
                 x = build_C_spgroup_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
                                           scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale), return_atts=False, n_subs=n_subs, **subkwargs)
+            start_idx += size_ls[scope_idx]
+        elif k.startswith('C_spgroup_regW-'):
+            # e.g. {'C_spgroup_regW-2': 2}
+            n_subs = int(k.split('-')[-1])
+            x, atts_tmp, z_w_tmp = build_C_spgroup_regW_layers(x, name=k, n_latents=size_ls[scope_idx], start_idx=start_idx,
+                                                               scope_idx=scope_idx, fmaps=nf(scope_idx//G_nf_scale),
+                                                               n_subs=n_subs, **subkwargs)
+            if return_atts:
+                atts.append(atts_tmp)
+            z_w.append(z_w_tmp)
             start_idx += size_ls[scope_idx]
         elif k == 'C_spgroup_sm':
             # e.g. {'C_spgroup': 2}
@@ -338,9 +350,14 @@ def G_synthesis_modular_vc2(
     if return_atts:
         with tf.variable_scope('ConcatAtts'):
             atts_out = tf.concat(atts, axis=1)
-            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
     else:
-        return tf.identity(images_out, name='images_out')
+        atts_out = tf.zeros_like(images_out)
+    if z_w == []:
+        z_w = tf.zeros(shape=[1])
+    else:
+        z_w = [tf.reshape(i_z_w, [-1]) for i_z_w in z_w]
+        z_w = tf.concat(z_w, axis=0)
+    return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out'), tf.identity(z_w, name='z_w')
 
 def G_synthesis_simple_vc2(
         dlatents_in,  # Input: Disentangled latents (W) [minibatch, label_size+dlatent_size].

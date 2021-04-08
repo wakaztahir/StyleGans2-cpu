@@ -8,7 +8,7 @@
 
 # --- File Name: loss_tsfm.py
 # --- Creation Date: 05-04-2021
-# --- Last Modified: Mon 05 Apr 2021 22:58:39 AEST
+# --- Last Modified: Thu 08 Apr 2021 23:31:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -103,7 +103,7 @@ def calc_regress_loss(latents, pred_outs, C_global_size, C_lambda, minibatch_siz
     return G2_loss
 
 def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size,
-                           latent_type='uniform', C_lambda=1, norm_ord=2):
+                           latent_type='uniform', C_lambda=1, norm_ord=2, **kwargs):
     _ = opt
     C_global_size = G.input_shapes[0][1]
 

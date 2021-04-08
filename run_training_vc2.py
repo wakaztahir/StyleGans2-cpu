@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Wed 11 Nov 2020 23:42:27 AEDT
+# --- Last Modified: Thu 08 Apr 2021 22:24:33 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -46,6 +46,7 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
         drop_extra_torgb=False, latent_split_ls_for_std_gen=[5,5,5,5],
         loose_rate=0.2, topk_dims_to_show=20, n_neg_samples=1, temperature=1.,
         learning_rate=0.002, avg_mv_for_I=False, use_cascade=False, cascade_alt_freq_k=1,
+        regW_lambda=1,
         network_snapshot_ticks=10):
     # print('module_list:', module_list)
     train = EasyDict(run_func_name='training.training_loop_vc2.training_loop_vc2'
@@ -219,7 +220,8 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
                      D_nf_scale=D_nf_scale)
         I_info = EasyDict()
         desc = 'vc2_gan_ownID'
-    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_traversal_contrastive': # Just modular GAN or traversal contrastive
+    elif model_type == 'vc2_gan_noI' or model_type == 'vc2_traversal_contrastive' or \
+        model_type == 'gan_regW': # Just modular GAN or traversal contrastive or regW
         G = EasyDict(
             func_name='training.vc_networks2.G_main_vc2',
             synthesis_func='G_synthesis_modular_vc2',
@@ -286,6 +288,11 @@ def run(dataset, data_dir, result_dir, config_id, num_gpus, total_kimg, gamma,
             D_global_size=D_global_size, C_lambda=C_lambda, n_neg_samples=n_neg_samples, temperature=temperature,
             epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
             delta_type=delta_type)  # Options for generator loss.
+        D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
+            D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
+    elif model_type == 'gan_regW':
+        G_loss = EasyDict(func_name='training.loss_vc2.G_logistic_ns_regW',
+                          latent_type=latent_type, regW_lambda=regW_lambda)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_vc2.D_logistic_r1_vc2',
             D_global_size=D_global_size, latent_type=latent_type)  # Options for discriminator loss.
 
@@ -522,6 +529,8 @@ def main():
                         metavar='CASCADE_ALT_FREQ_K', default=1, type=float)
     parser.add_argument('--network_snapshot_ticks', help='Snapshot ticks.',
                         metavar='NETWORK_SNAPSHOT_TICKS', default=10, type=int)
+    parser.add_argument('--regW_lambda', help='Lambda for regularization on z input W.',
+                        metavar='REGW_LAMBDA', default=1, type=float)
 
     args = parser.parse_args()
 

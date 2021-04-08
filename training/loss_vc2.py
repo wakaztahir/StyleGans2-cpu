@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 05 Nov 2020 02:47:26 AEDT
+# --- Last Modified: Thu 08 Apr 2021 22:56:28 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -35,6 +35,29 @@ def G_logistic_ns(G, D, opt, training_set, minibatch_size, DM=None, latent_type=
     fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+    return loss, None
+
+def calc_z_w_reg(z_w):
+    reg = tf.reduce_mean(z_w * z_w)
+    return reg
+
+def G_logistic_ns_regW(G, D, opt, training_set, minibatch_size, DM=None, latent_type='uniform', regW_lambda=1):
+    _ = opt
+    # latents = tf.random_normal([minibatch_size] + G.input_shapes[0][1:])
+    if latent_type == 'uniform':
+        latents = tf.random.uniform([minibatch_size, G.input_shapes[0][1]], minval=-2, maxval=2)
+    elif latent_type == 'normal':
+        latents = tf.random.normal([minibatch_size, G.input_shapes[0][1]])
+    elif latent_type == 'trunc_normal':
+        latents = tf.random.truncated_normal([minibatch_size, G.input_shapes[0][1]])
+    else:
+        raise ValueError('Latent type not supported: ' + latent_type)
+    labels = training_set.get_random_labels_tf(minibatch_size)
+    fake_images_out, _, z_w = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
+    loss_z_w = calc_z_w_reg(z_w)
+    loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+    loss += regW_lambda * loss_z_w
     return loss, None
 
 def calc_vc_loss(C_delta_latents, regress_out, D_global_size, C_global_size, D_lambda, C_lambda, delta_type):

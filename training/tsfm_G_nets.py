@@ -8,7 +8,7 @@
 
 # --- File Name: tsfm_G_nets.py
 # --- Creation Date: 05-04-2021
-# --- Last Modified: Thu 08 Apr 2021 16:10:32 AEST
+# --- Last Modified: Thu 08 Apr 2021 22:05:02 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -143,6 +143,7 @@ def G_synthesis_modular_tsfm(
         post_trans_cnn_dim=128,  # The cnn fmap after transformer.
         dff=512,  # The dff in transformers.
         trans_rate=0.1,  # The dropout rate in transformers.
+        construct_feat_by_concat=False,  # If construct feat maps by concat in transformer.
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized Transformer network.
@@ -214,7 +215,8 @@ def G_synthesis_modular_tsfm(
             # e.g. {'Trans_mask2feat': 2}
             x = build_trans_mask_to_feat_encoder_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                                        wh=post_trans_wh, feat_cnn_dim=post_trans_cnn_dim,
-                                                       trans_dim=trans_dim, **subkwargs)
+                                                       trans_dim=trans_dim, 
+                                                       construct_feat_by_concat=construct_feat_by_concat,**subkwargs)
         elif k == 'Noise':
             # e.g. {'Noise': 1}
             # print('out noise_inputs:', noise_inputs)
