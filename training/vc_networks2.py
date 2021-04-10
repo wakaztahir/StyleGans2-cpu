@@ -8,7 +8,7 @@
 
 # --- File Name: vc_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 08 Apr 2021 23:17:04 AEST
+# --- Last Modified: Fri 09 Apr 2021 17:23:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -89,20 +89,22 @@ def G_main_vc2(
     if 'lod' in components.synthesis.vars:
         deps.append(tf.assign(components.synthesis.vars['lod'], lod_in))
     with tf.control_dependencies(deps):
-        if return_atts:
-            images_out, atts_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
-                                                             force_clean_graph=is_template_graph, return_atts=True, **kwargs)
-        else:
-            images_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
-                                                             force_clean_graph=is_template_graph, return_atts=False, **kwargs)
+        # if return_atts:
+        images_out, atts_out, z_w = get_return_v(components.synthesis.get_output_for(
+            dlatents, is_training=is_training,
+            force_clean_graph=is_template_graph, return_atts=True, **kwargs), 3)
+        # else:
+            # images_out = get_return_v(components.synthesis.get_output_for(dlatents, is_training=is_training,
+                                                                          # force_clean_graph=is_template_graph, return_atts=False, **kwargs), 1)
 
     # Return requested outputs.
-    images_out = tf.identity(images_out, name='images_out')
-    if return_atts:
-        atts_out = tf.identity(atts_out, name='atts_out')
-        return images_out, atts_out
-    else:
-        return images_out
+    # images_out = tf.identity(images_out, name='images_out')
+    # if return_atts:
+        # atts_out = tf.identity(atts_out, name='atts_out')
+        # return images_out, atts_out
+    # else:
+        # return images_out
+    return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out'), tf.identity(z_w, name='z_w')
 
 
 def G_mapping_vc2(
@@ -353,10 +355,11 @@ def G_synthesis_modular_vc2(
     else:
         atts_out = tf.zeros_like(images_out)
     if z_w == []:
-        z_w = tf.zeros(shape=[1])
+        z_w = tf.zeros(shape=[1, 1])
     else:
         z_w = [tf.reshape(i_z_w, [-1]) for i_z_w in z_w]
         z_w = tf.concat(z_w, axis=0)
+        z_w = tf.reshape(z_w, [1, -1])
     return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out'), tf.identity(z_w, name='z_w')
 
 def G_synthesis_simple_vc2(

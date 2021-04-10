@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 08 Apr 2021 22:24:33 AEST
+# --- Last Modified: Fri 09 Apr 2021 16:52:28 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -435,7 +435,7 @@ def main():
                                                                  'vc2_info_gan',
                                                                  'vc2_gan_style2_noI', 'vc2_gan_byvae',
                                                                  'vc2_info_gan2', 'vc2_traversal_contrastive',
-                                                                 'vc2_gan_byvae_simple'])
+                                                                 'vc2_gan_byvae_simple', 'gan_regW'])
     parser.add_argument('--resume_pkl', help='Continue training using pretrained pkl.',
                         default=None, metavar='RESUME_PKL', type=str)
     parser.add_argument('--n_samples_per', help='Number of samples for each line in traversal (default: %(default)s)',

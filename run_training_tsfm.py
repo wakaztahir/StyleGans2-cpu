@@ -8,7 +8,7 @@
 
 # --- File Name: run_training_tsfm.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 08 Apr 2021 22:07:44 AEST
+# --- Last Modified: Sat 10 Apr 2021 22:58:37 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -44,6 +44,8 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
         learning_rate=0.002, avg_mv_for_I=False, use_cascade=False, cascade_alt_freq_k=1,
         post_trans_wh=16, post_trans_cnn_dim=128, dff=512, trans_rate=0.1,
         construct_feat_by_concat=False,
+        ncut_maxval=5, post_trans_mat=16,
+        group_recons_lambda=0,
         trans_dim=512, network_snapshot_ticks=10):
     train = EasyDict(run_func_name='training.training_loop_tsfm.training_loop_tsfm'
                      )  # Options for training loop.
@@ -62,6 +64,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
             G_nf_scale=G_nf_scale, trans_dim=trans_dim,
             post_trans_wh=post_trans_wh, post_trans_cnn_dim=post_trans_cnn_dim,
             dff=dff, trans_rate=trans_rate, construct_feat_by_concat=construct_feat_by_concat,
+            ncut_maxval=ncut_maxval, post_trans_mat=post_trans_mat,
         )  # Options for generator network.
         I = EasyDict(func_name='training.tsfm_I_nets.head_infogan2',
                      dlatent_size=count_dlatent_size,
@@ -79,6 +82,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
             G_nf_scale=G_nf_scale, trans_dim=trans_dim,
             post_trans_wh=post_trans_wh, post_trans_cnn_dim=post_trans_cnn_dim,
             dff=dff, trans_rate=trans_rate, construct_feat_by_concat=construct_feat_by_concat,
+            ncut_maxval=ncut_maxval, post_trans_mat=post_trans_mat,
         )  # Options for generator network.
         I = EasyDict(func_name='training.tsfm_I_nets.head_ps_sc',
                      dlatent_size=count_dlatent_size,
@@ -96,6 +100,7 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
             G_nf_scale=G_nf_scale, trans_dim=trans_dim,
             post_trans_wh=post_trans_wh, post_trans_cnn_dim=post_trans_cnn_dim,
             dff=dff, trans_rate=trans_rate, construct_feat_by_concat=construct_feat_by_concat,
+            ncut_maxval=ncut_maxval, post_trans_mat=post_trans_mat,
         )  # Options for generator network.
         I = EasyDict()
         D = EasyDict(func_name='training.networks_stylegan2.D_stylegan2',
@@ -110,20 +115,20 @@ def run(dataset, data_dir, result_dir, num_gpus, total_kimg, gamma,
                      epsilon=1e-8)  # Options for discriminator optimizer.
     if model_type == 'info_gan_like': # InfoGAN
         G_loss = EasyDict(func_name='training.loss_tsfm.G_logistic_ns_info_gan',
-            C_lambda=C_lambda,
-            latent_type=latent_type, norm_ord=norm_ord)  # Options for generator loss.
+                          C_lambda=C_lambda, latent_type=latent_type, norm_ord=norm_ord, 
+                          group_recons_lambda=group_recons_lambda)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_tsfm.D_logistic_r1_shared',
             latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'ps_sc_like': # PS-SC
         G_loss = EasyDict(func_name='training.loss_tsfm.G_logistic_ns_ps_sc',
-            C_lambda=C_lambda,
-            epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
-            use_cascade=use_cascade)  # Options for generator loss.
+                          C_lambda=C_lambda, group_recons_lambda=group_recons_lambda,
+                          epsilon=epsilon_loss, random_eps=random_eps, latent_type=latent_type,
+                          use_cascade=use_cascade)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_tsfm.D_logistic_r1_shared',
             latent_type=latent_type)  # Options for discriminator loss.
     elif model_type == 'gan_like': # Just GAN
         G_loss = EasyDict(func_name='training.loss_tsfm.G_logistic_ns',
-                          latent_type=latent_type)  # Options for generator loss.
+                          latent_type=latent_type, group_recons_lambda=group_recons_lambda)  # Options for generator loss.
         D_loss = EasyDict(func_name='training.loss_tsfm.D_logistic_r1_shared',
             latent_type=latent_type)  # Options for discriminator loss.
 
@@ -306,6 +311,12 @@ def main():
                         metavar='TRANS_RATE', default=0.1, type=float)
     parser.add_argument('--construct_feat_by_concat', help='If use concat to construct feat maps in transformers.',
                         metavar='CONSTRUCT_FEAT_BY_CONCAT', default=False, type=_str_to_bool)
+    parser.add_argument('--ncut_maxval', help='The maxval of the number of cuts of latents.',
+                        metavar='NCUT_MAXVAL', default=5, type=int)
+    parser.add_argument('--post_trans_mat', help='Post transformer matrix size.',
+                        metavar='POST_TRANS_MAT', default=16, type=int)
+    parser.add_argument('--group_recons_lambda', help='Lambda for group reconstruction.',
+                        metavar='GROUP_RECONS_LAMBDA', default=0, type=float)
 
     args = parser.parse_args()
 

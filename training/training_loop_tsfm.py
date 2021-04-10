@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_tsfm.py
 # --- Creation Date: 05-04-2021
-# --- Last Modified: Mon 05 Apr 2021 21:10:26 AEST
+# --- Last Modified: Sat 10 Apr 2021 23:14:18 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,7 +28,7 @@ from training import dataset
 from training import misc
 from metrics import metric_base
 from training.training_loop import process_reals, training_schedule
-from training.utils import save_atts, add_outline, get_grid_latents
+from training.utils import save_atts, add_outline, get_grid_latents, get_return_v
 
 #----------------------------------------------------------------------------
 # Main training script.
@@ -171,13 +171,13 @@ def training_loop_tsfm(
     print('grid_latents.shape:', grid_latents.shape)
     print('grid_labels.shape:', grid_labels.shape)
     if return_atts:
-        grid_fakes, atts = Gs.run(grid_latents,
+        grid_fakes, atts = get_return_v(Gs.run(grid_latents,
                             grid_labels,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
                             randomize_noise=True,
                             return_atts=True,
-                            resolution=training_set.shape[1])
+                            resolution=training_set.shape[1]), 2)
         # atts: [b, n_latents, 1, res, res]
         atts = atts[:, topk_dims]
         save_atts(atts,
@@ -187,11 +187,11 @@ def training_loop_tsfm(
                   grid_fakes=grid_fakes,
                   n_samples_per=n_samples_per)
     else:
-        grid_fakes = Gs.run(grid_latents,
+        grid_fakes = get_return_v(Gs.run(grid_latents,
                             grid_labels,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
-                            randomize_noise=True)
+                            randomize_noise=True), 1)
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
@@ -200,13 +200,13 @@ def training_loop_tsfm(
 
     if include_I and return_I_atts:
         I_tmp = Is if avg_mv_for_I else I
-        _, atts = I_tmp.run(grid_fakes,
+        _, atts = get_return_v(I_tmp.run(grid_fakes,
                             grid_fakes,
                             grid_latents,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
                             return_atts=True,
-                            resolution=training_set.shape[1])
+                            resolution=training_set.shape[1]), 2)
         save_atts(atts,
                   filename=dnnlib.make_run_dir_path('fakes_I_atts_init.png'),
                   grid_size=grid_size,
@@ -519,13 +519,13 @@ def training_loop_tsfm(
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
                 if return_atts:
-                    grid_fakes, atts = Gs.run(grid_latents,
+                    grid_fakes, atts = get_return_v(Gs.run(grid_latents,
                                         grid_labels,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
                                         randomize_noise=True,
                                         return_atts=True,
-                                        resolution=training_set.shape[1])
+                                        resolution=training_set.shape[1]), 2)
                     # atts: [b, n_latents, 1, res, res]
                     atts = atts[:, topk_dims]
                     save_atts(atts,
@@ -535,11 +535,11 @@ def training_loop_tsfm(
                               grid_fakes=grid_fakes,
                               n_samples_per=n_samples_per)
                 else:
-                    grid_fakes = Gs.run(grid_latents,
+                    grid_fakes = get_return_v(Gs.run(grid_latents,
                                         grid_labels,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
-                                        randomize_noise=True)
+                                        randomize_noise=True), 1)
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
@@ -551,13 +551,13 @@ def training_loop_tsfm(
                         I_tmp = Is
                     else:
                         I_tmp = I
-                    _, atts = I_tmp.run(grid_fakes,
+                    _, atts = get_return_v(I_tmp.run(grid_fakes,
                                         grid_fakes,
                                         grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
                                         return_atts=True,
-                                        resolution=training_set.shape[1])
+                                        resolution=training_set.shape[1]), 2)
                     atts = atts[:, topk_dims]
                     save_atts(atts,
                               filename=dnnlib.make_run_dir_path('fakes_I_atts%06d.png' % (cur_nimg // 1000)),

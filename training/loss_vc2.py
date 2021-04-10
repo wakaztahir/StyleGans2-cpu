@@ -8,7 +8,7 @@
 
 # --- File Name: loss_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 08 Apr 2021 22:56:28 AEST
+# --- Last Modified: Fri 09 Apr 2021 17:05:54 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -19,6 +19,7 @@ import numpy as np
 import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
+from training.utils import get_return_v
 
 def G_logistic_ns(G, D, opt, training_set, minibatch_size, DM=None, latent_type='uniform'):
     _ = opt
@@ -32,8 +33,8 @@ def G_logistic_ns(G, D, opt, training_set, minibatch_size, DM=None, latent_type=
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
-    fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
+    fake_images_out = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False), 1)
+    fake_scores_out = get_return_v(D.get_output_for(fake_images_out, labels, is_training=True), 1)
     loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     return loss, None
 
@@ -53,8 +54,8 @@ def G_logistic_ns_regW(G, D, opt, training_set, minibatch_size, DM=None, latent_
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake_images_out, _, z_w = G.get_output_for(latents, labels, is_training=True, return_atts=False)
-    fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
+    fake_images_out, _, z_w = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False), 3)
+    fake_scores_out = get_return_v(D.get_output_for(fake_images_out, labels, is_training=True), 1)
     loss_z_w = calc_z_w_reg(z_w)
     loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
     loss += regW_lambda * loss_z_w
@@ -447,9 +448,9 @@ def D_logistic_r1_vc2(G, D, opt, training_set, minibatch_size, reals, labels, ga
     if D_global_size > 0:
         latents = tf.concat([discrete_latents, latents], axis=1)
 
-    fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
-    real_scores_out = D.get_output_for(reals, labels, is_training=True)
-    fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
+    fake_images_out = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False), 1)
+    real_scores_out = get_return_v(D.get_output_for(reals, labels, is_training=True), 1)
+    fake_scores_out = get_return_v(D.get_output_for(fake_images_out, labels, is_training=True), 1)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)
     fake_scores_out = autosummary('Loss/scores/fake', fake_scores_out)
     loss = tf.nn.softplus(fake_scores_out) # -log(1-sigmoid(fake_scores_out))

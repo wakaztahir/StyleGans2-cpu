@@ -8,7 +8,7 @@
 
 # --- File Name: utils.py
 # --- Creation Date: 14-08-2020
-# --- Last Modified: Thu 21 Jan 2021 17:00:16 AEDT
+# --- Last Modified: Sat 10 Apr 2021 21:50:13 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -50,7 +50,7 @@ def save_atts(atts, filename, grid_size, drange, grid_fakes, n_samples_per):
 
     for i in range(atts.shape[1]):
         att_sp = atts[:, i]  # [b, 1, x_h, x_w]
-        att_sp = (att_sp - att_sp.min()) / (att_sp.max() - att_sp.min())
+        att_sp = (att_sp - att_sp.min()) / (att_sp.max() - att_sp.min() + 1e-4)
         grid_start_idx = i * n_samples_per
         canvas[grid_start_idx : grid_start_idx + n_samples_per] = att_sp[grid_start_idx : grid_start_idx + n_samples_per]
 

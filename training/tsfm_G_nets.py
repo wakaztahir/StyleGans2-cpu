@@ -8,7 +8,7 @@
 
 # --- File Name: tsfm_G_nets.py
 # --- Creation Date: 05-04-2021
-# --- Last Modified: Thu 08 Apr 2021 22:05:02 AEST
+# --- Last Modified: Sun 11 Apr 2021 00:01:35 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -34,6 +34,7 @@ from training.modular_networks2 import build_C_spgroup_softmax_layers
 from training.modular_transformer import build_trans_z_to_mask_layer
 from training.modular_transformer import build_trans_pos_to_mask_layer
 from training.modular_transformer import build_trans_mask_to_feat_layer
+from training.modular_transformer import build_zpos_to_mat_layer
 from training.modular_transformer import build_trans_mask_to_feat_encoder_layer
 from training.utils import get_return_v
 
@@ -74,20 +75,21 @@ def G_main_tsfm(
     if 'lod' in components.synthesis.vars:
         deps.append(tf.assign(components.synthesis.vars['lod'], lod_in))
     with tf.control_dependencies(deps):
-        if return_atts:
-            images_out, atts_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
-                                                             force_clean_graph=is_template_graph, return_atts=True, **kwargs)
-        else:
-            images_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
-                                                             force_clean_graph=is_template_graph, return_atts=False, **kwargs)
+        # if return_atts:
+        images_out, atts_out, feat_group = components.synthesis.get_output_for(dlatents, is_training=is_training,
+                                                         force_clean_graph=is_template_graph, return_atts=True, **kwargs)
+        # else:
+            # images_out = components.synthesis.get_output_for(dlatents, is_training=is_training,
+                                                             # force_clean_graph=is_template_graph, return_atts=False, **kwargs)
 
     # Return requested outputs.
-    images_out = tf.identity(images_out, name='images_out')
-    if return_atts:
-        atts_out = tf.identity(atts_out, name='atts_out')
-        return images_out, atts_out
-    else:
-        return images_out
+    # images_out = tf.identity(images_out, name='images_out')
+    # if return_atts:
+        # atts_out = tf.identity(atts_out, name='atts_out')
+        # return images_out, atts_out
+    # else:
+        # return images_out
+    return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out'), tf.identity(feat_group, 'feat_group')
 
 
 def G_mapping_tsfm(
@@ -144,6 +146,8 @@ def G_synthesis_modular_tsfm(
         dff=512,  # The dff in transformers.
         trans_rate=0.1,  # The dropout rate in transformers.
         construct_feat_by_concat=False,  # If construct feat maps by concat in transformer.
+        ncut_maxval=5,  # The maxval of the number of cuts in latent split.
+        post_trans_mat=16,  # The post transformer matrix size.
         **kwargs):  # Ignore unrecognized keyword args.
     '''
     Modularized Transformer network.
@@ -171,7 +175,7 @@ def G_synthesis_modular_tsfm(
     subkwargs.update(dlatents_in=dlatents_in, act=act, dtype=dtype, resample_kernel=resample_kernel,
                      fused_modconv=fused_modconv, use_noise=use_noise, randomize_noise=randomize_noise,
                      resolution=resolution, fmap_base=fmap_base, architecture=architecture,
-                     num_channels=num_channels, fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay, 
+                     num_channels=num_channels, fmap_min=fmap_min, fmap_max=fmap_max, fmap_decay=fmap_decay,
                      dff=dff, trans_rate=trans_rate, is_training=is_training, **kwargs)
 
     # Build modules by module_dict.
@@ -179,6 +183,7 @@ def G_synthesis_modular_tsfm(
     x = dlatents_in
     atts = []
     noise_inputs = []
+    group_feat = tf.zeros([1, 1])
     for scope_idx, k in enumerate(key_ls):
         if k.startswith('Trans_z2mask-'):
             # e.g. {'Trans_z2mask-3-1': 10} (format: name-n_layers-n_subs)
@@ -215,8 +220,18 @@ def G_synthesis_modular_tsfm(
             # e.g. {'Trans_mask2feat': 2}
             x = build_trans_mask_to_feat_encoder_layer(x, name=k, n_layers=size_ls[scope_idx], scope_idx=scope_idx,
                                                        wh=post_trans_wh, feat_cnn_dim=post_trans_cnn_dim,
-                                                       trans_dim=trans_dim, 
-                                                       construct_feat_by_concat=construct_feat_by_concat,**subkwargs)
+                                                       trans_dim=trans_dim,
+                                                       construct_feat_by_concat=construct_feat_by_concat, **subkwargs)
+        elif k.startswith('Trans_zpos2feat_enc-'):
+            # e.g. {'Trans_zpos2feat_enc-3': 10}  format: {name-n_layers: n_latents}
+            n_layers = int(k.split('-')[-1])
+            x, atts_tmp, mat_agg_final = get_return_v(build_zpos_to_mat_layer(x, name=k, n_layers=n_layers, scope_idx=scope_idx,
+                                                                              wh=post_trans_wh, feat_cnn_dim=post_trans_cnn_dim,
+                                                                              trans_dim=trans_dim, ncut_maxval=ncut_maxval,
+                                                                              post_trans_mat=post_trans_mat, **subkwargs), 3)
+            group_feat = mat_agg_final
+            if return_atts:
+                atts.append(atts_tmp)
         elif k == 'Noise':
             # e.g. {'Noise': 1}
             # print('out noise_inputs:', noise_inputs)
@@ -240,7 +255,7 @@ def G_synthesis_modular_tsfm(
     if return_atts:
         with tf.variable_scope('ConcatAtts'):
             atts_out = tf.concat(atts, axis=1)
-            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out')
+            return tf.identity(images_out, name='images_out'), tf.identity(atts_out, name='atts_out'), tf.identity(group_feat, name='group_feat')
     else:
-        return tf.identity(images_out, name='images_out')
+        return tf.identity(images_out, name='images_out'), tf.identity(tf.zeros(1, 1), name='atts_out'), tf.identity(group_feat, name='group_feat')
 

@@ -8,7 +8,7 @@
 
 # --- File Name: loss_tsfm.py
 # --- Creation Date: 05-04-2021
-# --- Last Modified: Thu 08 Apr 2021 23:31:25 AEST
+# --- Last Modified: Sat 10 Apr 2021 23:25:25 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -19,8 +19,13 @@ import numpy as np
 import tensorflow as tf
 import dnnlib.tflib as tflib
 from dnnlib.tflib.autosummary import autosummary
+from training.utils import get_return_v
 
-def G_logistic_ns(G, D, opt, training_set, minibatch_size, latent_type='uniform'):
+def recons_group(group_feat, group_feat_intanct):
+    loss = tf.reduce_sum(tf.math.squared_difference(group_feat, group_feat_intanct), axis=1)
+    return loss
+
+def G_logistic_ns(G, D, opt, training_set, minibatch_size, latent_type='uniform', group_recons_lambda=0.):
     _ = opt
     if latent_type == 'uniform':
         latents = tf.random.uniform([minibatch_size, G.input_shapes[0][1]], minval=-2, maxval=2)
@@ -29,9 +34,13 @@ def G_logistic_ns(G, D, opt, training_set, minibatch_size, latent_type='uniform'
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    fake_images_out, _, group_feat = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False), 3)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
+    if group_recons_lambda > 0:
+        fake_images_out_intanct, _, group_feat_intanct = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False, ncut_maxval=1), 3)
+        loss_group_recons = recons_group(group_feat, group_feat_intanct)
+        loss += group_recons_lambda * loss_group_recons
     return loss, None
 
 def calc_ps_loss(latents, delta_latents, reg1_out, reg2_out, C_delta_latents, C_lambda):
@@ -47,7 +56,7 @@ def calc_ps_loss(latents, delta_latents, reg1_out, reg2_out, C_delta_latents, C_
     return I_loss
 
 def G_logistic_ns_ps_sc(G, D, I, opt, training_set, minibatch_size, I_info=None, latent_type='uniform',
-                        C_lambda=1, epsilon=0.4, random_eps=False, use_cascade=False, cascade_dim=None):
+                        C_lambda=1, epsilon=0.4, random_eps=False, use_cascade=False, cascade_dim=None, group_recons_lambda=0.):
     _ = opt
     C_global_size = G.input_shapes[0][1]
 
@@ -77,8 +86,9 @@ def G_logistic_ns_ps_sc(G, D, I, opt, training_set, minibatch_size, I_info=None,
 
     labels = training_set.get_random_labels_tf(2*minibatch_size)
     latents_all = tf.concat([latents, delta_latents], axis=0)
-    fake_all_out = G.get_output_for(latents_all, labels, is_training=True, return_atts=False)
+    fake_all_out, _, group_feat = get_return_v(G.get_output_for(latents_all, labels, is_training=True, return_atts=False), 3)
     fake1_out, fake2_out = tf.split(fake_all_out, 2, axis=0)
+    group_feat1, group_feat2 = tf.split(group_feat, 2, axis=0)
 
     if I_info is not None:
         fake_scores_out, hidden = D.get_output_for(fake1_out, labels, is_training=True)
@@ -93,6 +103,11 @@ def G_logistic_ns_ps_sc(G, D, I, opt, training_set, minibatch_size, I_info=None,
 
     G_loss += I_loss
 
+    if group_recons_lambda > 0:
+        fake_images_out_intanct, _, group_feat_intanct = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False, ncut_maxval=1), 3)
+        loss_group_recons = recons_group(group_feat1, group_feat_intanct)
+        G_loss += group_recons_lambda * loss_group_recons
+
     return G_loss, None
 
 def calc_regress_loss(latents, pred_outs, C_global_size, C_lambda, minibatch_size, norm_ord=2):
@@ -103,7 +118,7 @@ def calc_regress_loss(latents, pred_outs, C_global_size, C_lambda, minibatch_siz
     return G2_loss
 
 def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size,
-                           latent_type='uniform', C_lambda=1, norm_ord=2, **kwargs):
+                           latent_type='uniform', C_lambda=1, norm_ord=2, group_recons_lambda=0., **kwargs):
     _ = opt
     C_global_size = G.input_shapes[0][1]
 
@@ -115,7 +130,7 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size,
         raise ValueError('Latent type not supported: ' + latent_type)
 
     labels = training_set.get_random_labels_tf(minibatch_size)
-    fake_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    fake_out, _, group_feat = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False), 3)
 
     fake_scores_out = D.get_output_for(fake_out, labels, is_training=True)
     G_loss = tf.nn.softplus(-fake_scores_out) # -log(sigmoid(fake_scores_out))
@@ -126,6 +141,12 @@ def G_logistic_ns_info_gan(G, D, I, opt, training_set, minibatch_size,
     I_loss = autosummary('Loss/I_loss', I_loss)
 
     G_loss += I_loss
+
+    if group_recons_lambda > 0:
+        fake_images_out_intanct, _, group_feat_intanct = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False, ncut_maxval=1), 3)
+        loss_group_recons = recons_group(group_feat, group_feat_intanct)
+        G_loss += group_recons_lambda * loss_group_recons
+
     return G_loss, None
 
 def D_logistic_r1_shared(G, D, opt, training_set, minibatch_size, reals, labels, gamma=10.0, latent_type='uniform'):
@@ -138,7 +159,7 @@ def D_logistic_r1_shared(G, D, opt, training_set, minibatch_size, reals, labels,
     else:
         raise ValueError('Latent type not supported: ' + latent_type)
 
-    fake_images_out = G.get_output_for(latents, labels, is_training=True, return_atts=False)
+    fake_images_out = get_return_v(G.get_output_for(latents, labels, is_training=True, return_atts=False), 1)
     real_scores_out = D.get_output_for(reals, labels, is_training=True)
     fake_scores_out = D.get_output_for(fake_images_out, labels, is_training=True)
     real_scores_out = autosummary('Loss/scores/real', real_scores_out)

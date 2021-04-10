@@ -8,7 +8,7 @@
 
 # --- File Name: modular_transformer.py
 # --- Creation Date: 06-04-2021
-# --- Last Modified: Thu 08 Apr 2021 22:08:26 AEST
+# --- Last Modified: Sun 11 Apr 2021 00:02:32 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -423,3 +423,98 @@ def build_trans_mask_to_feat_encoder_layer(x_mask, dlatents_in, name, n_layers, 
                 construct_feat = construct_feat_by_masks_latent(feat_on_masks, tf.reshape(x_mask, [b, n_masks, wh, wh]), dlatents_in)
             # [b, feat_cnn_dim, h, w]
         return construct_feat
+
+
+def create_split_mask(seq_len, hy_ncut):
+    split_idx = tf.random.uniform(shape=[hy_ncut],
+                                  minval=1,
+                                  maxval=seq_len + 1,
+                                  dtype=tf.int32)
+    split_idx = tf.sort(split_idx, axis=-1)
+    idx_range = tf.range(seq_len)
+    masks_mul = tf.zeros(shape=[seq_len, seq_len], dtype=tf.float32)
+    pre_mask_last = tf.zeros(shape=[seq_len], dtype=tf.float32)
+
+    def cond(i, masks):
+        return tf.less(i, hy_ncut)
+
+    def bod(i, masks):
+        masks_mul, pre_mask_last = masks
+        pre_mask_tmp = tf.cast(idx_range < split_idx[i:i + 1], tf.float32)
+        mask_tmp = pre_mask_tmp - pre_mask_last
+        mask_mul_tmp = tf.matmul(mask_tmp[:, np.newaxis], mask_tmp[np.newaxis, :])
+        masks_mul = masks_mul + mask_mul_tmp
+        pre_mask_last = pre_mask_tmp
+        i += 1
+        return (i, (masks_mul, pre_mask_last))
+
+    i_masks = (0, (masks_mul, pre_mask_last))
+    i_final, masks_final = tf.while_loop(cond, bod, i_masks)
+    masks_mul, pre_mask_last = masks_final
+
+    def f1():
+        return tf.ones(shape=[seq_len], dtype=tf.float32)
+    def f2():
+        return (1. - tf.cast(idx_range < split_idx[-1:], tf.float32))
+    mask_tmp = tf.cond(tf.equal(hy_ncut, 0), f1, f2)
+    mask_mul_tmp = tf.matmul(mask_tmp[:, np.newaxis], mask_tmp[np.newaxis, :])
+    masks_mul = masks_mul + mask_mul_tmp
+    return masks_mul, split_idx
+
+def build_zpos_to_mat_layer(x, name, n_layers, scope_idx,
+                            is_training, wh, feat_cnn_dim, resolution=128,
+                            trans_dim=512, dff=512, trans_rate=0.1,
+                            ncut_maxval=5, post_trans_mat=16, **kwargs):
+    '''
+    Build zpos_to_mat forwarding transformer to extract features per z.
+    '''
+    with tf.variable_scope(name + '-' + str(scope_idx)):
+        with tf.variable_scope('PosConstant'):
+            n_lat = x.get_shape().as_list()[-1]
+            pos = tf.get_variable(
+                'const', shape=[1, n_lat, trans_dim],
+                initializer=tf.initializers.random_normal())
+            pos = tf.tile(tf.cast(pos, x.dtype),
+                          [tf.shape(x)[0], 1, 1])
+            zpos = pos + x[:, :, np.newaxis]
+        with tf.variable_scope('MaskEncoding'):
+            if is_training:
+                ncut = tf.random.uniform(shape=[], maxval=ncut_maxval, dtype=tf.int32)
+                split_masks_mul, split_idx = create_split_mask(n_lat, ncut)
+            else:
+                split_masks_mul = tf.ones(shape=[n_lat, n_lat], dtype=tf.float32)
+                split_idx = tf.constant([n_lat])
+            split_idx = tf.concat([split_idx, [n_lat]], axis=0)
+            split_idx, _ = tf.unique(split_idx)
+            mask_logits = get_return_v(
+                trans_encoder_basic(zpos, is_training, split_masks_mul, n_layers,
+                                    trans_dim, num_heads=8, dff=dff, rate=trans_rate), 1)  # (b, n_lat, d_model)
+            mask_groups = dense_layer_last_dim(mask_logits, post_trans_mat * post_trans_mat)
+
+        with tf.variable_scope('GatherSubgroups'):
+            b = tf.shape(mask_groups)[0]
+            len_group = tf.shape(split_idx)[0]
+            gathered_groups = tf.reshape(tf.gather(mask_groups, split_idx - 1, axis=1),
+                                         [b, len_group] + [post_trans_mat, post_trans_mat])  # (b, len(split_idx), mat * mat)
+            mat_agg = tf.eye(post_trans_mat, batch_shape=[b])
+            def cond(i, mats):
+                return tf.less(i, len_group)
+            def bod(i, mats):
+                mats = tf.matmul(gathered_groups[:, i, ...], mats)
+                i += 1
+                return (i, mats)
+            i_mats = (0, mat_agg)
+            _, mat_agg_final = tf.while_loop(cond, bod, i_mats)  # (b, mat, mat)
+            mat_agg_final_out = tf.reshape(mat_agg_final, [b, post_trans_mat * post_trans_mat])
+
+        with tf.variable_scope('MaskMapping'):
+            mat_agg_final = tf.reshape(mat_agg_final, [b, post_trans_mat * post_trans_mat])
+            feat = apply_bias_act(dense_layer(mat_agg_final, feat_cnn_dim * wh * wh))
+            feat = tf.reshape(feat, [-1, feat_cnn_dim, wh, wh])
+
+        with tf.variable_scope('ReshapeAttns'):
+            split_masks_mul -= 1e-4
+            atts = tf.reshape(split_masks_mul, [-1, n_lat, n_lat, 1])
+            atts = tf.image.resize(atts, size=(resolution, resolution))
+            atts = tf.tile(tf.reshape(atts, [-1, 1, 1, resolution, resolution]), [1, n_lat, 1, 1, 1])
+        return feat, atts, mat_agg_final_out

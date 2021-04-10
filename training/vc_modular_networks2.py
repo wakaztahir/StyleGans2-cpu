@@ -8,7 +8,7 @@
 
 # --- File Name: vc_modular_networks2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 08 Apr 2021 23:16:12 AEST
+# --- Last Modified: Fri 09 Apr 2021 17:25:09 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -33,6 +33,7 @@ from stn.stn import spatial_transformer_network as transformer
 LATENT_MODULES = [
     'D_global', 'C_nocond_global', 'C_global', 'SB', 'C_local_heat', 'C_local_hfeat',
     'C_fgroup', 'C_spfgroup', 'C_spgroup', 'C_spgroup_sm', 'C_spgroup_stn',
+    'C_spgroup_regW',
     'C_spgroup_lc', 'Cout_spgroup', 'Cout_genatts_spgroup',
     'STD_gen', 'STD_gen_sp', 'PG_gen_sp',
     # 'Standard_E_64', 'Standard_E_128',
@@ -226,6 +227,7 @@ def build_C_spgroup_layers(x, name, n_latents, start_idx, scope_idx, dlatents_in
 def dense_regW(x, fmaps, **kwargs):
     if len(x.shape) > 2:
         x = tf.reshape(x, [-1, np.prod([d.value for d in x.shape[1:]])])
+    # print('x.shape:', x.shape)
     w = get_weight([x.shape[1].value, fmaps], **kwargs)
     w = tf.cast(w, x.dtype)
     return tf.matmul(x, w), w
@@ -235,6 +237,7 @@ def style_mod_with_regW(x, dlatent, **kwargs):
         style_nobias, w = dense_regW(dlatent, fmaps=x.shape[1]*2, gain=1, **kwargs)
         style = apply_bias(style_nobias)
         style = tf.reshape(style, [-1, 2, x.shape[1]] + [1] * (len(x.shape) - 2))
+        # print('w.shape:', w.shape)
         w_out = w[0, :x.shape[1]]  # We assume dlatent only has size 1.
         return x * (style[:,0] + 1) + style[:,1], w_out
 
@@ -271,6 +274,7 @@ def build_C_spgroup_regW_layers(x, name, n_latents, start_idx, scope_idx, dlaten
             z_w = []
             for i in range(n_latents):
                 with tf.variable_scope('style_mod-' + str(i)):
+                    # print('C_global_latents.shape:', C_global_latents.shape)
                     x_styled, z_w_tmp = style_mod_with_regW(x_norm, C_global_latents[:, i:i+1])
                     x = x * (1 - atts[:, i]) + x_styled * atts[:, i]
                     z_w.append(z_w_tmp)

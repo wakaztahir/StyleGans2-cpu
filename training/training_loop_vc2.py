@@ -8,7 +8,7 @@
 
 # --- File Name: training_loop_vc2.py
 # --- Creation Date: 24-04-2020
-# --- Last Modified: Thu 05 Nov 2020 02:37:37 AEDT
+# --- Last Modified: Fri 09 Apr 2021 17:02:52 AEST
 # --- Author: Xinqi Zhu
 # .<.<.<.<.<.<.<.<.<.<.<.<.<.<.<.<
 """
@@ -28,7 +28,7 @@ from training import dataset
 from training import misc
 from metrics import metric_base
 from training.training_loop import process_reals, training_schedule
-from training.utils import save_atts, add_outline, get_grid_latents
+from training.utils import save_atts, add_outline, get_grid_latents, get_return_v
 
 #----------------------------------------------------------------------------
 # Main training script.
@@ -183,13 +183,13 @@ def training_loop_vc2(
     print('grid_labels.shape:', grid_labels.shape)
     # pdb.set_trace()
     if return_atts:
-        grid_fakes, atts = Gs.run(grid_latents,
+        grid_fakes, atts = get_return_v(Gs.run(grid_latents,
                             grid_labels,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
                             randomize_noise=True,
                             return_atts=True,
-                            resolution=training_set.shape[1])
+                            resolution=training_set.shape[1]), 2)
         # atts: [b, n_latents, 1, res, res]
         atts = atts[:, topk_dims]
         save_atts(atts,
@@ -199,11 +199,11 @@ def training_loop_vc2(
                   grid_fakes=grid_fakes,
                   n_samples_per=n_samples_per)
     else:
-        grid_fakes = Gs.run(grid_latents,
+        grid_fakes = get_return_v(Gs.run(grid_latents,
                             grid_labels,
                             is_validation=True,
                             minibatch_size=sched.minibatch_gpu,
-                            randomize_noise=True)
+                            randomize_noise=True), 1)
     grid_fakes = add_outline(grid_fakes, width=1)
     misc.save_image_grid(grid_fakes,
                          dnnlib.make_run_dir_path('fakes_init.png'),
@@ -215,13 +215,13 @@ def training_loop_vc2(
             I_tmp = Is
         else:
             I_tmp = I
-        _, atts = I_tmp.run(grid_fakes,
+        _, atts = get_return_v(I_tmp.run(grid_fakes,
                         grid_fakes,
                         grid_latents,
                         is_validation=True,
                         minibatch_size=sched.minibatch_gpu,
                         return_atts=True,
-                        resolution=training_set.shape[1])
+                        resolution=training_set.shape[1]), 2)
         save_atts(atts,
                   filename=dnnlib.make_run_dir_path('fakes_I_atts_init.png'),
                   grid_size=grid_size,
@@ -569,13 +569,13 @@ def training_loop_vc2(
                     grid_latents = np.random.randn(np.prod(grid_size), *G.input_shape[1:])
 
                 if return_atts:
-                    grid_fakes, atts = Gs.run(grid_latents,
+                    grid_fakes, atts = get_return_v(Gs.run(grid_latents,
                                         grid_labels,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
                                         randomize_noise=True,
                                         return_atts=True,
-                                        resolution=training_set.shape[1])
+                                        resolution=training_set.shape[1]), 2)
                     # atts: [b, n_latents, 1, res, res]
                     atts = atts[:, topk_dims]
                     save_atts(atts,
@@ -585,11 +585,11 @@ def training_loop_vc2(
                               grid_fakes=grid_fakes,
                               n_samples_per=n_samples_per)
                 else:
-                    grid_fakes = Gs.run(grid_latents,
+                    grid_fakes = get_return_v(Gs.run(grid_latents,
                                         grid_labels,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
-                                        randomize_noise=True)
+                                        randomize_noise=True), 1)
                 grid_fakes = add_outline(grid_fakes, width=1)
                 misc.save_image_grid(grid_fakes,
                                      dnnlib.make_run_dir_path(
@@ -601,13 +601,13 @@ def training_loop_vc2(
                         I_tmp = Is
                     else:
                         I_tmp = I
-                    _, atts = I_tmp.run(grid_fakes,
+                    _, atts = get_return_v(I_tmp.run(grid_fakes,
                                         grid_fakes,
                                         grid_latents,
                                         is_validation=True,
                                         minibatch_size=sched.minibatch_gpu,
                                         return_atts=True,
-                                        resolution=training_set.shape[1])
+                                        resolution=training_set.shape[1]), 2)
                     atts = atts[:, topk_dims]
                     save_atts(atts,
                               filename=dnnlib.make_run_dir_path('fakes_I_atts%06d.png' % (cur_nimg // 1000)),
