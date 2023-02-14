@@ -1,6 +1,6 @@
 ## StyleGAN2 &mdash; Official TensorFlow Implementation
 
-![Teaser image](./docs/stylegan2-teaser-1024x256.png)
+[//]: # (![Teaser image]&#40;./docs/stylegan2-teaser-1024x256.png&#41;)
 
 **Analyzing and Improving the Image Quality of StyleGAN**<br>
 Tero Karras, Samuli Laine, Miika Aittala, Janne Hellsten, Jaakko Lehtinen, Timo Aila<br>
